@@ -1,3 +1,4 @@
+import { roundQty } from '../strategies/qty.js';
 import type {
   Position,
   StrategyContext,
@@ -58,6 +59,6 @@ export class SleeveContext implements StrategyContext {
     const busy =
       this.ledger.pending.some((p) => p.symbol === order.symbol) ||
       this.orders.some((o) => o.symbol === order.symbol);
-    if (!busy) this.orders.push({ ...order, qty: Math.floor(order.qty) });
+    if (!busy) this.orders.push({ ...order, qty: roundQty(order.qty, true) });
   }
 }

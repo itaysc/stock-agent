@@ -6,6 +6,7 @@ import type {
   PortfolioResponse,
   WalkForwardResponse,
 } from './types';
+import type { BrokerPlan, BrokerView, StockChartData } from './broker-types';
 import type { AutopilotRun, AutopilotState, DeploymentView, PaperAccount } from './paper-types';
 import type { ResearchSession, RobustnessResult } from './research-types';
 
@@ -74,6 +75,21 @@ export const api = {
       body: JSON.stringify(body),
     }),
   paperAccount: () => request<PaperAccount>('/api/v1/paper/account'),
+  broker: () => request<BrokerView>('/api/v1/broker'),
+  brokerPreview: (capital: number) =>
+    request<BrokerPlan>('/api/v1/broker/preview', {
+      method: 'POST',
+      body: JSON.stringify({ capital }),
+    }),
+  brokerChart: (symbol: string) =>
+    request<StockChartData>(`/api/v1/broker/chart/${encodeURIComponent(symbol)}`),
+  brokerAction: (action: 'start' | 'pause' | 'resume' | 'stop', capital?: number) =>
+    request<BrokerView>(`/api/v1/broker/${action}`, {
+      method: 'POST',
+      body: JSON.stringify(capital ? { capital } : {}),
+    }),
+  testNotification: () =>
+    request<{ sentTo: string[] }>('/api/v1/notifications/test', { method: 'POST' }),
   deployments: () => request<DeploymentView[]>('/api/v1/paper/deployments'),
   deployment: (id: string) => request<DeploymentView>(`/api/v1/paper/deployments/${id}`),
   deploy: (body: object) =>
@@ -92,6 +108,13 @@ export const api = {
   updateAutopilot: (body: object) =>
     request<AutopilotState>('/api/v1/autopilot', { method: 'PUT', body: JSON.stringify(body) }),
   runAutopilot: () => request<AutopilotRun>('/api/v1/autopilot/run', { method: 'POST' }),
+  investIdea: (id: string, amount?: number) =>
+    request<{ message: string }>(`/api/v1/autopilot/ideas/${id}/invest`, {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    }),
+  skipIdea: (id: string) =>
+    request<{ message: string }>(`/api/v1/autopilot/ideas/${id}/skip`, { method: 'POST' }),
   robustness: (body: object) =>
     request<RobustnessResult>('/api/v1/robustness', { method: 'POST', body: JSON.stringify(body) }),
 };

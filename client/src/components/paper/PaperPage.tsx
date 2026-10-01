@@ -9,6 +9,7 @@ import { StatCard } from '../results/StatCard';
 import { DeploymentCard } from './DeploymentCard';
 import { AutopilotPanel } from './AutopilotPanel';
 import { DeploymentDetail } from './DeploymentDetail';
+import { NotifyLine } from './NotifyLine';
 
 const REFRESH_MS = 30_000;
 
@@ -80,6 +81,7 @@ export function PaperPage({ selectId, baskets }: { selectId: string | null; bask
         filings {account.newsSources.secFilings ? '✓' : '✗ set SEC_USER_AGENT in server/.env'} · AI
         reader {account.newsSources.ai ? '✓' : '✗ set OPENAI_API_KEY'}
       </Text>
+      <NotifyLine channels={account.notifications} />
       <AutopilotPanel baskets={baskets} onChanged={() => void load()} />
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
         <StatCard

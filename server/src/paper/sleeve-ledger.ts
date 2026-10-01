@@ -1,3 +1,4 @@
+import { cleanQty } from '../strategies/qty.js';
 import type { LedgerTrade, SleeveLedger } from './deployment.types.js';
 
 export function emptyLedger(cash: number): SleeveLedger {
@@ -20,7 +21,7 @@ export function bookFill(
   const held = ledger.positions[fill.symbol];
   const trade: LedgerTrade = { ...fill };
   if (fill.side === 'buy') {
-    const qty = (held?.qty ?? 0) + fill.qty;
+    const qty = cleanQty((held?.qty ?? 0) + fill.qty);
     const avgPrice = ((held?.qty ?? 0) * (held?.avgPrice ?? 0) + cost) / qty;
     ledger.positions[fill.symbol] = { symbol: fill.symbol, qty, avgPrice };
     ledger.cash -= cost;
@@ -29,7 +30,7 @@ export function bookFill(
     trade.realizedPnl = qty * (fill.price - (held?.avgPrice ?? fill.price));
     ledger.realizedPnl += trade.realizedPnl;
     ledger.cash += cost;
-    const left = (held?.qty ?? 0) - qty;
+    const left = cleanQty((held?.qty ?? 0) - qty);
     if (left > 0 && held)
       ledger.positions[fill.symbol] = { ...held, qty: left };
     else delete ledger.positions[fill.symbol];

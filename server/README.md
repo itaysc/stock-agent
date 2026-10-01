@@ -673,14 +673,93 @@ Paper trading → Autopilot, or `PUT /api/v1/autopilot {"enabled": true}`). Ever
    (default 3) at once, within the account's free paper cash.
 
 Between runs it checks its deployments every hour and retires failing ones right away. Every
-decision is saved (`autopilot_runs`) with its reason and shown in the Lab; set `NOTIFY_WEBHOOK_URL`
-(e.g. a Slack incoming webhook) to get each run's changes as a message. **Run now** starts a run
+decision is saved (`autopilot_runs`) with its reason and shown in the Lab, and sent as a message
+when notifications are set up (see below). **Run now** starts a run
 immediately. Cost: about `symbolsPerRun × (rounds + 1)` AI calls per run.
 `AUTOPILOT_SCHEDULER_ENABLED=false` turns the schedule off (only Run now works). Paper only, like
 every deployment.
 
 Endpoints: `GET /api/v1/autopilot` (settings, running run, next run, recent runs),
 `PUT /api/v1/autopilot` (any settings), `POST /api/v1/autopilot/run`.
+
+## The broker (start here)
+
+The web app opens on **Broker**: give it paper money and it trades by itself. After every close
+it ranks ~50 of the biggest US stocks (`src/broker/universe.ts`) with the momentum rotation:
+it holds the 5 that rose most over the last 12 months, leaving out the latest month (only ones
+still rising, more of the calmer ones), re-checks weekly, sells what drops out and parks the rest in T-bills (BIL) when too few
+stocks are rising. Before each buy it checks the news, trading halts and SEC filings; severe
+breaking news on a holding (AI-confirmed) sells it. It pauses itself at 1.5× the backtest's worst
+drop.
+
+- **Plan first**: enter an amount and it suggests the spread (`POST /api/v1/broker/preview`
+  `{"capital": 200}`: stocks, share, amount, shares, price, first stop, why, from completed days);
+  **Approve and invest** starts it, and it buys at the next open.
+- **Sell rules**: a 25% trailing stop (below the highest close since the buy; it only moves up, so
+  it also locks in gains), dropping out of the top 5 at the weekly re-check, and severe breaking
+  news. No fixed take-profit (`takeProfitPct` exists; in the algo lab, take-profits and tighter
+  stops cut the winners short).
+- **Holdings**: buy price and date, now, gain, the price it sells below, and a chart per stock
+  (`GET /api/v1/broker/chart/:symbol`: closes, trades, buy / stop / high lines).
+- **Daily report** in Telegram after each processed trading day: trades with reasons, what is
+  next, holdings, value vs SPY.
+- **Monthly health check**: the fixed settings over the last 3 years vs holding the stocks; it
+  warns you when the algo trails (it never changes the settings by itself).
+- **Algo lab** (`node dist/broker/lab/algo-lab.cli.js --universe today|2020 --cache <file>
+  [--set sensitivity]`): every variant through the same walk-forward, on today's 50 biggest and on
+  the 50 biggest of end-2020 (a fairer list). Its findings (Oct 2026, Jul 2022 → Oct 2026): every
+  setting near the classic one beat SPY on both lists; re-tuning every 6 months did worse than
+  keeping the classic settings; skipping the latest month (12-1) helped a little with smaller
+  drops; a 200-day market filter, risk-adjusted ranking and trailing stops lowered returns.
+- **Fractional shares** (`fractional=1` on the rotation): from $100 it can hold 0.25 of a pricey
+  stock. Amounts are kept to 4 decimals; a stock Alpaca can't trade in fractions is bought in
+  whole shares instead.
+- Telegram: `/status`, `/pause`, `/resume`, `/report`, `/broker 500` (start, at least $100).
+- API: `GET /api/v1/broker`, `POST /api/v1/broker/start` (`{"capital": 10000}`), `/pause`,
+  `/resume`, `/stop` (sells everything), `/report`.
+
+Needs `PAPER_TRADING_ENABLED=true`. The Lab, AI research, ideas and autopilot below are under
+**Advanced**.
+
+## Ideas and the Telegram bot
+
+With **Ask me first** on (`askFirst`, the default), the autopilot does not deploy on its own: each
+research that passes every check becomes an **idea**, sent to Telegram (and shown in the Lab) with
+short evidence: the hidden final year vs just holding, the worst drop, trades, the multi-symbol
+check and the AI's headline. Tap **Invest** and it asks how much (amount buttons that fit your
+free paper cash, or type any amount), or tap **Skip**. An idea is valid for 3 days (then
+the research is stale); a newer idea on the same symbols replaces it.
+
+The bot reads your replies by long polling (no public URL or webhook secret needed) and only
+answers `TELEGRAM_CHAT_ID`:
+
+| Command | What it does |
+|---|---|
+| `/check SPY` (or `/check XLK XLF XLE`) | Research now; an idea if it passes, otherwise why not |
+| `/ideas` | Open ideas |
+| `/invest ID [amount]` | Paper-invest an idea, e.g. `/invest k3f9 5000`; without an amount it asks |
+| `/skip ID` | Drop an idea |
+| `/run` | A full autopilot run now |
+| `/status` | Paper deployments and how they do |
+
+`TELEGRAM_COMMANDS_ENABLED=false` makes the bot send only. Only one server may read a bot at a
+time (a second one gets "conflict" and waits). Endpoints: `GET /api/v1/autopilot/ideas`,
+`POST /api/v1/autopilot/ideas/:id/invest` (`{"amount": 5000}` optional),
+`POST /api/v1/autopilot/ideas/:id/skip`. Paper only, like every deployment.
+
+## Notifications (Telegram or a webhook)
+
+Messages are sent for each autopilot run's changes and for breaking news, trading halts or
+SEC 8-K filings on held positions (and the sells they cause).
+
+- **Telegram**: create a bot with @BotFather (`/newbot`) and send your bot any message. Then open
+  `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy `"chat":{"id":...}` (for a group, add
+  the bot to the group; group ids are negative). Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
+- **Webhook**: `NOTIFY_WEBHOOK_URL` receives `POST {"text": "..."}` (e.g. a Slack incoming webhook).
+
+Both can be on at once. Sending never fails a run: errors are only logged (without the URL, which
+holds the token). Test with **Send a test** on the Paper trading page, or with
+`POST /api/v1/notifications/test` (400 when nothing is set up).
 
 ## Live strategies
 

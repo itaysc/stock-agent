@@ -8,6 +8,34 @@ import type { OrderRequest } from './sleeve-context.js';
 export const checksNews = (d: Deployment) =>
   !!d.newsCheck && (d.newsCheck.tone > 0 || d.newsCheck.ai);
 
+/**
+ * Sends the order; a fractional amount of a stock the broker can't trade in
+ * fractions goes out as whole shares instead. Returns the quantity sent.
+ */
+async function sendQty(
+  o: OrderRequest,
+  clientOrderId: string,
+  deps: CycleDeps,
+): Promise<{ qty: number; clientOrderId: string }> {
+  const send = (qty: number, id: string) =>
+    deps.placeOrder({ clientOrderId: id, symbol: o.symbol, side: o.side, qty });
+  try {
+    await send(o.qty, clientOrderId);
+    return { qty: o.qty, clientOrderId };
+  } catch (err) {
+    const whole = Math.floor(o.qty);
+    if (
+      Number.isInteger(o.qty) ||
+      whole < 1 ||
+      !/fraction/i.test((err as Error).message)
+    )
+      throw err;
+    // A new id: the order log already has the refused one.
+    await send(whole, `${clientOrderId}w`);
+    return { qty: whole, clientOrderId: `${clientOrderId}w` };
+  }
+}
+
 /** Sends one market order for a sleeve (through the risk checks) and tracks it as pending. */
 export async function placeOne(
   d: Deployment,
@@ -17,14 +45,10 @@ export async function placeOne(
   now: Date,
   when = 'fills at the next open',
 ): Promise<void> {
-  const clientOrderId = `dep-${d.id.slice(0, 8)}-${sleeve}-${o.symbol}-${randomUUID().slice(0, 8)}`;
+  const id = `dep-${d.id.slice(0, 8)}-${sleeve}-${o.symbol}-${randomUUID().slice(0, 8)}`;
   try {
-    await deps.placeOrder({
-      clientOrderId,
-      symbol: o.symbol,
-      side: o.side,
-      qty: o.qty,
-    });
+    const { qty, clientOrderId } = await sendQty(o, id, deps);
+    o = { ...o, qty };
     d.ledgers[sleeve].pending.push({
       ...o,
       clientOrderId,

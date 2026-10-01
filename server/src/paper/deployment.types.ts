@@ -91,7 +91,7 @@ export interface Deployment {
   /** Why it was paused or stopped (by you or a guard). */
   statusReason: string | null;
   source: {
-    kind: 'manual' | 'research' | 'portfolio' | 'autopilot';
+    kind: 'manual' | 'research' | 'portfolio' | 'autopilot' | 'broker';
     researchId?: string;
   };
   timeframe: '1Day';

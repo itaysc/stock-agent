@@ -1,29 +1,19 @@
-import {
-  Accordion,
-  Alert,
-  Badge,
-  Button,
-  Group,
-  List,
-  Paper,
-  Stack,
-  Switch,
-  Text,
-} from '@mantine/core';
+import { Accordion, Alert, Button, Group, Paper, Stack, Switch, Text } from '@mantine/core';
 import { IconPlayerPlay, IconRobot } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import type { AutopilotRun, AutopilotState } from '../../api/paper-types';
 import type { Basket } from '../../api/research-types';
 import { AutopilotSettingsForm } from './AutopilotSettingsForm';
+import { AgentNow } from './AgentNow';
+import { AutopilotRuns } from './AutopilotRuns';
+import { IdeasList } from './IdeasList';
+import { ResearchDrawer } from './ResearchDrawer';
 
-const KIND_COLOR: Record<AutopilotRun['decisions'][number]['kind'], string> = {
-  deployed: 'teal',
-  retired: 'orange',
-  researched: 'blue',
-  kept: 'gray',
-  skipped: 'gray',
-  error: 'red',
+const TELEGRAM: Record<AutopilotState['telegram'], string> = {
+  commands: 'Telegram: ideas come with Invest / Skip buttons; send /help to your bot for commands.',
+  'send-only': 'Telegram: messages only (TELEGRAM_COMMANDS_ENABLED=false), so answer ideas here.',
+  off: 'Telegram: set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in server/.env to get ideas there and answer with a tap.',
 };
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : 'n/a');
 
@@ -37,16 +27,21 @@ export function AutopilotPanel({
 }) {
   const [state, setState] = useState<AutopilotState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reasoning, setReasoning] = useState<string | null>(null);
   const load = useCallback(
     () => api.autopilot().then(setState, (err: Error) => setError(err.message)),
     [],
   );
   useEffect(() => void load(), [load]);
+  // Every 5 s while it runs; every 30 s otherwise (a run can start from Telegram).
+  const running = !!state?.running;
   useEffect(() => {
-    if (!state?.running) return;
-    const timer = setInterval(() => void load().then(onChanged), 5_000);
+    const timer = setInterval(
+      () => void load().then(() => running && onChanged()),
+      running ? 5_000 : 30_000,
+    );
     return () => clearInterval(timer);
-  }, [state?.running, load, onChanged]);
+  }, [running, load, onChanged]);
 
   if (error) return <Alert color="red">{error}</Alert>;
   if (!state) return null;
@@ -77,8 +72,9 @@ export function AutopilotPanel({
               <Text fw={700}>Autopilot</Text>
               <Text size="xs" c="dimmed" maw={520}>
                 On a schedule it retires its paper deployments that fail, researches the next
-                symbols of your watchlist with the AI agent, and paper-deploys the ideas that pass
-                every check. Your own deployments are never touched.
+                symbols of your watchlist with the AI agent, and sends you the ideas that pass every
+                check (here and in Telegram) to paper-invest with one tap. Your own deployments are
+                never touched.
               </Text>
             </div>
           </Group>
@@ -93,6 +89,11 @@ export function AutopilotPanel({
               Run now
             </Button>
             <Switch
+              label="Ask me first"
+              checked={s.askFirst}
+              onChange={(e) => void update({ askFirst: e.currentTarget.checked })}
+            />
+            <Switch
               label={s.enabled ? 'On' : 'Off'}
               checked={s.enabled}
               onChange={(e) => void update({ enabled: e.currentTarget.checked })}
@@ -100,6 +101,15 @@ export function AutopilotPanel({
           </Group>
         </Group>
         <Text size="sm">{status}</Text>
+        {state.running && <AgentNow run={state.running} onReasoning={setReasoning} />}
+        <Text size="xs" c="dimmed">
+          {TELEGRAM[state.telegram]}
+        </Text>
+        <IdeasList
+          ideas={state.ideas}
+          onAnswered={() => void load().then(onChanged)}
+          onReasoning={setReasoning}
+        />
         {!state.schedulerOn && (
           <Text size="xs" c="orange">
             The schedule is off on the server (AUTOPILOT_SCHEDULER_ENABLED=false): only Run now
@@ -123,55 +133,13 @@ export function AutopilotPanel({
               />
             </Accordion.Panel>
           </Accordion.Item>
-          {[state.running, ...state.runs]
-            .filter((r): r is AutopilotRun => !!r)
-            .filter((r, i, all) => all.findIndex((x) => x.id === r.id) === i)
-            .slice(0, 8)
-            .map((r) => (
-              <Accordion.Item key={r.id} value={r.id}>
-                <Accordion.Control>
-                  <Group gap="xs">
-                    <Badge
-                      size="xs"
-                      variant="light"
-                      color={
-                        r.status === 'failed' ? 'red' : r.status === 'running' ? 'blue' : 'gray'
-                      }
-                    >
-                      {r.status}
-                    </Badge>
-                    <Text size="sm">
-                      {when(r.startedAt)} · {r.trigger === 'review' ? 'hourly check' : r.trigger} ·{' '}
-                      {r.decisions.filter((d) => d.kind === 'deployed').length} deployed,{' '}
-                      {r.decisions.filter((d) => d.kind === 'retired').length} retired
-                    </Text>
-                  </Group>
-                </Accordion.Control>
-                <Accordion.Panel>
-                  {r.error && (
-                    <Text size="sm" c="red">
-                      {r.error}
-                    </Text>
-                  )}
-                  <List size="sm" spacing={4}>
-                    {r.decisions.map((d, i) => (
-                      <List.Item
-                        key={i}
-                        icon={
-                          <Badge size="xs" variant="light" color={KIND_COLOR[d.kind]}>
-                            {d.kind}
-                          </Badge>
-                        }
-                      >
-                        {d.message}
-                      </List.Item>
-                    ))}
-                  </List>
-                </Accordion.Panel>
-              </Accordion.Item>
-            ))}
+          <AutopilotRuns
+            runs={[state.running, ...state.runs].filter((r): r is AutopilotRun => !!r)}
+            onReasoning={setReasoning}
+          />
         </Accordion>
       </Stack>
+      <ResearchDrawer id={reasoning} onClose={() => setReasoning(null)} />
     </Paper>
   );
 }

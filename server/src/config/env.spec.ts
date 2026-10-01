@@ -35,6 +35,9 @@ describe('validateEnv', () => {
       NOTIFY_WEBHOOK_URL: '',
       ALPHAVANTAGE_API_KEY: '',
       SEC_USER_AGENT: '',
+      TELEGRAM_BOT_TOKEN: '',
+      TELEGRAM_CHAT_ID: '',
+      TELEGRAM_COMMANDS_ENABLED: true,
     });
   });
 

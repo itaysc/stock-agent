@@ -132,3 +132,89 @@ describe('rules: volatility-targeted sizing', () => {
     expect(r('20').fills[0].qty).toBeLessThan(r('0').fills[0].qty / 3);
   });
 });
+
+describe('momentum rotation with fractional shares', () => {
+  it('buys a fraction of a pricey stock with a small account', () => {
+    const pricey = series(900, Array(11).fill(0.01));
+    const whole = runBacktest(
+      createStrategy('momentum-rotation', ['COST'], base),
+      { COST: makeBars('COST', pricey) },
+      { ...options, initialCash: 200 },
+    );
+    expect(whole.fills).toEqual([]); // one share costs more than the account
+    const frac = runBacktest(
+      createStrategy('momentum-rotation', ['COST'], {
+        ...base,
+        fractional: '1',
+      }),
+      { COST: makeBars('COST', pricey) },
+      { ...options, initialCash: 200 },
+    );
+    expect(frac.fills[0].qty).toBeGreaterThan(0.2);
+    expect(frac.fills[0].qty).toBeLessThan(1);
+    expect(frac.fills[0].qty * 1e4).toBe(Math.round(frac.fills[0].qty * 1e4)); // 4 decimals
+  });
+});
+
+describe('momentum rotation options', () => {
+  const up = series(100, Array(11).fill(0.02));
+  const calmUp = series(100, Array(11).fill(0.015));
+  const jumpyUp = series(
+    100,
+    [0.1, -0.06, 0.1, -0.05, 0.09, -0.04, 0.08, -0.03, 0.07, -0.02, 0.06],
+  );
+
+  it('marketFilter: holds nothing risky while SPY is below its average', () => {
+    const spyDown = makeBars('SPY', series(100, Array(11).fill(-0.01)));
+    const r = runBacktest(
+      createStrategy('momentum-rotation', ['A', 'BIL'], {
+        ...base,
+        safeLast: '1',
+        marketFilter: '3',
+      }),
+      {
+        A: makeBars('A', up),
+        BIL: makeBars('BIL', series(100, Array(11).fill(0.0005))),
+      },
+      options,
+      { market: { SPY: spyDown } },
+    );
+    expect(r.fills.every((f) => f.symbol === 'BIL')).toBe(true);
+    expect(r.fills[0].reason).toBe('market down: SPY below its 3-day average');
+  });
+
+  it('stopPct: sells a holding that falls that far from its high, on any day', () => {
+    const crash = series(
+      100,
+      [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, -0.15, 0.01, 0.01],
+    );
+    const r = runBacktest(
+      createStrategy('momentum-rotation', ['A'], {
+        ...base,
+        rebalanceDays: '100',
+        stopPct: '10',
+      }),
+      { A: makeBars('A', crash) },
+      options,
+    );
+    const sell = r.fills.find((f) => f.side === 'sell');
+    expect(sell?.reason).toMatch(/^stop: down 1\d\.\d% from its high$/);
+  });
+
+  it('rankBy 1: prefers a steady riser over a jumpier one that rose more', () => {
+    const pick = (rankBy: string) =>
+      runBacktest(
+        createStrategy('momentum-rotation', ['CALM', 'JUMPY'], {
+          ...base,
+          lookback: '10',
+          volLookback: '5',
+          rebalanceDays: '100',
+          rankBy,
+        }),
+        { CALM: makeBars('CALM', calmUp), JUMPY: makeBars('JUMPY', jumpyUp) },
+        options,
+      ).fills[0]?.symbol;
+    expect(pick('0')).toBe('JUMPY');
+    expect(pick('1')).toBe('CALM');
+  });
+});

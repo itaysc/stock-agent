@@ -54,5 +54,10 @@ export const tradingEnv = {
   ALPHAVANTAGE_API_KEY: z.string().default(''),
   // SEC EDGAR asks for a contact in the User-Agent, e.g. "stock-invest you@example.com". Empty = filings check off.
   SEC_USER_AGENT: z.string().default(''),
+  // Optional: Telegram notifications through your own bot (both needed; see the README).
+  TELEGRAM_BOT_TOKEN: z.string().default(''),
+  TELEGRAM_CHAT_ID: z.string().default(''),
+  // Read your replies in that chat (Invest/Skip buttons, /check, /status). Off: send only.
+  TELEGRAM_COMMANDS_ENABLED: z.stringbool().default(true),
   NOTIFY_WEBHOOK_URL: z.union([z.literal(''), z.url()]).default(''),
 };

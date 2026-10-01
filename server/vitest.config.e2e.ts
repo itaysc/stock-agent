@@ -18,6 +18,8 @@ export default defineConfig({
       NOTIFY_WEBHOOK_URL: '',
       ALPHAVANTAGE_API_KEY: '',
       SEC_USER_AGENT: '',
+      TELEGRAM_BOT_TOKEN: '',
+      TELEGRAM_CHAT_ID: '',
       OPENAI_API_KEY: '', // never call OpenAI from tests
     },
   },

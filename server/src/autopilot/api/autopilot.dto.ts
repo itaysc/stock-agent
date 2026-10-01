@@ -27,6 +27,13 @@ import {
 export class UpdateAutopilotDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() enabled?: boolean;
 
+  @ApiPropertyOptional({
+    description: 'Send ideas to you and deploy only on your yes',
+  })
+  @IsOptional()
+  @IsBoolean()
+  askFirst?: boolean;
+
   @ApiPropertyOptional({ example: ['SPY', 'QQQ'] })
   @IsOptional()
   @Transform(upperList)
@@ -91,4 +98,13 @@ export class UpdateAutopilotDto {
   @Min(5)
   @Max(500)
   retireBehindAfterDays?: number;
+}
+
+/** Your yes to an idea; without an amount, the suggested one. */
+export class InvestIdeaDto {
+  @ApiPropertyOptional({ example: 5000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  amount?: number;
 }

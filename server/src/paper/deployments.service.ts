@@ -71,9 +71,7 @@ export class DeploymentsService {
         `The paper account already holds ${held.join(', ')} outside any deployment: close it first so they don't mix`,
       );
     }
-    const account = await this.alpaca.getAccount();
-    const free =
-      Number(account.cash ?? 0) - live.reduce((n, d) => n + d.capital, 0);
+    const free = await this.freeCash(live);
     if (input.capital > free) {
       throw new BadRequestException(
         `Not enough free paper cash: $${Math.floor(free).toLocaleString('en-US')} left after the other deployments`,
@@ -147,6 +145,15 @@ export class DeploymentsService {
     return d;
   }
 
+  /** Paper cash not given to a live deployment yet. */
+  async freeCash(live?: Deployment[]): Promise<number> {
+    const [account, list] = await Promise.all([
+      this.alpaca.getAccount(),
+      live ?? this.store.live(),
+    ]);
+    return Number(account.cash ?? 0) - list.reduce((n, d) => n + d.capital, 0);
+  }
+
   async setNewsCheck(id: string, newsCheck: NewsCheck): Promise<Deployment> {
     const d = await this.get(id);
     d.newsCheck = newsCheck;
@@ -186,6 +193,21 @@ export class DeploymentsService {
       throw new BadRequestException(`It is ${d.status}`);
     d.peakEquity = deploymentEquity(d); // measure the next drawdown from here
     return this.setStatus(d, 'active', null, 'Resumed');
+  }
+
+  /** New settings for a sleeve's strategy: it re-warms on history and trades from the next day on. */
+  async changeParams(
+    id: string,
+    sleeve: number,
+    params: Record<string, string>,
+    note: string,
+  ): Promise<Deployment> {
+    const d = await this.get(id);
+    d.sleeves[sleeve] = { ...d.sleeves[sleeve], params };
+    this.runner.forget(d.id);
+    logEvent(d, note, new Date());
+    await this.store.save(d);
+    return d;
   }
 
   /** Sells everything and stops for good. */

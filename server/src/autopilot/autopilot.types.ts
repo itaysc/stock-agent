@@ -15,6 +15,8 @@ export interface AutopilotSettings {
   testsPerRound: number;
   holdout: string;
   basket: BasketId;
+  /** Send each idea that passed every check to you (Telegram / the Lab) and deploy only on your yes. */
+  askFirst: boolean;
   /** Paper money for each deployment it makes. */
   capitalPerDeployment: number;
   /** At most this many of its deployments at once. */
@@ -39,6 +41,7 @@ export const DEFAULT_SETTINGS: AutopilotSettings = {
   testsPerRound: 3,
   holdout: '12m',
   basket: 'indexes',
+  askFirst: true,
   capitalPerDeployment: 10_000,
   maxDeployments: 3,
   retireBehindAfterDays: 40,
@@ -50,19 +53,37 @@ export const DEFAULT_SETTINGS: AutopilotSettings = {
 
 /** One decision of a run, in plain words. */
 export interface AutopilotDecision {
-  kind: 'retired' | 'kept' | 'researched' | 'deployed' | 'skipped' | 'error';
+  kind:
+    | 'retired'
+    | 'kept'
+    | 'researched'
+    | 'proposed'
+    | 'deployed'
+    | 'skipped'
+    | 'error';
   message: string;
   deploymentId?: string;
   researchId?: string;
+  ideaId?: string;
 }
 
 export interface AutopilotRun {
   id: string;
-  /** review = the hourly check between runs (only saved when it retired something). */
-  trigger: 'schedule' | 'manual' | 'review';
+  /** review = the hourly check between runs (only saved when it retired something); chat = a Telegram command. */
+  trigger: 'schedule' | 'manual' | 'review' | 'chat';
   status: 'running' | 'done' | 'failed';
   startedAt: Date;
   finishedAt: Date | null;
   decisions: AutopilotDecision[];
+  /** What it is doing right now, in plain words (null when idle or done). */
+  activity?: AutopilotActivity | null;
   error: string | null;
+}
+
+export interface AutopilotActivity {
+  /** e.g. "Researching SPY: round 2 of 4, 5 tests run so far". */
+  step: string;
+  /** The research session it is running: open it to watch the agent think. */
+  researchId: string | null;
+  since: Date;
 }

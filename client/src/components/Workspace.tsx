@@ -1,4 +1,4 @@
-import { AppShell, Container, Grid, Stack } from '@mantine/core';
+import { AppShell, Container, Grid, SegmentedControl, Stack } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useCallback, useState } from 'react';
 import { api } from '../api/client';
@@ -22,6 +22,7 @@ import { formFromPlan } from '../lib/plan';
 import { Header, type Page } from './Header';
 import { DeployModal } from './paper/DeployModal';
 import { PaperPage } from './paper/PaperPage';
+import { BrokerPage } from './broker/BrokerPage';
 import { RecentReports } from './RecentReports';
 import { ResultArea } from './results/ResultArea';
 import { SettingsPanel } from './settings/SettingsPanel';
@@ -84,7 +85,7 @@ export function Workspace({ options }: { options: BacktestOptions }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     void run(next);
   };
-  const [page, setPage] = useState<Page>('lab');
+  const [page, setPage] = useState<Page>('broker');
   const [deploying, setDeploying] = useState<DeployTarget | null>(null);
   const [deployedId, setDeployedId] = useState<string | null>(null);
   const deployTarget: DeployTarget | null =
@@ -119,7 +120,21 @@ export function Workspace({ options }: { options: BacktestOptions }) {
       </AppShell.Header>
       <AppShell.Main>
         <Container size="xl" px={{ base: 0, sm: 'md' }}>
-          {page === 'paper' ? (
+          {page !== 'broker' && (
+            <SegmentedControl
+              mb="md"
+              size="xs"
+              value={page}
+              onChange={(v) => setPage(v as Page)}
+              data={[
+                { value: 'lab', label: 'Lab: backtests & AI research' },
+                { value: 'paper', label: 'Paper trading & autopilot' },
+              ]}
+            />
+          )}
+          {page === 'broker' ? (
+            <BrokerPage />
+          ) : page === 'paper' ? (
             <PaperPage selectId={deployedId} baskets={options.baskets} />
           ) : (
             <Grid gap="lg" align="flex-start">

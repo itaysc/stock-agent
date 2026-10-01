@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Param,
   Post,
   Put,
 } from '@nestjs/common';
@@ -13,7 +14,9 @@ import { AutopilotSchedulerService } from '../autopilot-scheduler.service.js';
 import { AutopilotStore } from '../autopilot-store.js';
 import { AutopilotService } from '../autopilot.service.js';
 import { NotifierService } from '../../notify/notifier.service.js';
-import { UpdateAutopilotDto } from './autopilot.dto.js';
+import { TelegramBotService } from '../bot/telegram-bot.service.js';
+import { IdeasService } from '../ideas/ideas.service.js';
+import { InvestIdeaDto, UpdateAutopilotDto } from './autopilot.dto.js';
 
 @ApiTags('paper trading')
 @Controller('autopilot')
@@ -23,6 +26,8 @@ export class AutopilotController {
     private readonly autopilot: AutopilotService,
     private readonly scheduler: AutopilotSchedulerService,
     private readonly notifier: NotifierService,
+    private readonly ideas: IdeasService,
+    private readonly bot: TelegramBotService,
   ) {}
 
   @Get()
@@ -39,7 +44,24 @@ export class AutopilotController {
         : null,
       schedulerOn: this.scheduler.enabled,
       notifyOn: this.notifier.configured,
-      runs: await this.store.recentRuns(10),
+      telegram: this.bot.enabled
+        ? 'commands'
+        : this.notifier.channels().includes('telegram')
+          ? 'send-only'
+          : 'off',
+      ideas: await this.ideas.pending(),
+      runs: (await this.store.recentRuns(10)).map((r) =>
+        // Saved as running but not running here: the server stopped mid-run.
+        r.status === 'running' && r.id !== this.autopilot.running?.id
+          ? {
+              ...r,
+              status: 'failed' as const,
+              activity: null,
+              error:
+                r.error ?? 'Interrupted: the server stopped during this run',
+            }
+          : r,
+      ),
     };
   }
 
@@ -65,5 +87,25 @@ export class AutopilotController {
     } catch (err) {
       throw new ConflictException((err as Error).message);
     }
+  }
+
+  @Get('ideas')
+  @ApiOperation({ summary: 'Recent ideas (open and answered)' })
+  recentIdeas() {
+    return this.ideas.recent();
+  }
+
+  @Post('ideas/:id/invest')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Your yes: paper-deploy an idea' })
+  async invest(@Param('id') id: string, @Body() dto: InvestIdeaDto) {
+    return { message: await this.ideas.invest(id, dto.amount) };
+  }
+
+  @Post('ideas/:id/skip')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Your no: drop an idea' })
+  async skip(@Param('id') id: string) {
+    return { message: await this.ideas.skip(id) };
   }
 }

@@ -67,6 +67,36 @@ export const ROTATION_PARAMS: ParamSpecs = {
     description:
       'Scale the holdings down when their average yearly volatility is above this % (the rest stays in cash). 0 = off.',
   },
+  rankBy: flag(
+    0,
+    'How to rank: 0 = by return over the window; 1 = by return ÷ volatility (steady risers first).',
+  ),
+  marketFilter: whole(
+    0,
+    0,
+    400,
+    'Hold nothing risky while SPY is below its average of this many days (200 is classic); 0 = off.',
+  ),
+  stopPct: {
+    default: 0,
+    min: 0,
+    max: 90,
+    zeroIsOff: true,
+    description:
+      'Sell a holding (checked daily) when it falls this % below its highest close since it was bought. 0 = off.',
+  },
+  takeProfitPct: {
+    default: 0,
+    min: 0,
+    max: 1000,
+    zeroIsOff: true,
+    description:
+      'Sell a holding (checked daily) once it is up this % from its buy price. 0 = off.',
+  },
+  fractional: flag(
+    0,
+    '1 = buy fractional shares (e.g. 0.25 of a share), so small accounts can hold pricey stocks.',
+  ),
   band: {
     default: 2,
     min: 0,

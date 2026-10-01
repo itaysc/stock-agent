@@ -12,7 +12,7 @@ import {
 import { IconChartLine, IconMoon, IconSparkles, IconSun } from '@tabler/icons-react';
 import type { BacktestOptions } from '../api/types';
 
-export type Page = 'lab' | 'paper';
+export type Page = 'broker' | 'lab' | 'paper';
 
 interface Props {
   options: BacktestOptions;
@@ -37,20 +37,20 @@ export function Header({ options, page, onPage }: Props) {
         </ThemeIcon>
         <div>
           <Text fw={700} lh={1.1}>
-            Backtest Lab
+            Stock Invest
           </Text>
           <Text size="xs" c="dimmed" lh={1.1}>
-            Stock Invest · strategy research
+            your paper broker
           </Text>
         </div>
       </Group>
       <SegmentedControl
         size="xs"
-        value={page}
-        onChange={(v) => onPage(v as Page)}
+        value={page === 'broker' ? 'broker' : 'advanced'}
+        onChange={(v) => onPage(v === 'broker' ? 'broker' : 'lab')}
         data={[
-          { value: 'lab', label: 'Lab' },
-          { value: 'paper', label: 'Paper trading' },
+          { value: 'broker', label: 'Broker' },
+          { value: 'advanced', label: 'Advanced' },
         ]}
       />
       <Group gap="xs" wrap="nowrap">

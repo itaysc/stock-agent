@@ -1,3 +1,4 @@
+import { NotifierService } from '../../notify/notifier.service.js';
 import {
   Body,
   Controller,
@@ -42,6 +43,7 @@ export class DeploymentsController {
     private readonly alpaca: AlpacaService,
     private readonly edgar: EdgarService,
     private readonly llm: LlmService,
+    private readonly notifier: NotifierService,
   ) {}
 
   @Get('account')
@@ -70,6 +72,7 @@ export class DeploymentsController {
         secFilings: this.edgar.configured,
         ai: this.llm.isConfigured(),
       },
+      notifications: this.notifier.channels(),
     };
   }
 

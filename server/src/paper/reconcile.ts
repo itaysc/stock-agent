@@ -1,3 +1,4 @@
+import { cleanQty } from '../strategies/qty.js';
 import type { Deployment, PendingOrder } from './deployment.types.js';
 import { bookFill } from './sleeve-ledger.js';
 
@@ -40,7 +41,7 @@ export async function reconcile(
         } else still.push(p);
         continue;
       }
-      const fresh = order.filledQty - p.bookedQty;
+      const fresh = cleanQty(order.filledQty - p.bookedQty);
       if (fresh > 0 && order.filledAvgPrice !== null) {
         const trade = bookFill(ledger, {
           timestamp: now,

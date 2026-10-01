@@ -11,6 +11,8 @@ export interface PaperAccount {
   free: number;
   deploymentsEquity: number;
   newsSources: { headlines: boolean; halts: boolean; secFilings: boolean; ai: boolean };
+  /** Where alerts are sent, e.g. ["telegram"]. Empty when none is set up. */
+  notifications: string[];
 }
 
 export type Health = 'warming-up' | 'on-track' | 'behind' | 'deeper-drop';
@@ -93,6 +95,8 @@ export interface AutopilotSettings {
   testsPerRound: number;
   holdout: string;
   basket: string;
+  /** Send ideas to you (Telegram / here) and deploy only on your yes. */
+  askFirst: boolean;
   capitalPerDeployment: number;
   maxDeployments: number;
   retireBehindAfterDays: number;
@@ -105,16 +109,19 @@ export interface AutopilotSettings {
 
 export interface AutopilotRun {
   id: string;
-  trigger: 'schedule' | 'manual' | 'review';
+  trigger: 'schedule' | 'manual' | 'review' | 'chat';
   status: 'running' | 'done' | 'failed';
   startedAt: string;
   finishedAt: string | null;
   decisions: Array<{
-    kind: 'retired' | 'kept' | 'researched' | 'deployed' | 'skipped' | 'error';
+    kind: 'retired' | 'kept' | 'researched' | 'proposed' | 'deployed' | 'skipped' | 'error';
     message: string;
     deploymentId?: string;
     researchId?: string;
+    ideaId?: string;
   }>;
+  /** What it is doing right now (null when done). */
+  activity?: { step: string; researchId: string | null; since: string } | null;
   error: string | null;
 }
 
@@ -125,5 +132,25 @@ export interface AutopilotState {
   /** False when AUTOPILOT_SCHEDULER_ENABLED=false (only "Run now" works). */
   schedulerOn: boolean;
   notifyOn: boolean;
+  /** commands: ideas with buttons and replies read; send-only: messages only. */
+  telegram: 'commands' | 'send-only' | 'off';
+  /** Open ideas, waiting for your answer. */
+  ideas: Idea[];
   runs: AutopilotRun[];
+}
+
+/** Research that passed every check, waiting for your yes before it is paper-deployed. */
+export interface Idea {
+  id: string;
+  label: string;
+  symbols: string[];
+  researchId: string;
+  capital: number;
+  /** The evidence, as sent to Telegram. */
+  message: string;
+  status: 'pending' | 'invested' | 'skipped' | 'expired' | 'replaced';
+  outcome: string | null;
+  deploymentId: string | null;
+  createdAt: string;
+  expiresAt: string;
 }

@@ -52,7 +52,11 @@ const anyOn = (strategies: string[], params: ParamValues, names: string[]) =>
 
 /** Whether any setting of these strategies and param values reads SPY (market filter, market volatility). */
 export function usesMarket(strategies: string[], params: ParamValues): boolean {
-  return anyOn(strategies, params, ['marketSma', 'volMax', 'volExit']);
+  return (
+    anyOn(strategies, params, ['marketSma', 'volMax', 'volExit']) ||
+    (strategies.includes('momentum-rotation') &&
+      [params.marketFilter ?? []].flat().some((v) => Number(v) > 0))
+  );
 }
 
 /**

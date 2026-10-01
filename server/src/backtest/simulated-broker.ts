@@ -1,3 +1,4 @@
+import { cleanQty, roundQty } from '../strategies/qty.js';
 import type {
   Fill,
   OrderSide,
@@ -180,11 +181,14 @@ export class SimulatedBroker implements StrategyContext {
       if (qty * perShare > this.cashBalance) {
         // The price opened above the level the order was sized at: buy
         // what the cash allows rather than dropping the whole signal.
-        qty = Math.floor(this.cashBalance / perShare);
-        if (qty < 1) return this.reject(order, 'insufficient cash');
+        qty = roundQty(
+          this.cashBalance / perShare,
+          !Number.isInteger(order.qty),
+        );
+        if (qty <= 0) return this.reject(order, 'insufficient cash');
       }
       const cost = qty * perShare;
-      const total = (held?.qty ?? 0) + qty;
+      const total = cleanQty((held?.qty ?? 0) + qty);
       const basis = (held ? held.qty * held.avgPrice : 0) + cost;
       this.positions.set(order.symbol, {
         symbol: order.symbol,
@@ -193,18 +197,20 @@ export class SimulatedBroker implements StrategyContext {
       });
       this.cashBalance -= cost;
     } else {
+      // Float noise in fractional amounts (0.3 vs 0.29999999999999993) is not shorting.
+      if (held && qty > held.qty && qty - held.qty < 1e-6) qty = held.qty;
       if (!held || qty > held.qty) {
         return this.reject(order, 'cannot sell more than held (no shorting)');
       }
       realizedPnl =
         qty * (price - held.avgPrice) - qty * this.options.feePerShare;
-      const remaining = held.qty - qty;
-      if (remaining === 0) this.positions.delete(order.symbol);
+      const remaining = cleanQty(held.qty - qty);
+      if (remaining <= 0) this.positions.delete(order.symbol);
       else this.positions.set(order.symbol, { ...held, qty: remaining });
       this.cashBalance += qty * (price - this.options.feePerShare);
     }
 
-    const reduced = qty !== order.qty;
+    const reduced = order.side === 'buy' && qty !== order.qty;
     const fill: Fill = {
       symbol: order.symbol,
       side: order.side,

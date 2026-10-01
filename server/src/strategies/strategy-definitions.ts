@@ -112,7 +112,7 @@ export const STRATEGIES: Record<string, StrategyDefinition> = {
     create: (symbols, p) => new RulesStrategy(symbols, p),
   },
   'momentum-rotation': {
-    version: 1,
+    version: 2,
     description:
       'rotation: hold the top N symbols by recent return, re-ranked every month; falling ones make way for a safe asset or cash',
     params: ROTATION_PARAMS,

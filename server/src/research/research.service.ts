@@ -57,6 +57,7 @@ export class ResearchService {
       symbols: session.request.symbols,
       session,
     });
+    onUpdate?.(session); // its id, right away
     return this.execute(session, onUpdate);
   }
 

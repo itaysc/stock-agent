@@ -14,6 +14,7 @@ import {
   DEFAULT_SETTINGS,
 } from './autopilot.types.js';
 import type { NotifierService } from '../notify/notifier.service.js';
+import type { IdeasService } from './ideas/ideas.service.js';
 import { retireReason } from './retirement.js';
 
 const deployment = (over: Partial<Deployment>): Deployment => ({
@@ -115,6 +116,7 @@ function setup(settings: Partial<AutopilotSettings>, live: Deployment[]) {
   let saved: AutopilotSettings = {
     ...DEFAULT_SETTINGS,
     enabled: true,
+    askFirst: false,
     ...settings,
   };
   const runs: AutopilotRun[] = [];
@@ -132,12 +134,17 @@ function setup(settings: Partial<AutopilotSettings>, live: Deployment[]) {
     session(req.symbols[0], req.symbols[0] !== 'QQQ'),
   );
   const send = vi.fn(async () => undefined);
+  const propose = vi.fn(async (_s: ResearchSession, label: string) => ({
+    id: 'ab12',
+    label,
+  }));
   const service = new AutopilotService(
     store,
     { create, stop } as unknown as DeploymentsService,
     { live: async () => live } as unknown as DeploymentStore,
     { runNow } as unknown as ResearchService,
     { send } as unknown as NotifierService,
+    { propose } as unknown as IdeasService,
   );
   const done = async () => {
     service.start('manual');
@@ -150,6 +157,7 @@ function setup(settings: Partial<AutopilotSettings>, live: Deployment[]) {
     stop,
     runNow,
     send,
+    propose,
     runs,
     settings: () => saved,
   };
@@ -222,6 +230,39 @@ describe('AutopilotService', () => {
     expect(runs[0].decisions.at(-1)).toMatchObject({
       kind: 'skipped',
       message: expect.stringMatching(/no free slot/),
+    });
+  });
+});
+
+describe('AutopilotService asking first', () => {
+  it('sends what passed as an idea instead of deploying it', async () => {
+    const { done, create, propose, runs } = setup(
+      { watchlist: ['SPY', 'QQQ'], groups: [], askFirst: true },
+      [],
+    );
+    await done();
+    expect(create).not.toHaveBeenCalled();
+    expect(propose).toHaveBeenCalledTimes(1); // QQQ did not pass
+    expect(propose.mock.calls[0][1]).toBe('SPY');
+    expect(runs[0].decisions.at(-2)).toMatchObject({
+      kind: 'proposed',
+      ideaId: 'ab12',
+      message: 'SPY: sent to you as idea ab12 (/invest ab12 or /skip ab12)',
+    });
+  });
+
+  it('researches only the given symbols for /check, leaving the rotation alone', async () => {
+    const { service, runNow, settings } = setup(
+      { watchlist: ['SPY'], groups: ['sectors'], askFirst: true },
+      [],
+    );
+    service.start('chat', [{ label: 'AAPL', symbols: ['AAPL'] }]);
+    await vi.waitFor(() => expect(service.running).toBeNull());
+    expect(runNow.mock.calls.map(([r]) => r.symbols)).toEqual([['AAPL']]);
+    expect(settings()).toMatchObject({
+      nextIndex: 0,
+      nextGroup: 0,
+      lastRunAt: null,
     });
   });
 });
