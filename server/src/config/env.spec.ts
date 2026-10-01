@@ -11,6 +11,7 @@ describe('validateEnv', () => {
     expect(validateEnv(required)).toEqual({
       NODE_ENV: 'development',
       HOST: '127.0.0.1',
+      API_TOKEN: '',
       PORT: 3000,
       LOG_LEVEL: 'info',
       CORS_ORIGINS: [],
@@ -91,5 +92,22 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ALPACA_API_KEY: '' })).toThrow(
       /ALPACA_API_KEY is required[\s\S]*ALPACA_API_SECRET/,
     );
+  });
+
+  it('on Railway, refuses to start without production mode and an API token', () => {
+    const railway = { ...required, RAILWAY_ENVIRONMENT: 'production' };
+    expect(() => validateEnv(railway)).toThrow(
+      /must be production on Railway[\s\S]*NODE_ENV[\s\S]*is required on Railway[\s\S]*API_TOKEN/,
+    );
+    expect(() =>
+      validateEnv({ ...railway, NODE_ENV: 'production', API_TOKEN: 'short' }),
+    ).toThrow(/API_TOKEN/);
+    expect(
+      validateEnv({
+        ...railway,
+        NODE_ENV: 'production',
+        API_TOKEN: 'x'.repeat(32),
+      }).API_TOKEN,
+    ).toHaveLength(32);
   });
 });

@@ -190,4 +190,38 @@ describe('AlpacaService', () => {
     expect(bars).toHaveLength(1);
     expect(bars[0]).toMatchObject({ open: 1, close: 1.5, volume: 100 });
   });
+
+  it('fetches many symbols in one request, and waits and retries when rate-limited', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const calls: string[] = [];
+    const bar = {
+      t: '2026-09-24T00:00:00Z',
+      o: 1,
+      h: 2,
+      l: 0.5,
+      c: 1.5,
+      v: 100,
+    };
+    const service = createService([
+      {
+        path: '/v2/stocks/bars',
+        respond: (req: MockRequest) => {
+          calls.push(req.url.searchParams.get('symbols') ?? '');
+          if (calls.length === 1)
+            return new Response('{"message":"too many requests."}', {
+              status: 429,
+            });
+          return { bars: { AAPL: [bar], MSFT: [bar] }, next_page_token: null };
+        },
+      },
+    ]);
+    const pending = service.getBarsMany(['AAPL', 'MSFT'], {
+      timeframe: TimeFrame.Day,
+    });
+    await vi.advanceTimersByTimeAsync(6_000);
+    const bars = await pending;
+    vi.useRealTimers();
+    expect(calls).toEqual(['AAPL,MSFT', 'AAPL,MSFT']);
+    expect(Object.keys(bars)).toEqual(['AAPL', 'MSFT']);
+  });
 });

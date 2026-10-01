@@ -236,3 +236,95 @@ export const EXITS = [
   current('E take profit +100%', { takeProfitPct: '100' }),
   current('E stop 25% + profit +100%', { stopPct: '25', takeProfitPct: '100' }),
 ];
+
+const textbook = (name: string, over: Record<string, string>) => ({
+  name,
+  grid: Object.fromEntries(
+    Object.entries({ ...FIXED, rebalanceDays: '5', ...over }).map(([k, v]) => [
+      k,
+      [v].flat(),
+    ]),
+  ),
+  tuned: [] as string[],
+});
+
+/** Other kinds of stock-picking algo, with textbook settings, against the broker's momentum. */
+export const FAMILIES = [
+  textbook('Q0 equal weight, no filter (check)', {
+    topN: '50',
+    absMomentum: '0',
+    volWeight: '0',
+    lookback: '21',
+    rebalanceDays: '21',
+    band: '0.5',
+  }),
+  textbook('M momentum 12-1 (broker now)', {
+    lookback: '252',
+    skipRecent: '21',
+    topN: '5',
+    stopPct: '25',
+  }),
+  textbook('M momentum 12-1, no stop', {
+    lookback: '252',
+    skipRecent: '21',
+    topN: '5',
+  }),
+  textbook('L low volatility, top 10', {
+    rankBy: '2',
+    topN: '10',
+    rebalanceDays: '21',
+    absMomentum: '0',
+    volWeight: '0',
+    lookback: '63',
+  }),
+  textbook('L low volatility + trend 200d', {
+    rankBy: '2',
+    topN: '10',
+    rebalanceDays: '21',
+    absMomentum: '0',
+    volWeight: '0',
+    lookback: '63',
+    trendSma: '200',
+  }),
+  textbook('T trend: all above 200d avg', {
+    topN: '50',
+    absMomentum: '0',
+    volWeight: '0',
+    lookback: '21',
+    trendSma: '200',
+    band: '0.5',
+  }),
+  textbook('T trend: all above 100d avg', {
+    topN: '50',
+    absMomentum: '0',
+    volWeight: '0',
+    lookback: '21',
+    trendSma: '100',
+    band: '0.5',
+  }),
+  textbook('R buy 5-day dips in uptrends', {
+    rankBy: '3',
+    lookback: '5',
+    topN: '5',
+    absMomentum: '0',
+    volWeight: '0',
+    trendSma: '200',
+  }),
+  textbook('R buy 10-day dips, top 10', {
+    rankBy: '3',
+    lookback: '10',
+    topN: '10',
+    absMomentum: '0',
+    volWeight: '0',
+    trendSma: '200',
+  }),
+  textbook('Q equal weight + market 200d', {
+    topN: '50',
+    absMomentum: '0',
+    volWeight: '0',
+    lookback: '21',
+    rebalanceDays: '21',
+    marketFilter: '200',
+    band: '0.5',
+  }),
+];

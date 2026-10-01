@@ -159,7 +159,13 @@ export function BrokerPage() {
               hint={`${view.holdings.length} stocks held`}
             />
           </SimpleGrid>
-          <BrokerHoldings holdings={view.holdings} planned={view.planned} params={view.params} />
+          <BrokerHoldings
+            holdings={view.holdings}
+            planned={view.planned}
+            params={view.params}
+            noBuyUntil={view.noBuyUntil ?? []}
+            onView={setView}
+          />
           <BrokerActivity items={view.activity} />
           <Paper p="md" withBorder>
             <Stack gap={4}>

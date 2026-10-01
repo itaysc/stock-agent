@@ -1,0 +1,5 @@
+# Monorepo: each Railway SERVICE must use its own config file path in the dashboard.
+#
+# API (NestJS: paper runner, broker, Telegram bot):
+#   Root Directory: server
+#   Config file:    server/railway.toml

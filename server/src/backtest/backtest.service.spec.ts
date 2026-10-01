@@ -16,32 +16,45 @@ const request: BacktestRequest = {
 };
 
 describe('BacktestService', () => {
-  it('fetches split/dividend-adjusted bars per symbol and runs the strategy', async () => {
-    const getBars = vi.fn(async (symbol: string) =>
-      makeBars(symbol, [1, 2, 3, 4, 5]).map(({ symbol: _s, ...bar }) => bar),
+  it('fetches split/dividend-adjusted bars in one request for all symbols, and caches them', async () => {
+    const getBarsMany = vi.fn(async (symbols: string[]) =>
+      Object.fromEntries(
+        symbols.map((symbol) => [
+          symbol,
+          makeBars(symbol, [1, 2, 3, 4, 5]).map(
+            ({ symbol: _s, ...bar }) => bar,
+          ),
+        ]),
+      ),
     );
     const service = new BacktestService({
-      getBars,
+      getBarsMany,
     } as unknown as AlpacaService);
 
     const { result, bars } = await service.run(request);
 
-    expect(getBars).toHaveBeenCalledWith('AAPL', {
+    expect(getBarsMany).toHaveBeenCalledTimes(1);
+    expect(getBarsMany).toHaveBeenCalledWith(['AAPL', 'MSFT'], {
       timeframe: '1Day',
       start: request.from,
       end: request.to,
       adjustment: 'all',
     });
-    expect(getBars).toHaveBeenCalledWith('MSFT', expect.anything());
     expect(result.symbols).toEqual(['AAPL', 'MSFT']);
     expect(result.bars).toBe(5);
     expect(bars.AAPL[0].symbol).toBe('AAPL');
+
+    // The same range again: from the cache, as copies (news is attached to them).
+    const again = await service.fetchBars(['AAPL', 'MSFT'], request);
+    expect(getBarsMany).toHaveBeenCalledTimes(1);
+    expect(again.AAPL[0]).toEqual(bars.AAPL[0]);
+    expect(again.AAPL[0]).not.toBe(bars.AAPL[0]);
   });
 
   it('rejects invalid requests before fetching data', async () => {
-    const getBars = vi.fn();
+    const getBarsMany = vi.fn();
     const service = new BacktestService({
-      getBars,
+      getBarsMany,
     } as unknown as AlpacaService);
 
     await expect(
@@ -53,7 +66,7 @@ describe('BacktestService', () => {
     await expect(service.run({ ...request, initialCash: 0 })).rejects.toThrow(
       /cash/,
     );
-    expect(getBars).not.toHaveBeenCalled();
+    expect(getBarsMany).not.toHaveBeenCalled();
   });
 });
 

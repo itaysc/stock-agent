@@ -28,6 +28,15 @@ export type PlaceOrderInput = orders.OrderInput & { clientOrderId: string };
 
 export type ListOrdersInput = Parameters<OrdersApi['getAllOrders']>[0];
 
+/** Waits before retrying a rate-limited request (the limit resets every minute). */
+const RATE_LIMIT_WAITS_S = [5, 20, 40];
+
+/** Alpaca's "too many requests" (HTTP 429). */
+export function isRateLimited(err: unknown): boolean {
+  const e = err as { name?: string; status?: number };
+  return e?.name === 'RateLimitError' || e?.status === 429;
+}
+
 export interface GetBarsInput {
   timeframe: values.TimeFrameString;
   start?: Date;
@@ -181,6 +190,34 @@ export class AlpacaService implements OnModuleInit {
       ...input,
       feed: this.feed,
     });
+  }
+
+  /**
+   * Bars for many symbols in one combined request (pages of up to 10,000
+   * bars), instead of one request per symbol: Alpaca's free plan allows about
+   * 200 requests a minute. Waits and retries when it is rate-limited anyway.
+   */
+  async getBarsMany(
+    symbols: string[],
+    input: GetBarsInput,
+  ): Promise<Record<string, marketDataShapes.Bar[]>> {
+    if (!symbols.length) return {};
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.client.marketData.getStockBars({
+          ...input,
+          symbols,
+          feed: this.feed,
+          limit: input.limit ?? 10_000,
+        });
+      } catch (err) {
+        if (!isRateLimited(err) || attempt >= RATE_LIMIT_WAITS_S.length)
+          throw err;
+        const wait = RATE_LIMIT_WAITS_S[attempt];
+        this.logger.warn(`Alpaca rate limit: retrying the bars in ${wait}s`);
+        await new Promise((r) => setTimeout(r, wait * 1000));
+      }
+    }
   }
 
   /** Historical news articles (headline, time, symbols), one page at a time. */

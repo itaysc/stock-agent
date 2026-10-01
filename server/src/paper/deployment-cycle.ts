@@ -10,6 +10,7 @@ import {
 import { type CycleDeps, logEvent } from './deployment-events.js';
 import { reconcile } from './reconcile.js';
 import { flatten, placeOne, sendOrders } from './deployment-orders.js';
+import { dropHeldOffBuys, manualExits } from './manual-exits.js';
 import { releaseStaged, watchHeld } from './news-check.js';
 import { ledgerEquity } from './sleeve-ledger.js';
 
@@ -76,8 +77,16 @@ export async function runCycle(
   const last = d.lastBarAt ? new Date(d.lastBarAt).getTime() : null;
 
   if (!runtime.warmed) {
-    // Replay history without orders; a new deployment starts on the next completed day.
-    const upTo = last ?? latest;
+    // Replay history without orders. A new deployment then acts on the latest
+    // completed day right away (orders for the next open), like its plan did.
+    const previous = Math.max(
+      0,
+      ...Object.values(bars)
+        .flat()
+        .map((b) => b.timestamp.getTime())
+        .filter((t) => t < latest),
+    );
+    const upTo = last ?? previous;
     const before = (list: Bars) =>
       Object.fromEntries(
         Object.entries(list).map(([s, l]) => [
@@ -87,7 +96,7 @@ export async function runCycle(
       );
     feed(d, runtime, before(bars), before(marketBars), null);
     runtime.warmed = true;
-    if (last === null && latest > 0) d.lastBarAt = new Date(latest);
+    if (last === null && previous > 0) d.lastBarAt = new Date(previous);
   }
   const lastSeen = d.lastBarAt ? new Date(d.lastBarAt).getTime() : 0;
   if (latest > lastSeen) {
@@ -102,6 +111,8 @@ export async function runCycle(
       snapshot(d, t),
     );
     d.lastBarAt = new Date(latest);
+    await manualExits(d, runtime, deps, now);
+    dropHeldOffBuys(d, runtime, now);
     await sendOrders(d, runtime, deps, now);
   }
   // Fills since the last close change the cash: refresh today's point.

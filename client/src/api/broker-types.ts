@@ -21,9 +21,19 @@ export interface BrokerHolding {
   /** Latest close. */
   price: number;
   highSinceBuy: number;
-  /** It sells when a close falls below this (rises with the high; null for T-bills). */
+  /** It sells when a close falls below this: the higher of the automatic stop and yours. */
   stopPrice: number | null;
+  /** The automatic trailing stop alone. */
+  autoStopPrice: number | null;
+  stopIsYours: boolean;
   takeProfitPrice: number | null;
+  takeIsYours: boolean;
+  /** Its rank now (1 = strongest), when known. */
+  rank: number | null;
+  tone: 'good' | 'watch' | 'danger' | 'neutral';
+  /** e.g. "Strong", "Weakening", "Near stop". */
+  label: string;
+  text: string;
   value: number;
   weightPct: number;
   gainPct: number;
@@ -62,6 +72,8 @@ export type BrokerView =
       expectation: Expectation | null;
       holdings: BrokerHolding[];
       planned: BrokerPlanned[];
+      /** Stocks you sold: it does not buy them again before these dates. */
+      noBuyUntil: Array<{ symbol: string; until: string }>;
       activity: BrokerActivity[];
     } & BrokerBase);
 

@@ -1,7 +1,7 @@
 import type { WalkForwardService } from '../backtest/walkforward/walkforward.service.js';
 import type { Deployment } from '../paper/deployment.types.js';
 import { emptyLedger } from '../paper/sleeve-ledger.js';
-import { dailyReport } from './broker-report.js';
+import { dailyReport, fillMessage } from './broker-report.js';
 import { healthCheck } from './broker-health.js';
 import { brokerView, plainReason } from './broker-view.js';
 import type { BrokerState } from './broker.types.js';
@@ -121,16 +121,87 @@ describe('broker view and report', () => {
     expect(
       v.activity.filter((a) => a.kind === 'note').map((a) => a.text),
     ).toEqual(['Skipped buying 3 META: news tone -0.6']); // fills aren't doubled
-    const text = dailyReport(v, new Date(state.lastReportAt!));
-    expect(text).toContain('📊 Broker: $6,400 (-36.0% since start; SPY +3.2%)');
+    const ranked = brokerView(
+      deployment(),
+      state,
+      3.2,
+      {},
+      { total: 50, rank: { NVDA: 1 }, wanted: ['NVDA'] },
+    );
+    if (ranked.status === 'off') throw new Error('off');
+    const text = dailyReport(ranked, new Date(state.lastReportAt!));
+    expect(text).toContain(
+      '📊 Broker update: worth $6,400.00 (-36.0%, -$3,600.00 since start · SPY +3.2%) · cash $2,000.00',
+    );
+    expect(text).toContain(
+      '🟢 NVDA · $110.00 (bought $100.00) · +10.0% (+$400.00)',
+    );
+    expect(text).toContain('   Strong #1 · sells below $75.00');
     expect(text).toContain(
       '• Sold 10 XOM at $95.00 (loss $50): dropped out of the top 5',
     );
-    expect(text).toContain(
-      '• Buy 5 AAPL at the next open, after the news check: #2 of 50: up 30.0% in 12 months',
-    );
-    expect(text).toContain('Holds: NVDA 69% (+10.0%)');
+    expect(text).toContain('• Buy 5 AAPL: #2 of 50: up 30.0% in 12 months');
+    expect(text).toContain('cash $2,000.00\n\nYour stocks:'); // sections apart
+    expect(text).not.toContain('\n\n\n');
     expect(text).not.toContain('Bought 10 XOM'); // before the last report
+  });
+});
+
+describe('fill messages', () => {
+  const t = { timestamp: new Date(), symbol: 'CAT', qty: 0.0597, price: 826.3 };
+  it('says what it bought, at what price, why, and its stop', () => {
+    expect(
+      fillMessage(
+        { ...t, side: 'buy', reason: 'rank 2: +87.6% over 252 bars' },
+        25,
+      ),
+    ).toBe(
+      [
+        '✅ Bought 0.0597 CAT at $826.30 = $49.33',
+        'Why: #2 of 50: up 87.6% in 12 months',
+        'Stop loss: sells if it closes below $619.72 (25% under its highest close; it rises with the price).',
+      ].join('\n'),
+    );
+    expect(
+      fillMessage(
+        { ...t, symbol: 'BIL', qty: 0.5, price: 91.5, side: 'buy' },
+        25,
+      ),
+    ).toMatch(/^🅿️ Parked \$45.75 in T-bills/);
+  });
+
+  it('says what it sold, the profit or loss, and why', () => {
+    expect(
+      fillMessage(
+        {
+          ...t,
+          side: 'sell',
+          price: 900,
+          realizedPnl: 4.4,
+          reason: 'your profit target ($900.00): closed at $901.00',
+        },
+        25,
+      ),
+    ).toBe(
+      [
+        '💰 Sold 0.0597 CAT at $900.00 = $53.73 · profit +$4.40 (+8.9%)',
+        'Why: your profit target ($900.00): closed at $901.00',
+      ].join('\n'),
+    );
+    expect(
+      fillMessage(
+        {
+          ...t,
+          side: 'sell',
+          price: 700,
+          realizedPnl: -7.55,
+          reason: 'stop: down 25.3% from its high',
+        },
+        25,
+      ),
+    ).toMatch(
+      /^🔻 Sold .* · loss -\$7.55 \(-15.3%\)\nWhy: stop loss: fell 25.3% from its high since the buy$/,
+    );
   });
 });
 

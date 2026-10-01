@@ -69,6 +69,12 @@ export interface SleeveLedger {
   lastPrices: Record<string, number>;
 }
 
+/** Your own stop loss / profit target for one holding. */
+export interface ManualLevels {
+  stopPrice?: number | null;
+  takeProfitPrice?: number | null;
+}
+
 /** What the backtest of this setup over recent years expected. */
 export interface Expectation {
   from: Date;
@@ -109,6 +115,10 @@ export interface Deployment {
   lastBarAt: Date | null;
   peakEquity: number;
   snapshots: Snapshot[];
+  /** Your own sell levels per symbol, on top of the strategy's rules (checked on daily closes). */
+  manual?: Record<string, ManualLevels>;
+  /** Symbols you sold (or your levels sold): the strategy does not buy them again before this. */
+  noBuyUntil?: Record<string, Date>;
   /** What happened, newest last (fills, orders sent or refused, guard pauses). */
   events: Array<{ timestamp: Date; message: string }>;
   createdAt: Date;

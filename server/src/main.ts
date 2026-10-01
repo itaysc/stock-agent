@@ -10,7 +10,10 @@ async function bootstrap() {
   setupApp(app);
 
   const config = app.get<ConfigService<Env, true>>(ConfigService);
-  const host = config.get('HOST', { infer: true });
+  // On Railway it must listen on all interfaces (API_TOKEN guards it), whatever HOST says.
+  const host = config.get('RAILWAY_ENVIRONMENT', { infer: true })
+    ? '0.0.0.0'
+    : config.get('HOST', { infer: true });
   const port = config.get('PORT', { infer: true });
   await app.listen(port, host);
 

@@ -66,7 +66,7 @@ describe('plan preview', () => {
     const backtests = {
       fetchBars: vi.fn(async () => data),
     } as unknown as BacktestService;
-    const plan = await previewPlan(backtests, 200, day(n), day(n));
+    const plan = await previewPlan(backtests, 200, day(n));
     expect(plan.rows.map((r) => r.symbol).sort()).toEqual(
       BROKER_STOCKS.slice(0, 5).sort(),
     );

@@ -126,7 +126,7 @@ export class IdeasService {
         deploymentId: d.id,
         outcome: `Paper-deployed with ${money(capital)}`,
       });
-      return `✅ Paper-deployed ${idea.label} with ${money(capital)}. It starts trading after the next completed trading day. /status shows how it does.`;
+      return `✅ Paper-deployed ${idea.label} with ${money(capital)}. Its first orders go out for the next market open. /status shows how it does.`;
     } catch (err) {
       // Stays pending: fix the cause (e.g. free cash) and try again.
       return `Could not invest in ${idea.label}: ${(err as Error).message}`;

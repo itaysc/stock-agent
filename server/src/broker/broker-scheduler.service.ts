@@ -6,11 +6,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../config/env.js';
-import { BrokerService } from './broker.service.js';
+import { BrokerNoticesService } from './broker-notices.service.js';
 
-const EVERY_MS = 15 * 60_000;
+const EVERY_MS = 5 * 60_000;
 
-/** Every 15 minutes (with the paper runner on): the daily report once a new day is in, and the monthly health check. */
+/** Every 5 minutes (with the paper runner on): new fills, the daily update once a new day is in, and the monthly health check. */
 @Injectable()
 export class BrokerSchedulerService
   implements OnApplicationBootstrap, OnApplicationShutdown
@@ -20,7 +20,7 @@ export class BrokerSchedulerService
 
   constructor(
     private readonly config: ConfigService<Env, true>,
-    private readonly broker: BrokerService,
+    private readonly notices: BrokerNoticesService,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -34,8 +34,9 @@ export class BrokerSchedulerService
 
   async tick(now = new Date()): Promise<void> {
     try {
-      await this.broker.reportIfNew();
-      await this.broker.checkIfDue(now);
+      await this.notices.notifyFills();
+      await this.notices.reportIfNew();
+      await this.notices.checkIfDue(now);
     } catch (err) {
       this.logger.error(`Broker check failed: ${(err as Error).message}`);
     }

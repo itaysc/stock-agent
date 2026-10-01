@@ -8,6 +8,8 @@ export interface BrokerState {
   lastReportAt: Date | null;
   /** The last completed trading day it reported. */
   lastReportedBarAt: Date | null;
-  /** The last monthly re-tune and what it decided. */
+  /** How many of its trades were already sent to you as fill messages. */
+  notifiedTrades?: number;
+  /** The last monthly check and what it found. */
   lastTune: { at: Date; message: string } | null;
 }

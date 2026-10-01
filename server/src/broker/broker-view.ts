@@ -2,6 +2,7 @@ import { deploymentEquity } from '../paper/deployment-cycle.js';
 import type { Deployment, LedgerTrade } from '../paper/deployment.types.js';
 import type { StrategyBar } from '../strategies/strategy.types.js';
 import { openedAt, sellLevels } from './broker-levels.js';
+import { holdingStatus, type Ranks } from './broker-status.js';
 import type { BrokerState } from './broker.types.js';
 import { algoText, BROKER_STOCKS, SAFE_ASSET, TESTED } from './universe.js';
 
@@ -49,6 +50,8 @@ export function brokerView(
   spyPct: number | null,
   /** Daily bars of the held symbols since they were bought (for the stop levels). */
   history: Record<string, StrategyBar[]> = {},
+  /** Each stock's rank now (for the status); null when it could not be computed. */
+  ranks: Ranks | null = null,
 ) {
   const base = {
     algo: algoText(state.params),
@@ -67,19 +70,33 @@ export function brokerView(
       const price = l.lastPrices[p.symbol] ?? p.avgPrice;
       const opened = openedAt(l.trades, p.symbol);
       const safe = p.symbol === SAFE_ASSET;
-      const levels = sellLevels(
+      const auto = sellLevels(
         history[p.symbol] ?? [],
         opened,
         p.avgPrice,
         safe ? {} : d.sleeves[0].params,
       );
+      const status = holdingStatus({
+        symbol: p.symbol,
+        price,
+        autoStop: auto.stopPrice,
+        autoTake: auto.takeProfitPrice,
+        manual: d.manual?.[p.symbol],
+        ranks,
+        selling: l.pending.some(
+          (o) => o.symbol === p.symbol && o.side === 'sell',
+        ),
+        safe,
+      });
       return {
         symbol: p.symbol,
         qty: p.qty,
         boughtAt: opened,
         entryPrice: p.avgPrice,
         price,
-        ...levels,
+        highSinceBuy: auto.highSinceBuy,
+        autoStopPrice: auto.stopPrice,
+        ...status,
         value: p.qty * price,
         weightPct: ((p.qty * price) / equity) * 100,
         gainPct: (price / p.avgPrice - 1) * 100,
@@ -137,6 +154,10 @@ export function brokerView(
     expectation: d.expectation,
     holdings,
     planned,
+    /** Stocks you sold: it does not buy them again before these dates. */
+    noBuyUntil: Object.entries(d.noBuyUntil ?? {})
+      .filter(([, until]) => new Date(until) > new Date())
+      .map(([symbol, until]) => ({ symbol, until })),
     activity,
     ...base,
   };

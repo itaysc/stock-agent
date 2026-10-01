@@ -51,8 +51,17 @@ export interface BacktestRun {
   bars: Record<string, StrategyBar[]>;
 }
 
+/** Price bars are reused for this long (e.g. a plan preview clicked twice, the broker page polling). */
+const CACHE_MS = 10 * 60_000;
+const CACHE_MAX = 30;
+
 @Injectable()
 export class BacktestService {
+  private readonly cache = new Map<
+    string,
+    { at: number; bars: Record<string, StrategyBar[]> }
+  >();
+
   constructor(
     private readonly alpaca: AlpacaService,
     private readonly info: InfoService,
@@ -99,19 +108,42 @@ export class BacktestService {
     needs: InfoNeeds = {},
   ): Promise<Record<string, StrategyBar[]>> {
     const timeframe = parseTimeframe(request.timeframe);
-    const entries = await Promise.all(
-      symbols.map(async (symbol) => {
-        const bars = await this.alpaca.getBars(symbol, {
-          timeframe,
-          start: request.from,
-          end: request.to,
-          // Split/dividend-adjusted, so a split does not look like a crash.
-          adjustment: 'all',
-        });
-        return [symbol, bars.map((bar) => ({ ...bar, symbol }))] as const;
-      }),
+    const key = [
+      symbols.join(','),
+      timeframe,
+      new Date(request.from).toISOString(),
+      new Date(request.to).toISOString(),
+    ].join('|');
+    let prices = this.cache.get(key);
+    if (!prices || Date.now() - prices.at > CACHE_MS) {
+      // One combined request for every symbol (not one each: Alpaca rate-limits).
+      const fetched = await this.alpaca.getBarsMany(symbols, {
+        timeframe,
+        start: request.from,
+        end: request.to,
+        // Split/dividend-adjusted, so a split does not look like a crash.
+        adjustment: 'all',
+      });
+      prices = {
+        at: Date.now(),
+        bars: Object.fromEntries(
+          symbols.map((symbol) => [
+            symbol,
+            (fetched[symbol] ?? []).map((bar) => ({ ...bar, symbol })),
+          ]),
+        ),
+      };
+      this.cache.set(key, prices);
+      if (this.cache.size > CACHE_MAX)
+        this.cache.delete(this.cache.keys().next().value as string);
+    }
+    // Copies: news and earnings are attached to the bars below.
+    const bars: Record<string, StrategyBar[]> = Object.fromEntries(
+      Object.entries(prices.bars).map(([s, list]) => [
+        s,
+        list.map((b) => ({ ...b })),
+      ]),
     );
-    const bars = Object.fromEntries(entries);
     if (needs.news || needs.earnings)
       await this.info.enrich(bars, request, needs);
     return bars;

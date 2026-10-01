@@ -76,6 +76,23 @@ export const api = {
     }),
   paperAccount: () => request<PaperAccount>('/api/v1/paper/account'),
   broker: () => request<BrokerView>('/api/v1/broker'),
+  brokerSell: (symbol: string, fraction: 1 | 0.5) =>
+    request<BrokerView>(`/api/v1/broker/positions/${encodeURIComponent(symbol)}/sell`, {
+      method: 'POST',
+      body: JSON.stringify({ fraction }),
+    }),
+  brokerLevels: (
+    symbol: string,
+    levels: { stopPrice?: number | null; takeProfitPrice?: number | null },
+  ) =>
+    request<BrokerView>(`/api/v1/broker/positions/${encodeURIComponent(symbol)}/levels`, {
+      method: 'PUT',
+      body: JSON.stringify(levels),
+    }),
+  brokerAllow: (symbol: string) =>
+    request<BrokerView>(`/api/v1/broker/positions/${encodeURIComponent(symbol)}/allow`, {
+      method: 'POST',
+    }),
   brokerPreview: (capital: number) =>
     request<BrokerPlan>('/api/v1/broker/preview', {
       method: 'POST',

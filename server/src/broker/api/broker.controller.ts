@@ -1,6 +1,22 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ApiOperation, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { IsNumber, Max, Min } from 'class-validator';
+import {
+  IsIn,
+  IsNumber,
+  IsOptional,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
+import { BrokerNoticesService } from '../broker-notices.service.js';
 import { BrokerService } from '../broker.service.js';
 
 export class StartBrokerDto {
@@ -11,10 +27,37 @@ export class StartBrokerDto {
   capital: number;
 }
 
+export class SellDto {
+  @ApiPropertyOptional({ description: '1 = all, 0.5 = half', example: 1 })
+  @IsIn([1, 0.5])
+  fraction: number = 1;
+}
+
+export class LevelsDto {
+  @ApiPropertyOptional({
+    description: 'Your stop loss price; null = back to the automatic one',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsNumber()
+  @Min(0.01)
+  stopPrice?: number | null;
+
+  @ApiPropertyOptional({ description: 'Your profit target price; null = none' })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsNumber()
+  @Min(0.01)
+  takeProfitPrice?: number | null;
+}
+
 @ApiTags('broker')
 @Controller('broker')
 export class BrokerController {
-  constructor(private readonly broker: BrokerService) {}
+  constructor(
+    private readonly broker: BrokerService,
+    private readonly notices: BrokerNoticesService,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -39,6 +82,33 @@ export class BrokerController {
   })
   chart(@Param('symbol') symbol: string) {
     return this.broker.chart(symbol);
+  }
+
+  @Post('positions/:symbol/sell')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Sell all or half of one holding now (paper)' })
+  sell(@Param('symbol') symbol: string, @Body() dto: SellDto) {
+    return this.broker.sell(symbol, dto.fraction);
+  }
+
+  @Put('positions/:symbol/levels')
+  @ApiOperation({
+    summary: 'Your own stop loss / profit target for one holding',
+  })
+  levels(@Param('symbol') symbol: string, @Body() dto: LevelsDto) {
+    return this.broker.setLevels(symbol, {
+      ...(dto.stopPrice !== undefined && { stopPrice: dto.stopPrice }),
+      ...(dto.takeProfitPrice !== undefined && {
+        takeProfitPrice: dto.takeProfitPrice,
+      }),
+    });
+  }
+
+  @Post('positions/:symbol/allow')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Let it buy a stock you sold again' })
+  allow(@Param('symbol') symbol: string) {
+    return this.broker.allow(symbol);
   }
 
   @Post('start')
@@ -72,6 +142,6 @@ export class BrokerController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Send the report to Telegram now' })
   async report() {
-    return { text: await this.broker.reportIfNew(true) };
+    return { text: await this.notices.reportIfNew(true) };
   }
 }

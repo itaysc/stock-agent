@@ -6,7 +6,13 @@ import { WalkForwardService } from '../../backtest/walkforward/walkforward.servi
 import { outcomeOf } from '../../research/research-score.js';
 import type { StrategyBar } from '../../strategies/strategy.types.js';
 import { SAFE_ASSET } from '../universe.js';
-import { EXITS, SENSITIVITY, UNIVERSES, VARIANTS } from './lab-variants.js';
+import {
+  EXITS,
+  FAMILIES,
+  SENSITIVITY,
+  UNIVERSES,
+  VARIANTS,
+} from './lab-variants.js';
 
 /**
  * The algo lab: every variant of the broker's algo through the same
@@ -79,7 +85,9 @@ console.log(
     'return  annual  maxDD  trades  hold-all  SPY     picks',
 );
 for (const v of (
-  { sensitivity: SENSITIVITY, exits: EXITS }[values.set ?? ''] ?? VARIANTS
+  { sensitivity: SENSITIVITY, exits: EXITS, families: FAMILIES }[
+    values.set ?? ''
+  ] ?? VARIANTS
 ).filter((x) => !values.only || values.only.split(',').includes(x.name))) {
   const r = await app.get(WalkForwardService).run(
     {

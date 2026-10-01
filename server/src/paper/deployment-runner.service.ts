@@ -11,7 +11,8 @@ import type { Env } from '../config/env.js';
 import { OrdersService } from '../orders/orders.service.js';
 import { runCycle } from './deployment-cycle.js';
 import { type CycleDeps, logEvent } from './deployment-events.js';
-import { flatten } from './deployment-orders.js';
+import { flatten, placeOne } from './deployment-orders.js';
+import type { OrderRequest } from './sleeve-context.js';
 import { createRuntime, type Runtime } from './deployment-runtime.js';
 import { DeploymentStore } from './deployment-store.js';
 import type { Deployment } from './deployment.types.js';
@@ -106,6 +107,16 @@ export class DeploymentRunnerService
   /** Sells everything the deployment holds (stop). */
   async flatten(d: Deployment, reason: string): Promise<void> {
     await flatten(d, this.runtime(d), this.deps(), new Date(), reason);
+  }
+
+  /** Sends one order for a sleeve now (e.g. you sold a holding by hand). */
+  async placeNow(
+    d: Deployment,
+    sleeve: number,
+    order: OrderRequest,
+    note: string,
+  ): Promise<void> {
+    await placeOne(d, sleeve, order, this.deps(), new Date(), note);
   }
 
   /** Forgets the in-memory strategies (e.g. after a stop). */

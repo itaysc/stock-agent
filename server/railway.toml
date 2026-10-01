@@ -1,0 +1,22 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "node dist/main.js"
+healthcheckPath = "/health"
+restartPolicyType = "on_failure"
+
+# Railway service: Root Directory = server, Config file = server/railway.toml.
+# Add a MongoDB database to the project (Railway → New → Database → MongoDB).
+#
+# Variables (Railway dashboard → the server service):
+# NODE_ENV=production            (required — the server refuses to start on Railway otherwise)
+# API_TOKEN=<openssl rand -hex 32> (required — every route but /health needs it; the API can sell)
+# MONGODB_URI=${{MongoDB.MONGO_URL}}/stock-invest?authSource=admin
+# ALPACA_API_KEY / ALPACA_API_SECRET  (paper keys)  ALPACA_PAPER=true
+# ALPACA_STREAMS_ENABLED=false   (the broker doesn't need them; Alpaca allows one stream per account)
+# PAPER_TRADING_ENABLED=true     (the runner + broker trade from here)
+# TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID  (only one server may read the bot: turn it off locally)
+# OPENAI_API_KEY, SEC_USER_AGENT, ALPHAVANTAGE_API_KEY (optional, as in .env)
+# Do not set PORT: Railway sets it, and the server reads it.

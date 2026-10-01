@@ -11,6 +11,7 @@ import {
   BrokerStateSchema,
   BrokerStore,
 } from './broker-store.js';
+import { BrokerNoticesService } from './broker-notices.service.js';
 import { BrokerService } from './broker.service.js';
 
 /** The broker: picks stocks and trades them by itself (paper), reports daily. */
@@ -25,7 +26,12 @@ import { BrokerService } from './broker.service.js';
     ]),
   ],
   controllers: [BrokerController],
-  providers: [BrokerStore, BrokerService, BrokerSchedulerService],
-  exports: [BrokerService],
+  providers: [
+    BrokerStore,
+    BrokerService,
+    BrokerNoticesService,
+    BrokerSchedulerService,
+  ],
+  exports: [BrokerService, BrokerNoticesService],
 })
 export class BrokerModule {}

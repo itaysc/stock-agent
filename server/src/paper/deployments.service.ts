@@ -29,6 +29,12 @@ export interface CreateDeployment {
   source?: Deployment['source'];
   /** Real-time news checks; default DEFAULT_NEWS_CHECK. */
   newsCheck?: NewsCheck;
+  /**
+   * false: the expectation backtest leaves out the news-tone part of the
+   * check (live it still applies). Its news history is slow to fetch for many
+   * big stocks (thousands of pages) and made no difference for them.
+   */
+  backtestNews?: boolean;
 }
 
 const YEAR_MS = 365.25 * 86_400_000;
@@ -93,7 +99,10 @@ export class DeploymentsService {
         feePerShare: 0,
         cashYieldPct: 0,
         // The news-tone part of the check can be backtested (the AI part can't).
-        newsGateTone: (input.newsCheck ?? DEFAULT_NEWS_CHECK).tone,
+        newsGateTone:
+          input.backtestNews === false
+            ? 0
+            : (input.newsCheck ?? DEFAULT_NEWS_CHECK).tone,
       })
       .catch((err: Error) => {
         throw new BadRequestException(err.message);
@@ -137,7 +146,7 @@ export class DeploymentsService {
     };
     logEvent(
       d,
-      `Deployed with $${input.capital.toLocaleString('en-US')} of paper money. It starts trading after the next completed trading day.`,
+      `Deployed with $${input.capital.toLocaleString('en-US')} of paper money. It acts on the latest close: orders go out for the next market open.`,
       now,
     );
     await this.store.save(d);

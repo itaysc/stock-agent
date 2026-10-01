@@ -24,18 +24,16 @@ export interface PlanRow {
  * What the broker would buy now with `capital`: the algo run on the latest
  * year and a half of closes, its targets turned into amounts and shares.
  */
-export async function previewPlan(
-  backtests: BacktestService,
-  capital: number,
-  /** Bars dated before this are complete (today's is still forming while the market is open). */
-  cutoff: Date,
-  now = new Date(),
-): Promise<{ capital: number; asOf: Date; rows: PlanRow[]; cash: number }> {
+/** The algo warmed up on the latest completed year and a half of closes, as of `cutoff`. */
+export async function rankNow(backtests: BacktestService, cutoff: Date) {
   const symbols = [...BROKER_STOCKS, SAFE_ASSET];
+  // Day-rounded: the same range (and the cached prices) all day.
+  const from = new Date(cutoff.getTime() - 520 * DAY_MS);
+  from.setUTCHours(0, 0, 0, 0);
   const bars = await backtests.fetchBars(symbols, {
     timeframe: '1Day',
-    from: new Date(now.getTime() - 520 * DAY_MS),
-    to: now,
+    from,
+    to: cutoff,
   });
   const strategy = createStrategy('momentum-rotation', symbols, DEFAULT_PARAMS);
   if (!(strategy instanceof MomentumRotationStrategy))
@@ -48,6 +46,29 @@ export async function previewPlan(
   for (const bar of all) strategy.onBar(bar);
   if (!strategy.ready)
     throw new Error('Not enough price history yet to rank the stocks');
+  return { strategy, bars, asOf: all.at(-1)?.timestamp ?? cutoff };
+}
+
+/** Each stock's rank now (1 = strongest) and whether the algo would hold it. */
+export async function currentRanks(backtests: BacktestService, cutoff: Date) {
+  const { strategy } = await rankNow(backtests, cutoff);
+  const targets = strategy.targets();
+  return {
+    total: BROKER_STOCKS.length,
+    rank: Object.fromEntries(
+      strategy.ranking().map((s, i) => [s, i + 1]),
+    ) as Record<string, number>,
+    wanted: [...targets.keys()],
+  };
+}
+
+export async function previewPlan(
+  backtests: BacktestService,
+  capital: number,
+  /** Bars dated before this are complete (today's is still forming while the market is open). */
+  cutoff: Date,
+): Promise<{ capital: number; asOf: Date; rows: PlanRow[]; cash: number }> {
+  const { strategy, bars, asOf } = await rankNow(backtests, cutoff);
   const last = (s: string) => bars[s]?.at(-1)?.close ?? 0;
   const stop = Number(DEFAULT_PARAMS.stopPct);
   const rows = [...strategy.targets().entries()]
@@ -69,7 +90,6 @@ export async function previewPlan(
     })
     .filter((r) => r.qty > 0)
     .sort((a, b) => b.amount - a.amount);
-  const asOf = all.at(-1)?.timestamp ?? now;
   return {
     capital,
     asOf,

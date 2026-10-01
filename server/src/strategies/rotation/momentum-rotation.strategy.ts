@@ -1,6 +1,7 @@
 import { MARKET_SYMBOL } from '../rules/rules-validate.js';
 import { cleanQty, roundQty } from '../qty.js';
-import { volScale, VolTracker } from '../sizing.js';
+import { VolTracker } from '../sizing.js';
+import { rankSymbols, rotationTargets } from './rotation-targets.js';
 import type {
   Strategy,
   StrategyBar,
@@ -8,7 +9,6 @@ import type {
 } from '../strategy.types.js';
 
 type Params = Record<string, number>;
-const pct = (n: number) => `${n >= 0 ? '+' : ''}${(n * 100).toFixed(1)}%`;
 
 /**
  * Momentum rotation ("dual momentum"): every `rebalanceDays`, rank the
@@ -64,6 +64,7 @@ export class MomentumRotationStrategy implements Strategy {
     return Math.max(
       this.p.lookback + this.p.skipRecent + 1,
       this.p.volLookback + 1,
+      this.p.trendSma,
     );
   }
 
@@ -154,6 +155,14 @@ export class MomentumRotationStrategy implements Strategy {
     return stopped;
   }
 
+  /** Above its own trendSma-day average (always true with trendSma off). */
+  private aboveTrend(s: string): boolean {
+    const n = this.p.trendSma;
+    if (!(n > 0)) return true;
+    const c = (this.closes.get(s) ?? []).slice(-n);
+    return c.length === n && (c.at(-1) ?? 0) > c.reduce((a, b) => a + b, 0) / n;
+  }
+
   /** Whether every symbol has enough history to rank. */
   get ready(): boolean {
     return this.symbols.every(
@@ -162,53 +171,24 @@ export class MomentumRotationStrategy implements Strategy {
   }
 
   /** Target share of the account per symbol, with the reason (what it would hold now). */
+  /** Every symbol to rank, best first (e.g. "#3 of 50" on the broker page). */
+  ranking(): string[] {
+    return rankSymbols({
+      p: this.p,
+      symbols: this.symbols,
+      closes: this.closes,
+      vols: this.vols,
+    }).ranked;
+  }
+
   targets(): Map<string, { weight: number; why: string }> {
-    const p = this.p;
-    const safe = p.safeLast ? this.symbols.at(-1) : undefined;
-    const risky = this.symbols.filter((s) => s !== safe);
-    const score = (s: string) => {
-      const c = this.closes.get(s) ?? [];
-      const end = c.length - 1 - p.skipRecent;
-      return c[end] / c[end - p.lookback] - 1;
-    };
-    // Risk-adjusted: return per unit of volatility (steady risers beat jumpy ones).
-    const rank = (s: string) =>
-      p.rankBy === 1
-        ? score(s) / Math.max(this.vols.get(s)?.volPct ?? 1, 1)
-        : score(s);
-    const ranked = [...risky].sort((a, b) => rank(b) - rank(a));
-    const down = this.marketDown() === true;
-    const picks = down
-      ? []
-      : ranked.slice(0, p.topN).filter((s) => !p.absMomentum || score(s) > 0);
-    const vol = (s: string) => this.vols.get(s)?.volPct ?? null;
-    const raw = picks.map((s) =>
-      p.volWeight && vol(s) ? 1 / (vol(s) as number) : 1,
-    );
-    const rawSum = raw.reduce((a, b) => a + b, 0) || 1;
-    // Each of the topN slots is 1/topN of the money; empty slots go to the safe asset or cash.
-    const riskyShare = picks.length / p.topN;
-    let w = picks.map((_, i) => (raw[i] / rawSum) * riskyShare);
-    const avgVol =
-      picks.reduce((n, s, i) => n + w[i] * (vol(s) ?? 0), 0) /
-      (w.reduce((a, b) => a + b, 0) || 1);
-    const scale = volScale(p.targetVol, picks.length ? avgVol : null);
-    w = w.map((x) => x * scale * p.allocation);
-    const out = new Map<string, { weight: number; why: string }>();
-    picks.forEach((s, i) =>
-      out.set(s, {
-        weight: w[i],
-        why: `rank ${ranked.indexOf(s) + 1}: ${pct(score(s))} over ${p.lookback} bars${scale < 1 ? `, sized to ${p.targetVol}% volatility` : ''}`,
-      }),
-    );
-    if (safe && picks.length < p.topN) {
-      out.set(safe, {
-        weight: (1 - riskyShare) * p.allocation,
-        why: down
-          ? `market down: SPY below its ${p.marketFilter}-day average`
-          : `safe asset for ${p.topN - picks.length} empty slot${p.topN - picks.length === 1 ? '' : 's'}`,
-      });
-    }
-    return out;
+    return rotationTargets({
+      p: this.p,
+      symbols: this.symbols,
+      closes: this.closes,
+      vols: this.vols,
+      marketDown: this.marketDown() === true,
+      aboveTrend: (s) => this.aboveTrend(s),
+    });
   }
 }

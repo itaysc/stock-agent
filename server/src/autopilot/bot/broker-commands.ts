@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { dailyReport } from '../../broker/broker-report.js';
+import { BrokerNoticesService } from '../../broker/broker-notices.service.js';
 import { BrokerService } from '../../broker/broker.service.js';
 import { parseAmount } from './amount.js';
 
@@ -15,7 +16,10 @@ export const BROKER_HELP = [
 /** The broker's Telegram commands; null = not one of them. */
 @Injectable()
 export class BrokerCommands {
-  constructor(private readonly broker: BrokerService) {}
+  constructor(
+    private readonly broker: BrokerService,
+    private readonly notices: BrokerNoticesService,
+  ) {}
 
   async handle(command: string, args: string[]): Promise<string | null> {
     switch (command) {
@@ -32,7 +36,7 @@ export class BrokerCommands {
           '▶️ Trading again from the next close.',
         );
       case 'report':
-        return (await this.broker.reportIfNew(true)) === null
+        return (await this.notices.reportIfNew(true)) === null
           ? "I'm not running: /broker 10000 starts me."
           : ''; // the report itself was just sent
       default:

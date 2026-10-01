@@ -34,7 +34,7 @@ export const ROTATION_PARAMS: ParamSpecs = {
     undefined,
     'Leave out the last this-many bars when ranking (21 = skip the last month, the classic "12-1" momentum).',
   ),
-  topN: whole(2, 1, 20, 'How many of the best-ranked symbols to hold.'),
+  topN: whole(2, 1, 100, 'How many of the best-ranked symbols to hold.'),
   rebalanceDays: whole(
     21,
     1,
@@ -67,9 +67,17 @@ export const ROTATION_PARAMS: ParamSpecs = {
     description:
       'Scale the holdings down when their average yearly volatility is above this % (the rest stays in cash). 0 = off.',
   },
-  rankBy: flag(
+  rankBy: whole(
     0,
-    'How to rank: 0 = by return over the window; 1 = by return ÷ volatility (steady risers first).',
+    0,
+    3,
+    'How to rank: 0 = highest return over the window (momentum); 1 = return ÷ volatility; 2 = lowest volatility (calmest first); 3 = biggest drop over the window (buy the dip).',
+  ),
+  trendSma: whole(
+    0,
+    0,
+    400,
+    'Only hold a symbol while its close is above its own average of this many days (200 is classic); 0 = off.',
   ),
   marketFilter: whole(
     0,

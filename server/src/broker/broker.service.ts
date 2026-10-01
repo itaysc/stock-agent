@@ -1,22 +1,19 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { AlpacaService } from '../alpaca/alpaca.service.js';
 import { BacktestService } from '../backtest/backtest.service.js';
 import { completedBefore } from '../paper/market-clock.js';
-import { WalkForwardService } from '../backtest/walkforward/walkforward.service.js';
 import { NotifierService } from '../notify/notifier.service.js';
 import { DeploymentsService } from '../paper/deployments.service.js';
 import type { Deployment } from '../paper/deployment.types.js';
 import { DEFAULT_NEWS_CHECK } from '../paper/deployment.types.js';
-import { holdingHistory, stockChart } from './broker-charts.js';
-import { previewPlan } from './broker-preview.js';
-import { dailyReport } from './broker-report.js';
+import { holdingHistory, spySince, stockChart } from './broker-charts.js';
+import { currentRanks, previewPlan } from './broker-preview.js';
+import type { ManualLevels } from '../paper/deployment.types.js';
+import { PositionActionsService } from '../paper/position-actions.service.js';
 import { BrokerStore } from './broker-store.js';
-import { healthCheck } from './broker-health.js';
+import type { BrokerState } from './broker.types.js';
 import { brokerView } from './broker-view.js';
 import { BROKER_STOCKS, DEFAULT_PARAMS, SAFE_ASSET } from './universe.js';
-
-const DAY_MS = 86_400_000;
-const CHECK_EVERY_DAYS = 30;
 
 /**
  * The broker: one paper deployment that runs the momentum rotation on the
@@ -25,15 +22,13 @@ const CHECK_EVERY_DAYS = 30;
  */
 @Injectable()
 export class BrokerService {
-  private readonly logger = new Logger(BrokerService.name);
-
   constructor(
     private readonly store: BrokerStore,
     private readonly deployments: DeploymentsService,
     private readonly backtests: BacktestService,
-    private readonly walkForwards: WalkForwardService,
     private readonly notifier: NotifierService,
     private readonly alpaca: AlpacaService,
+    private readonly positions: PositionActionsService,
   ) {}
 
   /** Its deployment, unless it was never started or was stopped. */
@@ -46,12 +41,20 @@ export class BrokerService {
 
   async view() {
     const [state, d] = await Promise.all([this.store.get(), this.deployment()]);
-    if (!d) return brokerView(null, state, null);
-    const [spy, history] = await Promise.all([
-      this.spySince(d.createdAt),
+    return d ? this.fullView(d, state) : brokerView(null, state, null);
+  }
+
+  /** The view with everything it needs: vs SPY, the stop levels, each stock's rank now. */
+  async fullView(d: Deployment, state: BrokerState) {
+    const [spy, history, ranks] = await Promise.all([
+      spySince(this.backtests, d.createdAt).catch(() => null),
       holdingHistory(this.backtests, d).catch(() => ({})),
+      this.alpaca
+        .getClock()
+        .then((clock) => currentRanks(this.backtests, completedBefore(clock)))
+        .catch(() => null),
     ]);
-    return brokerView(d, state, spy, history);
+    return brokerView(d, state, spy, history, ranks);
   }
 
   /** What it would buy now with this much (before you approve), from completed days only. */
@@ -61,6 +64,24 @@ export class BrokerService {
       capital,
       completedBefore(await this.alpaca.getClock()),
     );
+  }
+
+  /** Sells all (fraction 1) or part of one holding now. */
+  async sell(symbol: string, fraction: number) {
+    await this.positions.sell((await this.required()).id, symbol, fraction);
+    return this.view();
+  }
+
+  /** Your own stop loss / profit target for one holding (null clears it). */
+  async setLevels(symbol: string, levels: ManualLevels) {
+    await this.positions.setLevels((await this.required()).id, symbol, levels);
+    return this.view();
+  }
+
+  /** Lets it buy a stock you sold again. */
+  async allow(symbol: string) {
+    await this.positions.allow((await this.required()).id, symbol);
+    return this.view();
   }
 
   /** One stock's price chart with its trades and sell levels. */
@@ -90,6 +111,8 @@ export class BrokerService {
       source: { kind: 'broker' },
       // Acting on its own: severe breaking news (AI-confirmed) on a holding sells it.
       newsCheck: { ...DEFAULT_NEWS_CHECK, watch: 'sell' },
+      // 51 stocks × 3 years of headlines is thousands of requests: backtest without the news part.
+      backtestNews: false,
     });
     const now = new Date();
     await this.store.save({
@@ -97,6 +120,7 @@ export class BrokerService {
       deploymentId: d.id,
       lastReportAt: now,
       lastReportedBarAt: d.lastBarAt,
+      notifiedTrades: 0,
       lastTune: state.lastTune ?? {
         at: now,
         message: 'Started with the classic 12-1 momentum settings.',
@@ -130,73 +154,9 @@ export class BrokerService {
     return this.view();
   }
 
-  /** The daily report, when a new trading day was processed (called by the scheduler). */
-  async reportIfNew(force = false): Promise<string | null> {
-    const [state, d] = await Promise.all([this.store.get(), this.deployment()]);
-    if (!d) return null;
-    const day = d.lastBarAt ? new Date(d.lastBarAt).getTime() : 0;
-    const last = state.lastReportedBarAt
-      ? new Date(state.lastReportedBarAt).getTime()
-      : 0;
-    if (!force && day <= last) return null;
-    const v = brokerView(d, state, await this.spySince(d.createdAt));
-    if (v.status === 'off') return null;
-    const text = dailyReport(
-      v,
-      state.lastReportAt ? new Date(state.lastReportAt) : null,
-    );
-    await this.notifier.send(text);
-    await this.store.save({
-      ...state,
-      lastReportAt: new Date(),
-      lastReportedBarAt: d.lastBarAt,
-    });
-    return text;
-  }
-
-  /** The monthly health check (called by the scheduler); never changes the settings. */
-  async checkIfDue(now = new Date()): Promise<void> {
-    const [state, d] = await Promise.all([this.store.get(), this.deployment()]);
-    if (!d) return;
-    const last = state.lastTune ? new Date(state.lastTune.at).getTime() : 0;
-    if (now.getTime() - last < CHECK_EVERY_DAYS * DAY_MS) return;
-    const r = await healthCheck(
-      this.walkForwards,
-      d.sleeves[0].params,
-      d.capital,
-      now,
-    );
-    await this.store.save({
-      ...state,
-      lastTune: { at: now, message: r.message },
-    });
-    await this.notifier.send(r.message);
-  }
-
   private async required(): Promise<Deployment> {
     const d = await this.deployment();
     if (!d) throw new BadRequestException('The broker is not running');
     return d;
-  }
-
-  /** SPY's return since a date (to compare with), or null without data. */
-  private async spySince(from: Date): Promise<number | null> {
-    try {
-      const bars =
-        (
-          await this.backtests.fetchBars(['SPY'], {
-            timeframe: '1Day',
-            from: new Date(new Date(from).getTime() - 4 * DAY_MS),
-            to: new Date(),
-          })
-        )['SPY'] ?? [];
-      const start =
-        bars.filter((b) => b.timestamp <= new Date(from)).at(-1) ?? bars[0];
-      const end = bars.at(-1);
-      return start && end ? (end.close / start.close - 1) * 100 : null;
-    } catch (err) {
-      this.logger.warn(`SPY comparison failed: ${(err as Error).message}`);
-      return null;
-    }
   }
 }

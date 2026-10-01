@@ -699,10 +699,18 @@ drop.
   it also locks in gains), dropping out of the top 5 at the weekly re-check, and severe breaking
   news. No fixed take-profit (`takeProfitPct` exists; in the algo lab, take-profits and tighter
   stops cut the winners short).
+- **Your control per holding** (⋯ menu): sell all or half now (`POST /api/v1/broker/positions/:symbol/sell`
+  `{"fraction": 1 | 0.5}`; after selling all, it doesn't buy that stock again for 30 days, "Allow now"
+  lifts that), and your own stop loss / profit target (`PUT .../levels` `{"stopPrice", "takeProfitPrice"}`,
+  null = automatic), checked on daily closes; the higher stop counts. Each holding has a status:
+  Strong / Weakening (its rank now vs the top 5) / Near stop / Near target / Selling / Parked.
+- A new broker acts on the latest close right away: approve tonight, it buys at the next open.
 - **Holdings**: buy price and date, now, gain, the price it sells below, and a chart per stock
   (`GET /api/v1/broker/chart/:symbol`: closes, trades, buy / stop / high lines).
-- **Daily report** in Telegram after each processed trading day: trades with reasons, what is
-  next, holdings, value vs SPY.
+- **Telegram**: a message for each fill within ~5 minutes (shares, price, total, why, and the
+  stop for a buy or the profit/loss for a sell), and a daily update after each trading day: value
+  vs SPY, every stock (bought vs now, gain in % and $, status and rank, the price it sells below),
+  the day's trades and what goes out at the next open.
 - **Monthly health check**: the fixed settings over the last 3 years vs holding the stocks; it
   warns you when the algo trails (it never changes the settings by itself).
 - **Algo lab** (`node dist/broker/lab/algo-lab.cli.js --universe today|2020 --cache <file>
@@ -711,6 +719,12 @@ drop.
   setting near the classic one beat SPY on both lists; re-tuning every 6 months did worse than
   keeping the classic settings; skipping the latest month (12-1) helped a little with smaller
   drops; a 200-day market filter, risk-adjusted ranking and trailing stops lowered returns.
+  Other kinds of algo (`--set families`, textbook settings, Jul 2022 → Oct 2026, today's 50 /
+  end-2020 50, vs SPY +101%): low volatility +32% / +22%; every stock above its 200-day average
+  +70% / +43%; equal weight with a 200-day market filter +73% / +47% (all with much smaller drops,
+  -8% to -13%); buying dips in uptrends +117–131% / +84–102% with ~1,000 trades; momentum
+  +318% / +311% (drop -26% / -20%). The rotation's `rankBy` (0 momentum, 1 risk-adjusted,
+  2 calmest, 3 biggest dip) and `trendSma` (per-stock trend filter) make these one strategy.
 - **Fractional shares** (`fractional=1` on the rotation): from $100 it can hold 0.25 of a pricey
   stock. Amounts are kept to 4 decimals; a stock Alpaca can't trade in fractions is bought in
   whole shares instead.
@@ -823,3 +837,26 @@ sub.unsubscribe();
 
 Env vars are validated at boot, so the app fails fast on bad config. Read them via
 `ConfigService<Env, true>` with `config.get('KEY', { infer: true })`, never `process.env`.
+
+## Deploy to Railway
+
+Same setup as foozool-initiatives: a Dockerfile build from `server/`, with a health check.
+
+1. Railway → New project → **Deploy from GitHub repo** (push the repo first) → this repo.
+2. Service settings: **Root Directory** `server`, **Config file** `server/railway.toml`.
+3. Add a database: New → Database → **MongoDB**.
+4. Variables (service → Variables):
+   - `NODE_ENV=production` and `API_TOKEN=<openssl rand -hex 32>`: both required, the server
+     refuses to start on Railway without them (the API can trade and sell: it must not be open).
+   - `MONGODB_URI=${{MongoDB.MONGO_URL}}/stock-invest?authSource=admin`
+   - `ALPACA_API_KEY`, `ALPACA_API_SECRET`, `ALPACA_PAPER=true`, `ALPACA_STREAMS_ENABLED=false`
+   - `PAPER_TRADING_ENABLED=true`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and the optional keys
+     (`OPENAI_API_KEY`, `SEC_USER_AGENT`, `ALPHAVANTAGE_API_KEY`). Don't set `PORT` or `HOST`.
+5. Deploy; Railway waits for `GET /health` to pass. Call the API with
+   `curl -H "Authorization: Bearer $API_TOKEN" https://<app>.up.railway.app/api/v1/broker`.
+
+Only one server may trade and read the Telegram bot at a time. Once Railway runs, set
+`PAPER_TRADING_ENABLED=false`, `TELEGRAM_COMMANDS_ENABLED=false` and
+`AUTOPILOT_SCHEDULER_ENABLED=false` in your local `.env`. Railway's MongoDB starts empty: start the
+broker there (Telegram `/broker 200`), and stop the local one first, so two brokers don't trade
+the same Alpaca account.

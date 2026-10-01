@@ -1,97 +1,112 @@
-import { Button, Center, Loader, Modal, Paper, Stack, Table, Text, Title } from '@mantine/core';
-import { IconChartLine } from '@tabler/icons-react';
+import {
+  Alert,
+  Button,
+  Center,
+  Group,
+  Loader,
+  Modal,
+  Paper,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from '@mantine/core';
 import { lazy, Suspense, useState } from 'react';
-import type { BrokerHolding, BrokerPlanned } from '../../api/broker-types';
-import { money, pct, tone } from '../../lib/format';
+import { api } from '../../api/client';
+import type { BrokerHolding, BrokerPlanned, BrokerView } from '../../api/broker-types';
+import type { HoldingAction } from './HoldingActions';
+import { HoldingRow } from './HoldingRow';
+import { LevelsModal } from './LevelsModal';
 import { SellRules } from './SellRules';
 
 // The chart library is big: load it when a chart is opened.
 const StockChart = lazy(() => import('./StockChart').then((m) => ({ default: m.StockChart })));
-
-const usd = (n: number | null) => (n === null ? '—' : `$${n.toFixed(2)}`);
 const shares = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(4));
 
-/** What it holds: buy price, now, the price it sells at, and a chart for each. */
+/** What you're invested in: status, prices, sell levels, a chart, and what you can do with each. */
 export function BrokerHoldings({
   holdings,
   planned,
   params,
+  noBuyUntil,
+  onView,
 }: {
   holdings: BrokerHolding[];
   planned: BrokerPlanned[];
   params: Record<string, string>;
+  noBuyUntil: Array<{ symbol: string; until: string }>;
+  onView: (view: BrokerView) => void;
 }) {
   const [chart, setChart] = useState<string | null>(null);
+  const [editing, setEditing] = useState<BrokerHolding | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const run = async (call: () => Promise<BrokerView>, done: string) => {
+    try {
+      onView(await call());
+      setMessage({ ok: true, text: done });
+    } catch (err) {
+      setMessage({ ok: false, text: (err as Error).message });
+    }
+  };
+  const act = (h: BrokerHolding, action: HoldingAction) => {
+    if (action === 'chart') return setChart(h.symbol);
+    if (action === 'levels') return setEditing(h);
+    if (action === 'clear-levels')
+      return void run(
+        () => api.brokerLevels(h.symbol, { stopPrice: null, takeProfitPrice: null }),
+        `${h.symbol}: back to the automatic levels.`,
+      );
+    const half = action === 'sell-half';
+    const what = half
+      ? `half of your ${h.symbol} (${shares(h.qty / 2)} shares)`
+      : `all your ${h.symbol} (${shares(h.qty)} shares)`;
+    const later = half ? '' : ' The broker will not buy it again for 30 days.';
+    if (
+      !window.confirm(
+        `Sell ${what} at the market price now (or at the next open if the market is closed)?${later}`,
+      )
+    )
+      return;
+    void run(() => api.brokerSell(h.symbol, half ? 0.5 : 1), `Sell order sent for ${what}.`);
+  };
   return (
     <Paper p="md" withBorder>
       <Stack gap="sm">
         <Title order={5}>What you're invested in</Title>
+        {message && (
+          <Alert
+            color={message.ok ? 'teal' : 'red'}
+            withCloseButton
+            onClose={() => setMessage(null)}
+          >
+            {message.text}
+          </Alert>
+        )}
         {holdings.length ? (
-          <Table.ScrollContainer minWidth={760}>
+          <Table.ScrollContainer minWidth={820}>
             <Table verticalSpacing={6} highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Stock</Table.Th>
-                  <Table.Th ta="right">Shares</Table.Th>
-                  <Table.Th ta="right">Bought at</Table.Th>
-                  <Table.Th ta="right">Now</Table.Th>
-                  <Table.Th ta="right">Gain</Table.Th>
-                  <Table.Th ta="right">Sells below</Table.Th>
-                  <Table.Th ta="right">Value</Table.Th>
-                  <Table.Th>Why it holds it</Table.Th>
-                  <Table.Th />
+                  {[
+                    'Stock',
+                    'Status',
+                    'Shares',
+                    'Bought at',
+                    'Now',
+                    'Gain',
+                    'Sells when',
+                    'Value',
+                    '',
+                  ].map((t, i) => (
+                    <Table.Th key={t || i} ta={i >= 2 && i <= 7 ? 'right' : undefined}>
+                      {t}
+                    </Table.Th>
+                  ))}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {holdings.map((h) => (
-                  <Table.Tr
-                    key={h.symbol}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setChart(h.symbol)}
-                  >
-                    <Table.Td fw={600}>{h.symbol}</Table.Td>
-                    <Table.Td ta="right">{shares(h.qty)}</Table.Td>
-                    <Table.Td ta="right">
-                      {usd(h.entryPrice)}
-                      {h.boughtAt && (
-                        <Text size="xs" c="dimmed">
-                          {new Date(h.boughtAt).toLocaleDateString()}
-                        </Text>
-                      )}
-                    </Table.Td>
-                    <Table.Td ta="right">{usd(h.price)}</Table.Td>
-                    <Table.Td ta="right" c={tone(h.gainPct)}>
-                      {pct(h.gainPct)}
-                    </Table.Td>
-                    <Table.Td ta="right" c="red">
-                      {usd(h.stopPrice)}
-                      {h.takeProfitPrice !== null && (
-                        <Text size="xs" c="teal">
-                          or above {usd(h.takeProfitPrice)}
-                        </Text>
-                      )}
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      {money(h.value)}
-                      <Text size="xs" c="dimmed">
-                        {h.weightPct.toFixed(0)}%
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {h.why || '—'}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Button
-                        size="compact-xs"
-                        variant="subtle"
-                        leftSection={<IconChartLine size={14} />}
-                      >
-                        Chart
-                      </Button>
-                    </Table.Td>
-                  </Table.Tr>
+                  <HoldingRow key={h.symbol} h={h} onAction={(a) => act(h, a)} />
                 ))}
               </Table.Tbody>
             </Table>
@@ -107,16 +122,28 @@ export function BrokerHoldings({
             {planned.map((p, i) => (
               <Text key={i} size="sm">
                 {p.side === 'buy' ? '🟢 Buy' : '🔴 Sell'} {shares(p.qty)} {p.symbol} {p.when}
-                {p.why && (
-                  <Text span c="dimmed">
-                    {' '}
-                    · {p.why}
-                  </Text>
-                )}
+                {p.why && <Text span c="dimmed">{` · ${p.why}`}</Text>}
               </Text>
             ))}
           </>
         )}
+        {noBuyUntil.map((b) => (
+          <Group key={b.symbol} gap="xs">
+            <Text size="sm" c="dimmed">
+              You sold {b.symbol}: it won't buy it again until{' '}
+              {new Date(b.until).toLocaleDateString()}.
+            </Text>
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              onClick={() =>
+                void run(() => api.brokerAllow(b.symbol), `It may buy ${b.symbol} again.`)
+              }
+            >
+              Allow now
+            </Button>
+          </Group>
+        ))}
         <SellRules params={params} />
       </Stack>
       <Modal opened={!!chart} onClose={() => setChart(null)} title={chart} size="xl">
@@ -132,6 +159,15 @@ export function BrokerHoldings({
           </Suspense>
         )}
       </Modal>
+      <LevelsModal
+        holding={editing}
+        onClose={() => setEditing(null)}
+        onSave={async (levels) => {
+          const h = editing as BrokerHolding;
+          onView(await api.brokerLevels(h.symbol, levels));
+          setMessage({ ok: true, text: `Saved your levels for ${h.symbol}.` });
+        }}
+      />
     </Paper>
   );
 }

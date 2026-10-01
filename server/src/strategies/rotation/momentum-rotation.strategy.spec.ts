@@ -218,3 +218,60 @@ describe('momentum rotation options', () => {
     expect(pick('1')).toBe('CALM');
   });
 });
+
+describe('momentum rotation ranking modes', () => {
+  const calm = series(
+    100,
+    [0.01, 0.012, 0.009, 0.011, 0.01, 0.012, 0.01, 0.011, 0.01, 0.01, 0.01],
+  );
+  const wild = series(
+    100,
+    [0.06, -0.04, 0.07, -0.03, 0.06, -0.02, 0.05, 0.02, 0.04, -0.03, 0.05],
+  );
+  const dip = series(
+    100,
+    [0.02, 0.02, 0.02, -0.03, -0.03, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
+  );
+  const pick = (
+    params: Record<string, string>,
+    bars: Record<string, number[]>,
+  ) => run(bars, { ...base, rebalanceDays: '100', ...params }).fills[0]?.symbol;
+
+  it('rankBy 2 picks the calmest, rankBy 3 the biggest recent drop', () => {
+    expect(pick({ rankBy: '0' }, { CALM: calm, WILD: wild })).toBe('WILD');
+    expect(
+      pick({ rankBy: '2', absMomentum: '0' }, { CALM: calm, WILD: wild }),
+    ).toBe('CALM');
+    expect(
+      pick(
+        { rankBy: '3', lookback: '2', absMomentum: '0' },
+        { DIP: dip, CALM: calm },
+      ),
+    ).toBe('DIP');
+  });
+
+  it('trendSma: only holds a symbol above its own average', () => {
+    const falling = series(100, Array(11).fill(-0.01));
+    expect(
+      pick({ absMomentum: '0', trendSma: '5' }, { DOWN: falling, CALM: calm }),
+    ).toBe('CALM');
+    expect(
+      pick(
+        { absMomentum: '0', trendSma: '5', topN: '2' },
+        { DOWN: falling, CALM: calm },
+      ),
+    ).toBe('CALM');
+    expect(
+      run(
+        { DOWN: falling, CALM: calm },
+        {
+          ...base,
+          rebalanceDays: '100',
+          absMomentum: '0',
+          trendSma: '5',
+          topN: '2',
+        },
+      ).fills.map((f) => f.symbol),
+    ).toEqual(['CALM']);
+  });
+});

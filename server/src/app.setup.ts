@@ -1,3 +1,6 @@
+import { apiTokenMiddleware } from './api-token.middleware.js';
+import { HttpAdapterHost } from '@nestjs/core';
+import { RateLimitFilter } from './alpaca/rate-limit.filter.js';
 import {
   type INestApplication,
   RequestMethod,
@@ -34,7 +37,12 @@ export function setupApp(app: INestApplication): void {
   const config = app.get<ConfigService<Env, true>>(ConfigService);
 
   app.useLogger(app.get(Logger));
+  app.useGlobalFilters(
+    new RateLimitFilter(app.get(HttpAdapterHost).httpAdapter),
+  );
   app.use(helmet());
+  const token = config.get('API_TOKEN', { infer: true });
+  if (token) app.use(apiTokenMiddleware(token));
 
   // Generated HTML reports, at /reports/<file>.html (outside the /api prefix).
   app.use(

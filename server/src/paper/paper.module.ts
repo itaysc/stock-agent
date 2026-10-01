@@ -12,6 +12,7 @@ import { DeploymentRunnerService } from './deployment-runner.service.js';
 import { DeploymentStore } from './deployment-store.js';
 import { DeploymentRun, DeploymentRunSchema } from './deployment.schema.js';
 import { DeploymentsService } from './deployments.service.js';
+import { PositionActionsService } from './position-actions.service.js';
 
 /** Paper trading: deployments of daily strategies on the paper account. */
 @Module({
@@ -28,7 +29,12 @@ import { DeploymentsService } from './deployments.service.js';
     ]),
   ],
   controllers: [DeploymentsController],
-  providers: [DeploymentStore, DeploymentRunnerService, DeploymentsService],
-  exports: [DeploymentStore, DeploymentsService],
+  providers: [
+    DeploymentStore,
+    DeploymentRunnerService,
+    DeploymentsService,
+    PositionActionsService,
+  ],
+  exports: [DeploymentStore, DeploymentsService, PositionActionsService],
 })
 export class PaperModule {}

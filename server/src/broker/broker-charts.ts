@@ -44,10 +44,17 @@ export async function stockChart(
   const opened = l ? openedAt(l.trades, symbol) : null;
   const start = new Date((opened ?? new Date()).getTime() - 90 * DAY_MS);
   const bars = (await daily(backtests, [symbol], start))[symbol] ?? [];
-  const levels =
+  const auto =
     d && position && symbol !== SAFE_ASSET
       ? sellLevels(bars, opened, position.avgPrice, d.sleeves[0].params)
       : null;
+  // Your own levels count too: the higher stop, and your target over the automatic one.
+  const mine = d?.manual?.[symbol];
+  const levels = auto && {
+    highSinceBuy: auto.highSinceBuy,
+    stopPrice: Math.max(auto.stopPrice ?? 0, mine?.stopPrice ?? 0) || null,
+    takeProfitPrice: mine?.takeProfitPrice ?? auto.takeProfitPrice,
+  };
   return {
     symbol,
     closes: bars.map((b) => ({ time: b.timestamp, close: b.close })),
@@ -68,4 +75,23 @@ export async function stockChart(
       takeProfitPrice: null,
     }),
   };
+}
+
+/** SPY's return since a date (to compare with), or null without data. */
+export async function spySince(
+  backtests: BacktestService,
+  from: Date,
+): Promise<number | null> {
+  const bars =
+    (
+      await daily(
+        backtests,
+        ['SPY'],
+        new Date(new Date(from).getTime() - 4 * DAY_MS),
+      )
+    )['SPY'] ?? [];
+  const start =
+    bars.filter((b) => b.timestamp <= new Date(from)).at(-1) ?? bars[0];
+  const end = bars.at(-1);
+  return start && end ? (end.close / start.close - 1) * 100 : null;
 }
