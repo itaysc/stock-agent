@@ -1,0 +1,161 @@
+import { infoNeeds } from '../strategies/rules/rules-validate.js';
+import type { StrategyBar } from '../strategies/strategy.types.js';
+import type { Deployment } from './deployment.types.js';
+import {
+  feed,
+  type Runtime,
+  symbolsToFetch,
+  warmupDays,
+} from './deployment-runtime.js';
+import { type CycleDeps, logEvent } from './deployment-events.js';
+import { reconcile } from './reconcile.js';
+import { flatten, placeOne, sendOrders } from './deployment-orders.js';
+import { releaseStaged, watchHeld } from './news-check.js';
+import { ledgerEquity } from './sleeve-ledger.js';
+
+export type { CycleDeps } from './deployment-events.js';
+
+type Bars = Record<string, StrategyBar[]>;
+const DAY_MS = 86_400_000;
+
+export const deploymentEquity = (d: Deployment) =>
+  d.ledgers.reduce((n, l) => n + ledgerEquity(l), 0) + reserveOf(d);
+
+/** The part of the capital no sleeve got (kept in cash). */
+export const reserveOf = (d: Deployment) =>
+  d.capital -
+  d.sleeves.reduce((n, s) => n + (d.capital * s.weightPct) / 100, 0);
+
+/**
+ * One pass of the daily cycle: book fills, feed newly completed daily bars
+ * (orders only on the latest one), send the orders, save an equity snapshot
+ * and check the drawdown guard.
+ */
+export async function runCycle(
+  d: Deployment,
+  runtime: Runtime,
+  deps: CycleDeps,
+): Promise<void> {
+  const now = deps.now();
+  const booked = await reconcile(d, (id) => deps.getOrder(id), now);
+  for (const message of booked) logEvent(d, message, now);
+  if (d.status === 'stopped') return;
+
+  const cutoff = await deps.completedBefore();
+  const { traded, market } = symbolsToFetch(runtime);
+  const since =
+    runtime.warmed && d.lastBarAt
+      ? new Date(d.lastBarAt)
+      : new Date(
+          (d.lastBarAt ?? cutoff).valueOf() - warmupDays(runtime) * DAY_MS,
+        );
+  // Market data (e.g. SPY) never needs news or earnings; traded symbols may.
+  const needs = d.sleeves.map((s) => infoNeeds([s.strategy], s.params));
+  const all = {
+    ...(market.length ? await deps.fetchDaily(market, since, cutoff) : {}),
+    ...(await deps.fetchDaily(traded, since, cutoff, {
+      news: needs.some((n) => n.news),
+      earnings: needs.some((n) => n.earnings),
+    })),
+  };
+  const pick = (symbols: string[]) =>
+    Object.fromEntries(
+      symbols.map((s) => [
+        s,
+        (all[s] ?? []).filter((b) => b.timestamp < cutoff),
+      ]),
+    );
+  const bars = pick(traded);
+  const marketBars = pick(market);
+  const latest = Math.max(
+    0,
+    ...Object.values(bars)
+      .flat()
+      .map((b) => b.timestamp.getTime()),
+  );
+  const last = d.lastBarAt ? new Date(d.lastBarAt).getTime() : null;
+
+  if (!runtime.warmed) {
+    // Replay history without orders; a new deployment starts on the next completed day.
+    const upTo = last ?? latest;
+    const before = (list: Bars) =>
+      Object.fromEntries(
+        Object.entries(list).map(([s, l]) => [
+          s,
+          l.filter((b) => b.timestamp.getTime() <= upTo),
+        ]),
+      );
+    feed(d, runtime, before(bars), before(marketBars), null);
+    runtime.warmed = true;
+    if (last === null && latest > 0) d.lastBarAt = new Date(latest);
+  }
+  const lastSeen = d.lastBarAt ? new Date(d.lastBarAt).getTime() : 0;
+  if (latest > lastSeen) {
+    const after = (list: Bars) =>
+      Object.fromEntries(
+        Object.entries(list).map(([s, l]) => [
+          s,
+          l.filter((b) => b.timestamp.getTime() > lastSeen),
+        ]),
+      );
+    feed(d, runtime, after(bars), after(marketBars), new Date(latest), (t) =>
+      snapshot(d, t),
+    );
+    d.lastBarAt = new Date(latest);
+    await sendOrders(d, runtime, deps, now);
+  }
+  // Fills since the last close change the cash: refresh today's point.
+  // Real-time news: buys that waited for the pre-open check, and held symbols' breaking news.
+  await releaseStaged(d, deps, now, (i, buy) =>
+    placeOne(
+      d,
+      i,
+      { symbol: buy.symbol, side: 'buy', qty: buy.qty, reason: buy.reason },
+      deps,
+      now,
+      'passed the news check',
+    ),
+  );
+  for (const s of await watchHeld(d, deps, now)) {
+    if (!d.ledgers[s.sleeve].pending.some((o) => o.symbol === s.symbol)) {
+      await placeOne(
+        d,
+        s.sleeve,
+        { symbol: s.symbol, side: 'sell', qty: s.qty, reason: s.why },
+        deps,
+        now,
+        'sold on breaking news',
+      );
+    }
+  }
+  if (d.lastBarAt) snapshot(d, new Date(d.lastBarAt));
+  await guard(d, runtime, deps, now);
+}
+
+/** Equity at a day's close (one point per day; the same day is updated). */
+function snapshot(d: Deployment, at: Date): void {
+  const equity = deploymentEquity(d);
+  const day = at.toISOString().slice(0, 10);
+  const last = d.snapshots.at(-1);
+  if (last && new Date(last.timestamp).toISOString().slice(0, 10) === day)
+    last.equity = equity;
+  else d.snapshots.push({ timestamp: at, equity });
+  d.peakEquity = Math.max(d.peakEquity, equity);
+}
+
+/** Pauses and sells everything when the deployment falls too far below its peak. */
+async function guard(
+  d: Deployment,
+  runtime: Runtime,
+  deps: CycleDeps,
+  now: Date,
+): Promise<void> {
+  if (d.status !== 'active' || !(d.maxDrawdownPct > 0) || d.peakEquity <= 0)
+    return;
+  const drawdown = ((d.peakEquity - deploymentEquity(d)) / d.peakEquity) * 100;
+  if (drawdown < d.maxDrawdownPct) return;
+  d.status = 'paused';
+  d.statusReason = `Guard: ${drawdown.toFixed(1)}% below its peak (limit ${d.maxDrawdownPct}%). Sold everything; resume when you've looked at it.`;
+  logEvent(d, d.statusReason, now);
+  await flatten(d, runtime, deps, now, 'drawdown guard');
+}

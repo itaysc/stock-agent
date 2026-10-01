@@ -1,0 +1,17 @@
+{
+  "name": "stock-invest",
+  "private": true,
+  "description": "Algo trading platform: NestJS server + React client",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node server/scripts/check-node.mjs && concurrently --names server,client --prefix-colors blue,magenta --kill-others-on-fail \"npm run dev --prefix server -- --preserveWatchOutput\" \"node scripts/wait-for-server.mjs && npm run dev --prefix client\"",
+    "setup": "node server/scripts/check-node.mjs && npx -y npm@11 install && npx -y npm@11 install --prefix server && npx -y npm@11 install --prefix client",
+    "test": "npm test --prefix server && npm run test:e2e --prefix server && npm test --prefix client",
+    "build": "npm run build --prefix server && npm run build --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.5"
+  }
+}

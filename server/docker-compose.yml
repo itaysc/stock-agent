@@ -1,0 +1,20 @@
+name: stock-invest
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: stock-invest-mongo
+    # 27018 on the host so it doesn't clash with other local MongoDB instances on 27017.
+    ports:
+      - '27018:27017'
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand("ping")']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
