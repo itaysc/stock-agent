@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -6,6 +7,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import {
@@ -17,6 +19,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { BrokerNoticesService } from '../broker-notices.service.js';
+import { PROFILES, type ProfileId } from '../profiles.js';
 import { BrokerService } from '../broker.service.js';
 
 export class StartBrokerDto {
@@ -25,6 +28,14 @@ export class StartBrokerDto {
   @Min(100)
   @Max(10_000_000)
   capital: number;
+
+  @ApiPropertyOptional({
+    enum: PROFILES.map((p) => p.id),
+    description: 'Default: the one suggested for the amount',
+  })
+  @IsOptional()
+  @IsIn(PROFILES.map((p) => p.id))
+  profile?: ProfileId;
 }
 
 export class SellDto {
@@ -67,36 +78,66 @@ export class BrokerController {
     return this.broker.view();
   }
 
+  @Get('profiles')
+  @ApiOperation({
+    summary:
+      'Every risk profile with its history (in $ for this amount), and the suggested one',
+  })
+  profiles(@Query('capital') capital = '1000') {
+    const amount = Number(capital);
+    if (!(amount > 0))
+      throw new BadRequestException('capital must be a positive number');
+    return this.broker.profiles(amount);
+  }
+
   @Post('preview')
   @HttpCode(200)
   @ApiOperation({
     summary: 'What it would buy now with this much (nothing is bought)',
   })
   preview(@Body() dto: StartBrokerDto) {
-    return this.broker.preview(dto.capital);
+    return this.broker.preview(dto.capital, dto.profile);
   }
 
-  @Get('chart/:symbol')
+  @Post('start')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'A new investment with this much paper money and this risk profile',
+  })
+  start(@Body() dto: StartBrokerDto) {
+    return this.broker.start(dto.capital, dto.profile);
+  }
+
+  @Get('investments/:id/chart/:symbol')
   @ApiOperation({
     summary: "A stock's price chart with its trades, buy price and stop",
   })
-  chart(@Param('symbol') symbol: string) {
-    return this.broker.chart(symbol);
+  chart(@Param('id') id: string, @Param('symbol') symbol: string) {
+    return this.broker.chart(id, symbol);
   }
 
-  @Post('positions/:symbol/sell')
+  @Post('investments/:id/positions/:symbol/sell')
   @HttpCode(200)
   @ApiOperation({ summary: 'Sell all or half of one holding now (paper)' })
-  sell(@Param('symbol') symbol: string, @Body() dto: SellDto) {
-    return this.broker.sell(symbol, dto.fraction);
+  sell(
+    @Param('id') id: string,
+    @Param('symbol') symbol: string,
+    @Body() dto: SellDto,
+  ) {
+    return this.broker.sell(id, symbol, dto.fraction);
   }
 
-  @Put('positions/:symbol/levels')
+  @Put('investments/:id/positions/:symbol/levels')
   @ApiOperation({
     summary: 'Your own stop loss / profit target for one holding',
   })
-  levels(@Param('symbol') symbol: string, @Body() dto: LevelsDto) {
-    return this.broker.setLevels(symbol, {
+  levels(
+    @Param('id') id: string,
+    @Param('symbol') symbol: string,
+    @Body() dto: LevelsDto,
+  ) {
+    return this.broker.setLevels(id, symbol, {
       ...(dto.stopPrice !== undefined && { stopPrice: dto.stopPrice }),
       ...(dto.takeProfitPrice !== undefined && {
         takeProfitPrice: dto.takeProfitPrice,
@@ -104,38 +145,31 @@ export class BrokerController {
     });
   }
 
-  @Post('positions/:symbol/allow')
+  @Post('investments/:id/positions/:symbol/allow')
   @HttpCode(200)
   @ApiOperation({ summary: 'Let it buy a stock you sold again' })
-  allow(@Param('symbol') symbol: string) {
-    return this.broker.allow(symbol);
+  allow(@Param('id') id: string, @Param('symbol') symbol: string) {
+    return this.broker.allow(id, symbol);
   }
 
-  @Post('start')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Start the broker with this much paper money' })
-  start(@Body() dto: StartBrokerDto) {
-    return this.broker.start(dto.capital);
-  }
-
-  @Post('pause')
+  @Post('investments/:id/pause')
   @HttpCode(200)
   @ApiOperation({ summary: 'No new trades; holdings are kept' })
-  pause() {
-    return this.broker.pause();
+  pause(@Param('id') id: string) {
+    return this.broker.pause(id);
   }
 
-  @Post('resume')
+  @Post('investments/:id/resume')
   @HttpCode(200)
-  resume() {
-    return this.broker.resume();
+  resume(@Param('id') id: string) {
+    return this.broker.resume(id);
   }
 
-  @Post('stop')
+  @Post('investments/:id/stop')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Sell everything and stop' })
-  stop() {
-    return this.broker.stop();
+  @ApiOperation({ summary: 'Sell everything of this investment and stop it' })
+  stop(@Param('id') id: string) {
+    return this.broker.stop(id);
   }
 
   @Post('report')

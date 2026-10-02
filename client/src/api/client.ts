@@ -6,7 +6,7 @@ import type {
   PortfolioResponse,
   WalkForwardResponse,
 } from './types';
-import type { BrokerPlan, BrokerView, StockChartData } from './broker-types';
+import type { BrokerOverview, BrokerPlan, BrokerProfiles, StockChartData } from './broker-types';
 import type { AutopilotRun, AutopilotState, DeploymentView, PaperAccount } from './paper-types';
 import type { ResearchSession, RobustnessResult } from './research-types';
 
@@ -75,36 +75,50 @@ export const api = {
       body: JSON.stringify(body),
     }),
   paperAccount: () => request<PaperAccount>('/api/v1/paper/account'),
-  broker: () => request<BrokerView>('/api/v1/broker'),
-  brokerSell: (symbol: string, fraction: 1 | 0.5) =>
-    request<BrokerView>(`/api/v1/broker/positions/${encodeURIComponent(symbol)}/sell`, {
+  broker: () => request<BrokerOverview>('/api/v1/broker'),
+  brokerProfiles: (capital: number) =>
+    request<BrokerProfiles>(`/api/v1/broker/profiles?capital=${encodeURIComponent(capital)}`),
+  brokerPreview: (capital: number, profile?: string) =>
+    request<BrokerPlan>('/api/v1/broker/preview', {
       method: 'POST',
-      body: JSON.stringify({ fraction }),
+      body: JSON.stringify({ capital, profile }),
     }),
+  brokerStart: (capital: number, profile: string) =>
+    request<BrokerOverview>('/api/v1/broker/start', {
+      method: 'POST',
+      body: JSON.stringify({ capital, profile }),
+    }),
+  brokerInvestment: (id: string, action: 'pause' | 'resume' | 'stop') =>
+    request<BrokerOverview>(`/api/v1/broker/investments/${id}/${action}`, { method: 'POST' }),
+  brokerSell: (id: string, symbol: string, fraction: 1 | 0.5) =>
+    request<BrokerOverview>(
+      `/api/v1/broker/investments/${id}/positions/${encodeURIComponent(symbol)}/sell`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ fraction }),
+      },
+    ),
   brokerLevels: (
+    id: string,
     symbol: string,
     levels: { stopPrice?: number | null; takeProfitPrice?: number | null },
   ) =>
-    request<BrokerView>(`/api/v1/broker/positions/${encodeURIComponent(symbol)}/levels`, {
-      method: 'PUT',
-      body: JSON.stringify(levels),
-    }),
-  brokerAllow: (symbol: string) =>
-    request<BrokerView>(`/api/v1/broker/positions/${encodeURIComponent(symbol)}/allow`, {
-      method: 'POST',
-    }),
-  brokerPreview: (capital: number) =>
-    request<BrokerPlan>('/api/v1/broker/preview', {
-      method: 'POST',
-      body: JSON.stringify({ capital }),
-    }),
-  brokerChart: (symbol: string) =>
-    request<StockChartData>(`/api/v1/broker/chart/${encodeURIComponent(symbol)}`),
-  brokerAction: (action: 'start' | 'pause' | 'resume' | 'stop', capital?: number) =>
-    request<BrokerView>(`/api/v1/broker/${action}`, {
-      method: 'POST',
-      body: JSON.stringify(capital ? { capital } : {}),
-    }),
+    request<BrokerOverview>(
+      `/api/v1/broker/investments/${id}/positions/${encodeURIComponent(symbol)}/levels`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(levels),
+      },
+    ),
+  brokerAllow: (id: string, symbol: string) =>
+    request<BrokerOverview>(
+      `/api/v1/broker/investments/${id}/positions/${encodeURIComponent(symbol)}/allow`,
+      {
+        method: 'POST',
+      },
+    ),
+  brokerChart: (id: string, symbol: string) =>
+    request<StockChartData>(`/api/v1/broker/investments/${id}/chart/${encodeURIComponent(symbol)}`),
   testNotification: () =>
     request<{ sentTo: string[] }>('/api/v1/notifications/test', { method: 'POST' }),
   deployments: () => request<DeploymentView[]>('/api/v1/paper/deployments'),

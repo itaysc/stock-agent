@@ -1,8 +1,10 @@
 import { deploymentEquity } from '../paper/deployment-cycle.js';
 import type { Deployment, LedgerTrade } from '../paper/deployment.types.js';
 import type { StrategyBar } from '../strategies/strategy.types.js';
-import { openedAt, sellLevels } from './broker-levels.js';
-import { holdingStatus, type Ranks } from './broker-status.js';
+import { brokerHoldings } from './broker-holdings.js';
+import { PROFILE_STATS } from './profile-stats.data.js';
+import { profileById } from './profiles.js';
+import type { Ranks } from './broker-status.js';
 import type { BrokerState } from './broker.types.js';
 import { algoText, BROKER_STOCKS, SAFE_ASSET, TESTED } from './universe.js';
 
@@ -53,7 +55,17 @@ export function brokerView(
   /** Each stock's rank now (for the status); null when it could not be computed. */
   ranks: Ranks | null = null,
 ) {
+  const profile = profileById(
+    d?.source.profile ?? state.profile ?? 'aggressive',
+  );
   const base = {
+    profile: profile && {
+      id: profile.id,
+      name: profile.name,
+      summary: profile.summary,
+      alertPct: profile.alertPct,
+    },
+    profileStats: (profile && PROFILE_STATS.profiles[profile.id]) ?? null,
     algo: algoText(state.params),
     params: state.params,
     lastTune: state.lastTune,
@@ -61,58 +73,19 @@ export function brokerView(
     universe: [...BROKER_STOCKS, SAFE_ASSET],
   };
   if (!d) return { status: 'off' as const, ...base };
-  const l = d.ledgers[0];
   const equity = deploymentEquity(d);
-  const lastBuy = (symbol: string) =>
-    l.trades.findLast((t) => t.symbol === symbol && t.side === 'buy');
-  const holdings = Object.values(l.positions)
-    .map((p) => {
-      const price = l.lastPrices[p.symbol] ?? p.avgPrice;
-      const opened = openedAt(l.trades, p.symbol);
-      const safe = p.symbol === SAFE_ASSET;
-      const auto = sellLevels(
-        history[p.symbol] ?? [],
-        opened,
-        p.avgPrice,
-        safe ? {} : d.sleeves[0].params,
-      );
-      const status = holdingStatus({
-        symbol: p.symbol,
-        price,
-        autoStop: auto.stopPrice,
-        autoTake: auto.takeProfitPrice,
-        manual: d.manual?.[p.symbol],
-        ranks,
-        selling: l.pending.some(
-          (o) => o.symbol === p.symbol && o.side === 'sell',
-        ),
-        safe,
-      });
-      return {
-        symbol: p.symbol,
-        qty: p.qty,
-        boughtAt: opened,
-        entryPrice: p.avgPrice,
-        price,
-        highSinceBuy: auto.highSinceBuy,
-        autoStopPrice: auto.stopPrice,
-        ...status,
-        value: p.qty * price,
-        weightPct: ((p.qty * price) / equity) * 100,
-        gainPct: (price / p.avgPrice - 1) * 100,
-        why: plainReason(lastBuy(p.symbol)?.reason),
-      };
-    })
-    .sort((a, b) => b.value - a.value);
+  const holdings = brokerHoldings(d, equity, history, ranks);
+  const all = <T>(pick: (l: Deployment['ledgers'][number]) => T[]) =>
+    d.ledgers.flatMap(pick);
   const planned = [
-    ...(l.staged ?? []).map((s) => ({
+    ...all((l) => l.staged ?? []).map((s) => ({
       side: 'buy' as const,
       symbol: s.symbol,
       qty: s.qty,
       why: plainReason(s.reason),
       when: 'at the next open, after the news check',
     })),
-    ...l.pending.map((o) => ({
+    ...all((l) => l.pending).map((o) => ({
       side: o.side,
       symbol: o.symbol,
       qty: o.qty,
@@ -121,7 +94,7 @@ export function brokerView(
     })),
   ];
   const activity = [
-    ...l.trades.map((t) => ({
+    ...all((l) => l.trades).map((t) => ({
       timestamp: t.timestamp,
       kind: t.side,
       text: tradeText(t),
@@ -143,14 +116,17 @@ export function brokerView(
     status: d.status,
     statusReason: d.statusReason,
     deploymentId: d.id,
+    name: d.name,
     startedAt: d.createdAt,
     capital: d.capital,
     equity,
-    cash: l.cash,
+    cash: d.ledgers.reduce((n, l) => n + l.cash, 0),
     pnl: equity - d.capital,
     pnlPct: (equity / d.capital - 1) * 100,
     spyPct,
     maxDrawdownPct: d.maxDrawdownPct,
+    /** It asks you in Telegram past this drop (instead of selling by itself). */
+    alertPct: d.drawdownAlert?.pct ?? null,
     expectation: d.expectation,
     holdings,
     planned,

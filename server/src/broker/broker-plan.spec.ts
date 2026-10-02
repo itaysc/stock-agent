@@ -2,6 +2,7 @@ import type { BacktestService } from '../backtest/backtest.service.js';
 import type { StrategyBar } from '../strategies/strategy.types.js';
 import { openedAt, sellLevels } from './broker-levels.js';
 import { previewPlan } from './broker-preview.js';
+import { INDEX_SYMBOLS, profileById } from './profiles.js';
 import { BROKER_STOCKS, SAFE_ASSET } from './universe.js';
 
 const day = (i: number) => new Date(Date.UTC(2025, 0, 1) + i * 86_400_000);
@@ -66,7 +67,12 @@ describe('plan preview', () => {
     const backtests = {
       fetchBars: vi.fn(async () => data),
     } as unknown as BacktestService;
-    const plan = await previewPlan(backtests, 200, day(n));
+    const plan = await previewPlan(
+      backtests,
+      200,
+      day(n),
+      profileById('aggressive')!,
+    );
     expect(plan.rows.map((r) => r.symbol).sort()).toEqual(
       BROKER_STOCKS.slice(0, 5).sort(),
     );
@@ -78,5 +84,42 @@ describe('plan preview', () => {
     expect(plan.rows.reduce((t, r) => t + r.weightPct, 0)).toBeCloseTo(100, 0);
     expect(plan.cash).toBeGreaterThanOrEqual(0);
     expect(plan.cash).toBeLessThan(1);
+  });
+
+  it('splits a two-part profile: the strongest stocks and the S&P 500 part', async () => {
+    const n = 300;
+    const up = (growth: number, start = 100) =>
+      Array.from({ length: n }, (_, i) => start * (1 + growth) ** i);
+    const data = Object.fromEntries(
+      [...BROKER_STOCKS, SAFE_ASSET, ...INDEX_SYMBOLS].map((s, i) => [
+        s,
+        bars(
+          s,
+          s === SAFE_ASSET || s === 'SHV'
+            ? up(0.0001, 91)
+            : up(i < 5 ? 0.004 - i * 0.0005 : 0.0005),
+        ),
+      ]),
+    );
+    const backtests = {
+      fetchBars: vi.fn(async () => data),
+    } as unknown as BacktestService;
+    const plan = await previewPlan(
+      backtests,
+      1_000,
+      day(n),
+      profileById('careful')!,
+    );
+    const spy = plan.rows.find((r) => r.symbol === 'SPY');
+    expect(spy).toMatchObject({
+      weightPct: expect.closeTo(50),
+      why: 'the S&P 500 part (the market is above its 200-day average)',
+      stopPrice: null,
+    });
+    expect(
+      plan.rows
+        .filter((r) => BROKER_STOCKS.includes(r.symbol))
+        .reduce((t, r) => t + r.weightPct, 0),
+    ).toBeCloseTo(50, 0);
   });
 });

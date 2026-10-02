@@ -8,7 +8,7 @@ import { AlpacaService } from '../alpaca/alpaca.service.js';
 import { annualizedPct } from '../backtest/walkforward/walkforward-metrics.js';
 import { PortfolioService } from '../backtest/portfolio/portfolio.service.js';
 import type { Sleeve } from '../backtest/portfolio/portfolio.types.js';
-import { deploymentEquity } from './deployment-cycle.js';
+import { deploymentEquity, reservedCash } from './deployment-cycle.js';
 import { logEvent } from './deployment-events.js';
 import { DeploymentRunnerService } from './deployment-runner.service.js';
 import { DeploymentStore } from './deployment-store.js';
@@ -29,6 +29,8 @@ export interface CreateDeployment {
   source?: Deployment['source'];
   /** Real-time news checks; default DEFAULT_NEWS_CHECK. */
   newsCheck?: NewsCheck;
+  /** Ask you in Telegram at this % below the peak instead of selling by itself (then maxDrawdownPct is 0). */
+  drawdownAlertPct?: number;
   /**
    * false: the expectation backtest leaves out the news-tone part of the
    * check (live it still applies). Its news history is slow to fetch for many
@@ -58,8 +60,13 @@ export class DeploymentsService {
     if (!(input.capital > 0))
       throw new BadRequestException('capital must be above 0');
     const live = await this.store.live();
+    // Broker investments may share stocks (each keeps its own shares in its ledger).
+    const shares = (d: { source?: Deployment['source'] }) =>
+      d.source?.kind === 'broker';
     const owned = new Set(
-      live.flatMap((d) => d.sleeves.flatMap((s) => s.symbols)),
+      live
+        .filter((d) => !(shares(d) && shares(input)))
+        .flatMap((d) => d.sleeves.flatMap((s) => s.symbols)),
     );
     const symbols = input.sleeves.flatMap((s) =>
       s.symbols.map((x) => x.toUpperCase()),
@@ -69,9 +76,21 @@ export class DeploymentsService {
       throw new BadRequestException(
         `Already traded by another deployment: ${[...new Set(taken)].join(', ')}`,
       );
+    // Shares in the account that no deployment's ledger accounts for.
+    const inLedgers = (symbol: string) =>
+      live.reduce(
+        (n, d) =>
+          n +
+          d.ledgers.reduce((m, l) => m + (l.positions[symbol]?.qty ?? 0), 0),
+        0,
+      );
     const held = (await this.alpaca.getPositions())
-      .map((p) => p.symbol)
-      .filter((s) => symbols.includes(s));
+      .filter(
+        (p) =>
+          symbols.includes(p.symbol) &&
+          Number(p.qty) - inLedgers(p.symbol) > 1e-6,
+      )
+      .map((p) => p.symbol);
     if (held.length) {
       throw new BadRequestException(
         `The paper account already holds ${held.join(', ')} outside any deployment: close it first so they don't mix`,
@@ -133,9 +152,13 @@ export class DeploymentsService {
       ledgers: backtest.sleeves.map((s) => emptyLedger(s.allocated)),
       newsCheck: input.newsCheck ?? DEFAULT_NEWS_CHECK,
       newsCheckedAt: null,
-      maxDrawdownPct:
-        input.maxDrawdownPct ??
-        Math.max(10, Math.round(expectation.maxDrawdownPct * 1.5)),
+      maxDrawdownPct: input.drawdownAlertPct
+        ? 0
+        : (input.maxDrawdownPct ??
+          Math.max(10, Math.round(expectation.maxDrawdownPct * 1.5))),
+      ...(input.drawdownAlertPct && {
+        drawdownAlert: { pct: input.drawdownAlertPct, alertedAtPct: null },
+      }),
       expectation,
       lastBarAt: null,
       peakEquity: input.capital,
@@ -154,13 +177,18 @@ export class DeploymentsService {
     return d;
   }
 
-  /** Paper cash not given to a live deployment yet. */
+  /**
+   * Paper cash not owned by a live deployment: the account's cash minus what
+   * the deployments hold uninvested (their invested money already left the cash).
+   */
   async freeCash(live?: Deployment[]): Promise<number> {
     const [account, list] = await Promise.all([
       this.alpaca.getAccount(),
       live ?? this.store.live(),
     ]);
-    return Number(account.cash ?? 0) - list.reduce((n, d) => n + d.capital, 0);
+    return (
+      Number(account.cash ?? 0) - list.reduce((n, d) => n + reservedCash(d), 0)
+    );
   }
 
   async setNewsCheck(id: string, newsCheck: NewsCheck): Promise<Deployment> {

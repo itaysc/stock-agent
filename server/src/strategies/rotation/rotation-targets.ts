@@ -1,3 +1,4 @@
+import { sectors } from './rotation-sectors.js';
 import { volScale, type VolTracker } from '../sizing.js';
 
 type Params = Record<string, number>;
@@ -12,6 +13,25 @@ export interface RotationState {
   marketDown: boolean;
   /** Above its own trendSma average (the per-stock trend filter). */
   aboveTrend: (symbol: string) => boolean;
+}
+
+/** The best `n`, with at most `max` from one sector (0 = no limit): a full sector's next ones are skipped. */
+export function capBySector(
+  ranked: string[],
+  n: number,
+  max: number,
+): string[] {
+  if (!(max > 0)) return ranked.slice(0, n);
+  const count = new Map<string, number>();
+  const out: string[] = [];
+  for (const s of ranked) {
+    if (out.length >= n) break;
+    const sector = sectors.of(s);
+    if ((count.get(sector) ?? 0) >= max) continue;
+    count.set(sector, (count.get(sector) ?? 0) + 1);
+    out.push(s);
+  }
+  return out;
 }
 
 /** The symbols to rank (all but the safe asset), best first, with their scores. */
@@ -54,10 +74,11 @@ export function rotationTargets({
   const { ranked, score, volOf } = rankSymbols({ p, symbols, closes, vols });
   const picks = marketDown
     ? []
-    : ranked
-        .filter((s) => aboveTrend(s))
-        .slice(0, p.topN)
-        .filter((s) => !p.absMomentum || score(s) > 0);
+    : capBySector(
+        ranked.filter((s) => aboveTrend(s)),
+        p.topN,
+        p.maxPerSector,
+      ).filter((s) => !p.absMomentum || score(s) > 0);
   const vol = (s: string) => vols.get(s)?.volPct ?? null;
   const raw = picks.map((s) =>
     p.volWeight && vol(s) ? 1 / (vol(s) as number) : 1,

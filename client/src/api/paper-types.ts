@@ -8,6 +8,11 @@ export interface PaperAccount {
   cash: number;
   equity: number;
   committed: number;
+  /** What the deployments hold in stocks now. */
+  invested: number;
+  /** Owned by deployments but not invested yet (incl. buys waiting for the open). */
+  reserved: number;
+  /** Cash not owned by any deployment: what you can still invest. */
   free: number;
   deploymentsEquity: number;
   newsSources: { headlines: boolean; halts: boolean; secFilings: boolean; ai: boolean };

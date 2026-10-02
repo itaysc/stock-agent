@@ -3,6 +3,9 @@ import type { DeploymentView } from './paper-types';
 type Expectation = NonNullable<DeploymentView['expectation']>;
 
 interface BrokerBase {
+  /** The risk profile it runs. */
+  profile: { id: string; name: string; summary: string; alertPct: number } | null;
+  profileStats: ProfileStats | null;
   /** The algo in one sentence. */
   algo: string;
   params: Record<string, string>;
@@ -58,6 +61,7 @@ export type BrokerView =
   | ({ status: 'off' } & BrokerBase)
   | ({
       status: 'active' | 'paused' | 'stopped';
+      name: string;
       statusReason: string | null;
       deploymentId: string;
       startedAt: string;
@@ -69,6 +73,8 @@ export type BrokerView =
       /** SPY over the same time, to compare with. */
       spyPct: number | null;
       maxDrawdownPct: number;
+      /** It asks you in Telegram past this drop (instead of selling by itself). */
+      alertPct: number | null;
       expectation: Expectation | null;
       holdings: BrokerHolding[];
       planned: BrokerPlanned[];
@@ -103,3 +109,52 @@ export interface StockChartData {
   stopPrice: number | null;
   takeProfitPrice: number | null;
 }
+
+/** What a risk profile did in the algo lab. */
+export interface ProfileStats {
+  from: string;
+  to: string;
+  totalPct: number;
+  annualPct: number;
+  maxDrawdownPct: number;
+  worstYear: { year: number; pct: number };
+  bestYear: { year: number; pct: number };
+  positiveYearsPct: number;
+  years: Array<{ year: number; pct: number }>;
+  spy: Omit<ProfileStats, 'spy' | 'method' | 'universe'>;
+  method: string;
+  universe: string;
+}
+
+export interface BrokerProfile {
+  id: 'aggressive' | 'balanced' | 'careful';
+  name: string;
+  summary: string;
+  alertPct: number;
+  suggested: boolean;
+  stats: ProfileStats | null;
+  /** The history in dollars for the amount asked about. */
+  forAmount: {
+    worstDrop: number;
+    worstYear: number;
+    typicalYear: number;
+    grewTo: number;
+    spyGrewTo: number;
+    years: number;
+  } | null;
+}
+
+export interface BrokerProfiles {
+  capital: number;
+  testedAt: string;
+  suggested: { profile: BrokerProfile['id']; why: string };
+  profiles: BrokerProfile[];
+}
+
+/** One running investment (its own amount, risk profile and holdings). */
+export type InvestmentView = Exclude<BrokerView, { status: 'off' }>;
+
+/** The Broker page: every investment, and what is shown before the first one. */
+export type BrokerOverview = Extract<BrokerView, { status: 'off' }> & {
+  investments: InvestmentView[];
+};

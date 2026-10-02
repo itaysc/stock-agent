@@ -15,7 +15,7 @@ import { EdgarService } from '../../info/official/edgar.service.js';
 import { LlmService } from '../../llm/llm.service.js';
 import { mapErrors } from '../../backtest/api/map-errors.js';
 import { ResearchService } from '../../research/research.service.js';
-import { deploymentEquity } from '../deployment-cycle.js';
+import { deploymentEquity, reservedCash } from '../deployment-cycle.js';
 import { DeploymentRunnerService } from '../deployment-runner.service.js';
 import { deploymentView } from '../deployment-view.js';
 import { DeploymentsService } from '../deployments.service.js';
@@ -57,14 +57,20 @@ export class DeploymentsController {
     ]);
     const live = list.filter((d) => d.status !== 'stopped');
     const committed = live.reduce((n, d) => n + d.capital, 0);
+    // Not yet invested, but owned by a deployment (incl. buys waiting for the open).
+    const reserved = live.reduce((n, d) => n + reservedCash(d), 0);
+    const deploymentsEquity = live.reduce((n, d) => n + deploymentEquity(d), 0);
     return {
       paper: this.alpaca.isPaper,
       runnerOn: this.runner.enabled,
       cash: Number(account.cash ?? 0),
       equity: Number(account.equity ?? 0),
       committed,
-      free: Number(account.cash ?? 0) - committed,
-      deploymentsEquity: live.reduce((n, d) => n + deploymentEquity(d), 0),
+      /** What the deployments hold in stocks now. */
+      invested: deploymentsEquity - reserved,
+      reserved,
+      free: Number(account.cash ?? 0) - reserved,
+      deploymentsEquity,
       // What the real-time news check can use right now.
       newsSources: {
         headlines: true, // Alpaca (Benzinga)

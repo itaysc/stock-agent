@@ -838,6 +838,51 @@ sub.unsubscribe();
 Env vars are validated at boot, so the app fails fast on bad config. Read them via
 `ConfigService<Env, true>` with `config.get('KEY', { infer: true })`, never `process.env`.
 
+## Risk profiles
+
+The broker asks how much and how much risk: each profile shows what it did since 2007 in dollars for
+your amount (`GET /api/v1/broker/profiles?capital=1000`), and one is suggested by the amount
+(`AMOUNT_RULES` in `src/broker/profiles.ts`: more risk for small amounts, more safety for big ones).
+
+| Profile | What | Per year | Worst drop | Asks you at |
+|---|---|---|---|---|
+| Aggressive (< $2,000) | the 5 strongest stocks | +18.5% | -46% | -30% |
+| Balanced (< $25,000) | the same, to T-bills while the S&P 500 is below its 200-day average | +15.7% | -30% | -20% |
+| Careful | 50% that, 50% the S&P 500 with the same filter | +12.2% | -24% | -15% |
+
+SPY: +10.9% a year, -55%. The numbers are in `src/broker/profile-stats.data.ts`, committed so every
+environment has them; regenerate with `node dist/broker/lab/profiles.cli.js --save` and commit.
+A 70/30 momentum + S&P mix was dropped (Balanced earned as much with a smaller drop).
+
+No automatic sell-everything: past the profile's level it asks you in Telegram (Sell all & stop,
+asked twice, or Keep going), again every 10% deeper. Telegram: `/broker 5000` shows the options with
+their history, `/broker 5000 balanced` starts one.
+
+### Several investments
+
+Each investment is its own amount and risk profile (e.g. $1,000 Aggressive next to $20,000
+Careful), with its own holdings, alerts and buttons: one tab each on the Broker page, plus "Add
+investment" while money is free. Free to invest = the account's cash minus what investments hold
+uninvested (incl. buys waiting for the open). Investments may hold the same stock; when Alpaca
+refuses an order as a possible wash trade (another investment's opposite order on that stock is
+open), it waits in `retry` and goes out once that one fills. API: `POST /api/v1/broker/start`
+(a new one), `/api/v1/broker/investments/:id/pause|resume|stop`, `.../positions/:symbol/sell|levels|allow`,
+`.../chart/:symbol`. Telegram: one daily update with a section per investment; /pause and /resume
+apply to all.
+
+## Long, fair backtests (algo lab)
+
+`node dist/broker/lab/algo-lab.cli.js --source yahoo --universe sp500 --from 2005-01-01 --set families`
+tests with Yahoo prices (free, no key, cached in `server/.cache/yahoo`, git-ignored, ~500 MB) on a
+point-in-time list: each January 1st, the 50 most-traded S&P 500 members of that day (membership
+from github.com/fja05680/sp500, MIT, in `server/.cache/sp500`). The rotation can only hold that
+year's list (`pointInTime` in `src/strategies/rotation/rotation-universe.ts`, lab only). 302 past
+members (mostly bankrupt or bought out) have no Yahoo data, so some survivorship remains.
+
+Results (Jan 2007 → Oct 2026, scored on data the settings never saw): momentum (the broker)
++2,751% (+18.5%/yr, worst drop -46% in 2008) vs SPY +675% (+10.9%/yr) and holding the 50 biggest
+equally +822% (+11.9%/yr, -63%). Trend-following: +389% (+8.4%/yr) but only -19%.
+
 ## Deploy to Railway
 
 Same setup as foozool-initiatives: a Dockerfile build from `server/`, with a health check.

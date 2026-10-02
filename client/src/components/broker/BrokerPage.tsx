@@ -1,42 +1,24 @@
-import {
-  Alert,
-  Badge,
-  Button,
-  Center,
-  Group,
-  Loader,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
-import { IconPlayerPause, IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react';
+import { Alert, Center, Loader, Stack, Tabs, Text } from '@mantine/core';
+import { IconPlus } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client';
-import type { BrokerView } from '../../api/broker-types';
+import type { BrokerOverview } from '../../api/broker-types';
 import type { PaperAccount } from '../../api/paper-types';
-import { money, pct, tone } from '../../lib/format';
-import { StatCard } from '../results/StatCard';
-import { BrokerActivity } from './BrokerActivity';
-import { BrokerHoldings } from './BrokerHoldings';
+import { money } from '../../lib/format';
 import { BrokerStart } from './BrokerStart';
+import { FundsLine } from './FundsLine';
+import { InvestmentPanel } from './InvestmentPanel';
 
-const STATUS = {
-  active: { color: 'teal', label: 'Trading' },
-  paused: { color: 'orange', label: 'Paused' },
-  stopped: { color: 'gray', label: 'Stopped' },
-} as const;
-
-/** The broker: one pot of paper money it trades by itself, and why it did each trade. */
+/** The broker: your investments (one tab each), the money still free, and a tab to add another. */
 export function BrokerPage() {
-  const [view, setView] = useState<BrokerView | null>(null);
+  const [overview, setOverview] = useState<BrokerOverview | null>(null);
   const [account, setAccount] = useState<PaperAccount | null>(null);
+  const [tab, setTab] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
-      const [v, a] = await Promise.all([api.broker(), api.paperAccount()]);
-      setView(v);
+      const [o, a] = await Promise.all([api.broker(), api.paperAccount()]);
+      setOverview(o);
       setAccount(a);
     } catch (err) {
       setError((err as Error).message);
@@ -47,16 +29,13 @@ export function BrokerPage() {
     const timer = setInterval(() => void load(), 60_000);
     return () => clearInterval(timer);
   }, [load]);
-  const act = async (action: 'start' | 'pause' | 'resume' | 'stop', capital?: number) => {
-    try {
-      setError(null);
-      setView(await api.brokerAction(action, capital));
-    } catch (err) {
-      setError((err as Error).message);
-    }
+  // After a change, the money figures change too.
+  const changed = (o: BrokerOverview) => {
+    setOverview(o);
+    void api.paperAccount().then(setAccount, () => undefined);
   };
 
-  if (!view)
+  if (!overview)
     return error ? (
       <Alert color="red">{error}</Alert>
     ) : (
@@ -64,6 +43,29 @@ export function BrokerPage() {
         <Loader />
       </Center>
     );
+  const list = overview.investments;
+  const free = account?.free ?? null;
+  const canAdd = free === null || free >= 100;
+  const start = (
+    <BrokerStart
+      view={overview}
+      free={free}
+      onStart={async (capital, profile) => {
+        try {
+          setError(null);
+          const o = await api.brokerStart(capital, profile);
+          changed(o);
+          setTab(o.investments.at(-1)?.deploymentId ?? null);
+        } catch (err) {
+          setError((err as Error).message);
+        }
+      }}
+    />
+  );
+  const current =
+    list.some((v) => v.deploymentId === tab) || tab === 'add'
+      ? tab
+      : (list[0]?.deploymentId ?? null);
   return (
     <Stack gap="lg">
       {error && (
@@ -83,112 +85,30 @@ export function BrokerPage() {
           phone.
         </Text>
       )}
-      {view.status === 'off' ? (
-        <BrokerStart view={view} free={account?.free ?? null} onStart={(c) => act('start', c)} />
+      {account && <FundsLine account={account} />}
+      {list.length === 0 ? (
+        start
       ) : (
-        <>
-          <Group justify="space-between" align="flex-end">
-            <div>
-              <Group gap="xs">
-                <Title order={2}>Your broker</Title>
-                <Badge variant="light" color={STATUS[view.status].color}>
-                  {STATUS[view.status].label}
-                </Badge>
-              </Group>
-              <Text size="sm" c="dimmed">
-                Paper money since {new Date(view.startedAt).toLocaleDateString()}
-                {view.statusReason ? ` · ${view.statusReason}` : ''}
-              </Text>
-            </div>
-            <Group gap="xs">
-              {view.status === 'active' ? (
-                <Button
-                  variant="default"
-                  leftSection={<IconPlayerPause size={16} />}
-                  onClick={() => void act('pause')}
-                >
-                  Pause
-                </Button>
-              ) : (
-                <Button
-                  leftSection={<IconPlayerPlay size={16} />}
-                  onClick={() => void act('resume')}
-                >
-                  Resume
-                </Button>
-              )}
-              <Button
-                variant="subtle"
-                color="red"
-                leftSection={<IconPlayerStop size={16} />}
-                onClick={() => {
-                  if (window.confirm('Sell everything and stop the broker?')) void act('stop');
-                }}
-              >
-                Stop &amp; sell all
-              </Button>
-            </Group>
-          </Group>
-          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-            <StatCard
-              label="Worth now"
-              value={money(view.equity)}
-              hint={`started with ${money(view.capital)}`}
-            />
-            <StatCard
-              label="Gain"
-              value={pct(view.pnlPct)}
-              color={tone(view.pnlPct)}
-              hint={money(view.pnl)}
-            />
-            <StatCard
-              label="SPY, same time"
-              value={pct(view.spyPct)}
-              color={tone(view.spyPct)}
-              hint={
-                view.spyPct === null
-                  ? 'no data yet'
-                  : view.pnlPct >= view.spyPct
-                    ? 'it is ahead of SPY'
-                    : 'it is behind SPY'
-              }
-            />
-            <StatCard
-              label="Cash"
-              value={money(view.cash)}
-              hint={`${view.holdings.length} stocks held`}
-            />
-          </SimpleGrid>
-          <BrokerHoldings
-            holdings={view.holdings}
-            planned={view.planned}
-            params={view.params}
-            noBuyUntil={view.noBuyUntil ?? []}
-            onView={setView}
-          />
-          <BrokerActivity items={view.activity} />
-          <Paper p="md" withBorder>
-            <Stack gap={4}>
-              <Title order={5}>How it decides</Title>
-              <Text size="sm">{view.algo}</Text>
-              <Text size="sm" c="dimmed">
-                Before each buy it reads the latest news, trading halts and SEC filings, and skips
-                the buy on bad news. If it falls {view.maxDrawdownPct}% below its peak it sells
-                everything and pauses until you resume it. Every month it checks that the algo still
-                beats holding the stocks, and warns you if not.
-              </Text>
-              {view.lastTune && (
-                <Text size="xs" c="dimmed">
-                  Last check ({new Date(view.lastTune.at).toLocaleDateString()}):{' '}
-                  {view.lastTune.message}
-                </Text>
-              )}
-              <Text size="xs" c="dimmed">
-                {view.tested}
-              </Text>
-            </Stack>
-          </Paper>
-        </>
+        <Tabs value={current} onChange={setTab} keepMounted={false}>
+          <Tabs.List>
+            {list.map((v) => (
+              <Tabs.Tab key={v.deploymentId} value={v.deploymentId}>
+                {v.name}
+              </Tabs.Tab>
+            ))}
+            <Tabs.Tab value="add" leftSection={<IconPlus size={14} />} disabled={!canAdd}>
+              Add investment{free !== null ? ` (${money(free)} free)` : ''}
+            </Tabs.Tab>
+          </Tabs.List>
+          {list.map((v) => (
+            <Tabs.Panel key={v.deploymentId} value={v.deploymentId} pt="md">
+              <InvestmentPanel view={v} onOverview={changed} onError={setError} />
+            </Tabs.Panel>
+          ))}
+          <Tabs.Panel value="add" pt="md">
+            {start}
+          </Tabs.Panel>
+        </Tabs>
       )}
     </Stack>
   );

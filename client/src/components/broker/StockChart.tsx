@@ -14,14 +14,14 @@ const time = (iso: string) => Math.floor(new Date(iso).getTime() / 1000) as UTCT
 const usd = (n: number | null) => (n === null ? '—' : `$${n.toFixed(2)}`);
 
 /** A stock's price since before the buy, with its buy price, stop, high and trades. */
-export function StockChart({ symbol }: { symbol: string }) {
+export function StockChart({ investmentId, symbol }: { investmentId: string; symbol: string }) {
   const box = useRef<HTMLDivElement>(null);
   const dark = useComputedColorScheme('light') === 'dark';
   const [data, setData] = useState<StockChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    api.brokerChart(symbol).then(setData, (err: Error) => setError(err.message));
-  }, [symbol]);
+    api.brokerChart(investmentId, symbol).then(setData, (err: Error) => setError(err.message));
+  }, [investmentId, symbol]);
   useEffect(() => {
     if (!data || !box.current) return;
     const text = dark ? '#c9c9c9' : '#333';

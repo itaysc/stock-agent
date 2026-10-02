@@ -19,63 +19,82 @@ export class BrokerNoticesService {
     private readonly notifier: NotifierService,
   ) {}
 
-  /** A message for each new fill (bought / sold, price, why, stop or result). */
+  /** A message for each new fill (bought / sold, price, why, stop or result), per investment. */
   async notifyFills(): Promise<void> {
-    const [state, d] = await Promise.all([
+    const [state, list] = await Promise.all([
       this.store.get(),
-      this.broker.deployment(),
+      this.broker.investments(),
     ]);
-    if (!d) return;
-    const trades = d.ledgers[0].trades;
-    const done = state.notifiedTrades ?? trades.length; // older state: start from now
-    if (trades.length <= done) {
-      if (state.notifiedTrades === undefined)
-        await this.store.save({ ...state, notifiedTrades: done });
-      return;
+    const notified = { ...state.notified };
+    const messages: string[] = [];
+    for (const d of list) {
+      // Every part's trades, oldest first (new fills are the latest).
+      const trades = d.ledgers
+        .flatMap((l, i) =>
+          l.trades.map((t) => ({
+            t,
+            stop: Number(d.sleeves[i].params.stopPct ?? 0),
+          })),
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.t.timestamp).getTime() -
+            new Date(b.t.timestamp).getTime(),
+        );
+      // Older state (one investment): its count; unknown: start from now.
+      const done =
+        notified[d.id] ??
+        (d.id === state.deploymentId ? state.notifiedTrades : undefined) ??
+        trades.length;
+      const label = list.length > 1 ? `${d.name}: ` : '';
+      for (const { t, stop } of trades.slice(done))
+        messages.push(label + fillMessage(t, stop));
+      notified[d.id] = trades.length;
     }
-    const stop = Number(d.sleeves[0].params.stopPct ?? 0);
-    await this.notifier.send(
-      trades
-        .slice(done)
-        .map((t) => fillMessage(t, stop))
-        .join('\n\n'),
-    );
-    await this.store.save({ ...state, notifiedTrades: trades.length });
+    if (messages.length) await this.notifier.send(messages.join('\n\n'));
+    if (JSON.stringify(notified) !== JSON.stringify(state.notified))
+      await this.store.save({ ...state, notified });
   }
 
-  /** The daily update, when a new trading day was processed (or now, with force). */
+  /** The daily update (every investment), when a new trading day was processed (or now, with force). */
   async reportIfNew(force = false): Promise<string | null> {
-    const [state, d] = await Promise.all([
+    const [state, list] = await Promise.all([
       this.store.get(),
-      this.broker.deployment(),
+      this.broker.investments(),
     ]);
-    if (!d) return null;
-    const day = d.lastBarAt ? new Date(d.lastBarAt).getTime() : 0;
+    if (!list.length) return null;
+    const day = Math.max(
+      ...list.map((d) => (d.lastBarAt ? new Date(d.lastBarAt).getTime() : 0)),
+    );
     const last = state.lastReportedBarAt
       ? new Date(state.lastReportedBarAt).getTime()
       : 0;
     if (!force && day <= last) return null;
-    const v = await this.broker.fullView(d, state);
-    if (v.status === 'off') return null;
-    const text = dailyReport(
-      v,
-      state.lastReportAt ? new Date(state.lastReportAt) : null,
-    );
+    const since = state.lastReportAt ? new Date(state.lastReportAt) : null;
+    const parts = [];
+    for (const d of list) {
+      const v = await this.broker.fullView(d, state);
+      parts.push(
+        (list.length > 1 ? `━━ ${d.name} ━━\n` : '') + dailyReport(v, since),
+      );
+    }
+    const text = parts.join('\n\n');
     await this.notifier.send(text);
     await this.store.save({
       ...state,
       lastReportAt: new Date(),
-      lastReportedBarAt: d.lastBarAt,
+      lastReportedBarAt: new Date(day),
     });
     return text;
   }
 
   /** The monthly health check; never changes the settings. */
   async checkIfDue(now = new Date()): Promise<void> {
-    const [state, d] = await Promise.all([
+    const [state, list] = await Promise.all([
       this.store.get(),
-      this.broker.deployment(),
+      this.broker.investments(),
     ]);
+    const d = list[0];
     if (!d) return;
     const last = state.lastTune ? new Date(state.lastTune.at).getTime() : 0;
     if (now.getTime() - last < CHECK_EVERY_DAYS * DAY_MS) return;

@@ -13,7 +13,7 @@ import {
 } from '@mantine/core';
 import { lazy, Suspense, useState } from 'react';
 import { api } from '../../api/client';
-import type { BrokerHolding, BrokerPlanned, BrokerView } from '../../api/broker-types';
+import type { BrokerHolding, BrokerOverview, BrokerPlanned } from '../../api/broker-types';
 import type { HoldingAction } from './HoldingActions';
 import { HoldingRow } from './HoldingRow';
 import { LevelsModal } from './LevelsModal';
@@ -25,24 +25,26 @@ const shares = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(4));
 
 /** What you're invested in: status, prices, sell levels, a chart, and what you can do with each. */
 export function BrokerHoldings({
+  investmentId,
   holdings,
   planned,
   params,
   noBuyUntil,
-  onView,
+  onOverview,
 }: {
+  investmentId: string;
   holdings: BrokerHolding[];
   planned: BrokerPlanned[];
   params: Record<string, string>;
   noBuyUntil: Array<{ symbol: string; until: string }>;
-  onView: (view: BrokerView) => void;
+  onOverview: (o: BrokerOverview) => void;
 }) {
   const [chart, setChart] = useState<string | null>(null);
   const [editing, setEditing] = useState<BrokerHolding | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const run = async (call: () => Promise<BrokerView>, done: string) => {
+  const run = async (call: () => Promise<BrokerOverview>, done: string) => {
     try {
-      onView(await call());
+      onOverview(await call());
       setMessage({ ok: true, text: done });
     } catch (err) {
       setMessage({ ok: false, text: (err as Error).message });
@@ -53,7 +55,7 @@ export function BrokerHoldings({
     if (action === 'levels') return setEditing(h);
     if (action === 'clear-levels')
       return void run(
-        () => api.brokerLevels(h.symbol, { stopPrice: null, takeProfitPrice: null }),
+        () => api.brokerLevels(investmentId, h.symbol, { stopPrice: null, takeProfitPrice: null }),
         `${h.symbol}: back to the automatic levels.`,
       );
     const half = action === 'sell-half';
@@ -67,7 +69,10 @@ export function BrokerHoldings({
       )
     )
       return;
-    void run(() => api.brokerSell(h.symbol, half ? 0.5 : 1), `Sell order sent for ${what}.`);
+    void run(
+      () => api.brokerSell(investmentId, h.symbol, half ? 0.5 : 1),
+      `Sell order sent for ${what}.`,
+    );
   };
   return (
     <Paper p="md" withBorder>
@@ -137,7 +142,10 @@ export function BrokerHoldings({
               size="compact-xs"
               variant="subtle"
               onClick={() =>
-                void run(() => api.brokerAllow(b.symbol), `It may buy ${b.symbol} again.`)
+                void run(
+                  () => api.brokerAllow(investmentId, b.symbol),
+                  `It may buy ${b.symbol} again.`,
+                )
               }
             >
               Allow now
@@ -155,7 +163,7 @@ export function BrokerHoldings({
               </Center>
             }
           >
-            <StockChart symbol={chart} />
+            <StockChart investmentId={investmentId} symbol={chart} />
           </Suspense>
         )}
       </Modal>
@@ -164,7 +172,7 @@ export function BrokerHoldings({
         onClose={() => setEditing(null)}
         onSave={async (levels) => {
           const h = editing as BrokerHolding;
-          onView(await api.brokerLevels(h.symbol, levels));
+          onOverview(await api.brokerLevels(investmentId, h.symbol, levels));
           setMessage({ ok: true, text: `Saved your levels for ${h.symbol}.` });
         }}
       />

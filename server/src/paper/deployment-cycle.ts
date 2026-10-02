@@ -9,7 +9,13 @@ import {
 } from './deployment-runtime.js';
 import { type CycleDeps, logEvent } from './deployment-events.js';
 import { reconcile } from './reconcile.js';
-import { flatten, placeOne, sendOrders } from './deployment-orders.js';
+import {
+  flatten,
+  placeOne,
+  sendOrders,
+  retryOrders,
+} from './deployment-orders.js';
+import { drawdownAlert } from './drawdown-alert.js';
 import { dropHeldOffBuys, manualExits } from './manual-exits.js';
 import { releaseStaged, watchHeld } from './news-check.js';
 import { ledgerEquity } from './sleeve-ledger.js';
@@ -21,6 +27,14 @@ const DAY_MS = 86_400_000;
 
 export const deploymentEquity = (d: Deployment) =>
   d.ledgers.reduce((n, l) => n + ledgerEquity(l), 0) + reserveOf(d);
+
+/**
+ * Money a deployment still holds uninvested: its sleeves' cash (including buys
+ * planned or sent but not filled yet) and its reserve. The account's cash minus
+ * this, for every live deployment, is what is free to invest.
+ */
+export const reservedCash = (d: Deployment) =>
+  d.ledgers.reduce((n, l) => n + l.cash, 0) + reserveOf(d);
 
 /** The part of the capital no sleeve got (kept in cash). */
 export const reserveOf = (d: Deployment) =>
@@ -127,6 +141,7 @@ export async function runCycle(
       'passed the news check',
     ),
   );
+  await retryOrders(d, deps, now);
   for (const s of await watchHeld(d, deps, now)) {
     if (!d.ledgers[s.sleeve].pending.some((o) => o.symbol === s.symbol)) {
       await placeOne(
@@ -140,7 +155,9 @@ export async function runCycle(
     }
   }
   if (d.lastBarAt) snapshot(d, new Date(d.lastBarAt));
-  await guard(d, runtime, deps, now);
+  await (d.drawdownAlert
+    ? drawdownAlert(d, deps, now)
+    : guard(d, runtime, deps, now));
 }
 
 /** Equity at a day's close (one point per day; the same day is updated). */

@@ -61,11 +61,45 @@ export async function placeOne(
       now,
     );
   } catch (err) {
+    if (/wash trade/i.test((err as Error).message)) {
+      (d.ledgers[sleeve].retry ??= []).push(o);
+      logEvent(
+        d,
+        `${o.side} ${o.qty} ${o.symbol} waits: another investment has an opposite order open on it; sent again once that one fills`,
+        now,
+      );
+      return;
+    }
     logEvent(
       d,
       `${o.side} ${o.qty} ${o.symbol} not sent: ${(err as Error).message}`,
       now,
     );
+  }
+}
+
+/** Sends the orders that waited for an opposite order of another investment (while the market is open or about to). */
+export async function retryOrders(
+  d: Deployment,
+  deps: CycleDeps,
+  now: Date,
+): Promise<void> {
+  if (!d.ledgers.some((l) => l.retry?.length) || !(await deps.opensSoon()))
+    return;
+  for (const [i, l] of d.ledgers.entries()) {
+    const waiting = l.retry ?? [];
+    l.retry = [];
+    for (const o of waiting)
+      if (!l.pending.some((p) => p.symbol === o.symbol))
+        await placeOne(
+          d,
+          i,
+          o,
+          deps,
+          now,
+          "sent after the other investment's order",
+        );
+      else l.retry.push(o);
   }
 }
 

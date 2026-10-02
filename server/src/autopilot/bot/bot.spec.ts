@@ -31,6 +31,8 @@ function setup(running: object | null = null) {
       handle: async (command: string) =>
         command === 'pause' ? 'paused' : null,
       status: async () => 'Broker: not running.',
+      button: async (data: string) =>
+        data.startsWith('dd') ? 'drawdown answer' : null,
     } as unknown as BrokerCommands,
   );
   return { commands, ideas, autopilot };
@@ -55,6 +57,7 @@ describe('BotCommands', () => {
     expect(await commands.button('skip:k3f9')).toBe('skip k3f9');
     expect(ideas.invest).toHaveBeenCalledTimes(2);
     expect(await commands.text('/pause')).toBe('paused'); // the broker's
+    expect(await commands.button('ddkeep:d1')).toBe('drawdown answer');
     expect(await commands.text('/status')).toMatch(/^Broker: not running\./);
     expect(await commands.text('/hello')).toMatch(/I don't know "\/hello"/);
   });

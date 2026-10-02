@@ -39,7 +39,11 @@ export interface CycleDeps {
   /** True when the market opens within the pre-open window, or is open. */
   opensSoon(): Promise<boolean>;
   /** Sends a notification (no-op when none is configured). */
-  notify(text: string): Promise<void>;
+  /** A message to you (Telegram buttons send `data` back to the bot). */
+  notify(
+    text: string,
+    buttons?: Array<{ text: string; data: string }>,
+  ): Promise<void>;
 }
 
 export interface OfficialEvents {

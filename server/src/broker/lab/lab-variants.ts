@@ -328,3 +328,86 @@ export const FAMILIES = [
     band: '0.5',
   }),
 ];
+
+/** Crash rules on top of the broker's settings, plus the softer algos to mix with (see MIXES). */
+export const CRASH = [
+  current('C broker now', { stopPct: '25' }),
+  current('C market filter 200d', { stopPct: '25', marketFilter: '200' }),
+  current('C market filter 150d', { stopPct: '25', marketFilter: '150' }),
+  current('C market filter 100d', { stopPct: '25', marketFilter: '100' }),
+  current('C target volatility 20%', { stopPct: '25', targetVol: '20' }),
+  current('C target volatility 30%', { stopPct: '25', targetVol: '30' }),
+  current('C guard 25%, back after 1 month', {
+    stopPct: '25',
+    guardPct: '25',
+    guardDays: '21',
+  }),
+  current('C guard 20%, back when SPY > 200d', {
+    stopPct: '25',
+    guardPct: '20',
+    guardDays: '5',
+    guardResume: '1',
+  }),
+  current('C guard 25%, back when SPY > 200d', {
+    stopPct: '25',
+    guardPct: '25',
+    guardDays: '5',
+    guardResume: '1',
+  }),
+  current('C guard 35%, back when SPY > 200d', {
+    stopPct: '25',
+    guardPct: '35',
+    guardDays: '5',
+    guardResume: '1',
+  }),
+  textbook('T trend: all above 200d avg', {
+    topN: '50',
+    absMomentum: '0',
+    volWeight: '0',
+    lookback: '21',
+    trendSma: '200',
+    band: '0.5',
+  }),
+  textbook('Q equal weight + market 200d', {
+    topN: '50',
+    absMomentum: '0',
+    volWeight: '0',
+    lookback: '21',
+    rebalanceDays: '21',
+    marketFilter: '200',
+    band: '0.5',
+  }),
+];
+
+/** Mixes of the CRASH variants (re-balanced yearly). */
+export const MIXES: Array<{ name: string; parts: Array<[string, number]> }> = [
+  {
+    name: 'X 70% momentum + 30% trend',
+    parts: [
+      ['C broker now', 0.7],
+      ['T trend: all above 200d avg', 0.3],
+    ],
+  },
+  {
+    name: 'X 50% momentum + 50% trend',
+    parts: [
+      ['C broker now', 0.5],
+      ['T trend: all above 200d avg', 0.5],
+    ],
+  },
+  {
+    name: 'X 70% momentum + 30% eq+market',
+    parts: [
+      ['C broker now', 0.7],
+      ['Q equal weight + market 200d', 0.3],
+    ],
+  },
+];
+
+/** At most N stocks from one sector, on top of the broker's settings. */
+export const SECTOR_CAPS = [
+  current('S broker now (no sector limit)', { stopPct: '25' }),
+  current('S at most 3 per sector', { stopPct: '25', maxPerSector: '3' }),
+  current('S at most 2 per sector', { stopPct: '25', maxPerSector: '2' }),
+  current('S at most 1 per sector', { stopPct: '25', maxPerSector: '1' }),
+];

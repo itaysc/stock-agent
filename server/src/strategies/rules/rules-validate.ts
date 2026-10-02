@@ -55,7 +55,9 @@ export function usesMarket(strategies: string[], params: ParamValues): boolean {
   return (
     anyOn(strategies, params, ['marketSma', 'volMax', 'volExit']) ||
     (strategies.includes('momentum-rotation') &&
-      [params.marketFilter ?? []].flat().some((v) => Number(v) > 0))
+      [params.marketFilter ?? [], params.guardResume ?? []]
+        .flat()
+        .some((v) => Number(v) > 0))
   );
 }
 

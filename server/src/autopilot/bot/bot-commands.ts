@@ -45,6 +45,8 @@ export class BotCommands {
 
   /** A button press: "invest:k3f9" (asks how much), "amount:k3f9:5000" or "skip:k3f9". */
   async button(data: string, now = Date.now()): Promise<Reply> {
+    const broker = await this.brokerCommands.button(data);
+    if (broker !== null) return broker;
     const [action, id, amount] = data.split(':');
     if (action === 'invest' && id) return this.askAmount(id, now);
     if (action === 'amount' && id && Number(amount) > 0)

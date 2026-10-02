@@ -3,7 +3,7 @@ import type { Deployment } from '../paper/deployment.types.js';
 import type { StrategyBar } from '../strategies/strategy.types.js';
 import { openedAt, sellLevels } from './broker-levels.js';
 import { plainReason } from './broker-view.js';
-import { SAFE_ASSET } from './universe.js';
+import { SAFE_SYMBOLS } from './broker-holdings.js';
 
 const DAY_MS = 86_400_000;
 
@@ -21,14 +21,18 @@ export async function holdingHistory(
   backtests: BacktestService,
   d: Deployment,
 ): Promise<Record<string, StrategyBar[]>> {
-  const l = d.ledgers[0];
-  const held = Object.keys(l.positions).filter((s) => s !== SAFE_ASSET);
-  const opened = held.map(
-    (s) => openedAt(l.trades, s)?.getTime() ?? Date.now(),
+  const held = d.ledgers.flatMap((l) =>
+    Object.keys(l.positions)
+      .filter((s) => !SAFE_SYMBOLS.has(s))
+      .map((s) => ({
+        s,
+        opened: openedAt(l.trades, s)?.getTime() ?? Date.now(),
+      })),
   );
+  const opened = held.map((h) => h.opened);
   return daily(
     backtests,
-    held,
+    held.map((h) => h.s),
     new Date(Math.min(Date.now(), ...opened) - 3 * DAY_MS),
   );
 }
@@ -39,14 +43,24 @@ export async function stockChart(
   d: Deployment | null,
   symbol: string,
 ) {
-  const l = d?.ledgers[0];
+  // The part (sleeve) that trades this symbol.
+  const sleeve = d
+    ? Math.max(
+        0,
+        d.ledgers.findIndex(
+          (x) =>
+            x.positions[symbol] || x.trades.some((t) => t.symbol === symbol),
+        ),
+      )
+    : 0;
+  const l = d?.ledgers[sleeve];
   const position = l?.positions[symbol];
   const opened = l ? openedAt(l.trades, symbol) : null;
   const start = new Date((opened ?? new Date()).getTime() - 90 * DAY_MS);
   const bars = (await daily(backtests, [symbol], start))[symbol] ?? [];
   const auto =
-    d && position && symbol !== SAFE_ASSET
-      ? sellLevels(bars, opened, position.avgPrice, d.sleeves[0].params)
+    d && position && !SAFE_SYMBOLS.has(symbol)
+      ? sellLevels(bars, opened, position.avgPrice, d.sleeves[sleeve].params)
       : null;
   // Your own levels count too: the higher stop, and your target over the automatic one.
   const mine = d?.manual?.[symbol];

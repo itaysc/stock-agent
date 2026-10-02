@@ -2,6 +2,9 @@ import { MARKET_SYMBOL } from '../rules/rules-validate.js';
 import { cleanQty, roundQty } from '../qty.js';
 import { VolTracker } from '../sizing.js';
 import { rankSymbols, rotationTargets } from './rotation-targets.js';
+import { holdingExits } from './rotation-exits.js';
+import { RotationGuard } from './rotation-guard.js';
+import { pointInTime } from './rotation-universe.js';
 import type {
   Strategy,
   StrategyBar,
@@ -29,6 +32,9 @@ export class MomentumRotationStrategy implements Strategy {
   /** Highest close of each held symbol since it was bought (trailing stop). */
   private readonly peaks = new Map<string, number>();
   readonly marketSymbols: string[];
+  private readonly guard: RotationGuard;
+  /** The latest close it saw (for a point-in-time universe in the lab). */
+  private now = new Date(0);
 
   constructor(
     readonly symbols: string[],
@@ -43,21 +49,38 @@ export class MomentumRotationStrategy implements Strategy {
       throw new Error(
         `topN (${p.topN}) is more than the ${risky} symbols to rank`,
       );
-    this.marketSymbols = p.marketFilter > 0 ? [MARKET_SYMBOL] : [];
+    this.marketSymbols =
+      p.marketFilter > 0 || p.guardResume ? [MARKET_SYMBOL] : [];
+    this.guard = new RotationGuard(p.guardPct, p.guardDays, !!p.guardResume);
   }
 
   onMarketBar(bar: StrategyBar): void {
-    if (bar.symbol !== MARKET_SYMBOL || !(this.p.marketFilter > 0)) return;
+    const keep = Math.max(this.p.marketFilter, this.p.guardResume ? 200 : 0);
+    if (bar.symbol !== MARKET_SYMBOL || !(keep > 0)) return;
     this.market.push(bar.close);
-    if (this.market.length > this.p.marketFilter) this.market.shift();
+    if (this.market.length > keep) this.market.shift();
+  }
+
+  /** SPY above its n-day average (null: not enough data). */
+  private marketAbove(n: number): boolean | null {
+    if (this.market.length < n) return null;
+    const recent = this.market.slice(-n);
+    return (recent.at(-1) ?? 0) > recent.reduce((a, b) => a + b, 0) / n;
+  }
+
+  /** Everything in the safe asset (or cash): the crash guard tripped. */
+  private safeOnly(): Map<string, { weight: number; why: string }> {
+    const safe = this.p.safeLast ? this.symbols.at(-1) : undefined;
+    const why = `crash guard: the account fell ${this.p.guardPct}% from its peak; waiting in T-bills`;
+    return new Map(safe ? [[safe, { weight: this.p.allocation, why }]] : []);
   }
 
   /** SPY below its marketFilter-day average (null: off, or not enough data yet). */
   private marketDown(): boolean | null {
     const n = this.p.marketFilter;
-    if (!(n > 0) || this.market.length < n) return null;
-    const avg = this.market.reduce((a, b) => a + b, 0) / n;
-    return (this.market.at(-1) ?? 0) < avg;
+    if (!(n > 0)) return null;
+    const above = this.marketAbove(n);
+    return above === null ? null : !above;
   }
 
   get warmupBars(): number {
@@ -79,26 +102,36 @@ export class MomentumRotationStrategy implements Strategy {
     vol.add(bar.close);
   }
 
-  onClose(_time: Date, ctx: StrategyContext): void {
-    if (
-      !this.symbols.every(
-        (s) => (this.closes.get(s)?.length ?? 0) >= this.warmupBars,
-      )
-    )
-      return;
-    const stopped = this.exits(ctx);
-    // Holding nothing yet (just started, or everything was sold): invest now, not at the next re-check.
-    const empty = this.symbols.every((s) => !ctx.position(s));
-    if (this.steps++ % this.p.rebalanceDays !== 0 && !empty) return;
-    const weights = this.targets();
+  onClose(time: Date, ctx: StrategyContext): void {
+    this.now = time;
+    if (!this.ready) return;
+    const stopped = holdingExits(
+      this.p,
+      this.symbols,
+      this.closes,
+      this.peaks,
+      ctx,
+    );
     const price = (s: string) => this.closes.get(s)?.at(-1) ?? 0;
     const equity = this.symbols.reduce(
       (n, s) => n + (ctx.position(s)?.qty ?? 0) * price(s),
       ctx.cash(),
     );
+    const guard = this.guard.update(equity, this.marketAbove(200));
+    if (guard === 'out') return;
+    // Holding nothing yet (just started, or everything was sold): invest now, not at the next re-check.
+    const empty = this.symbols.every((s) => !ctx.position(s));
+    if (guard === 'in' && this.steps++ % this.p.rebalanceDays !== 0 && !empty)
+      return;
+    const weights = guard === 'trip' ? this.safeOnly() : this.targets();
+    const exitWhy =
+      guard === 'trip'
+        ? `crash guard: the account fell ${this.p.guardPct}% from its peak`
+        : `left the top ${this.p.topN}`;
     // A symbol stopped out today is already being sold: leave it until the next re-check.
+    // (Symbols without history yet have no price and no target: nothing to trade.)
     const orders = this.symbols
-      .filter((s) => !stopped.has(s))
+      .filter((s) => !stopped.has(s) && price(s) > 0)
       .map((s) => {
         const target = roundQty(
           (equity * (weights.get(s)?.weight ?? 0)) / price(s),
@@ -107,7 +140,7 @@ export class MomentumRotationStrategy implements Strategy {
         return {
           s,
           delta: cleanQty(target - (ctx.position(s)?.qty ?? 0)),
-          why: weights.get(s)?.why ?? `left the top ${this.p.topN}`,
+          why: weights.get(s)?.why ?? exitWhy,
         };
       });
     const small = (delta: number, s: string) =>
@@ -118,43 +151,6 @@ export class MomentumRotationStrategy implements Strategy {
       if (o.delta > 0 && !small(o.delta, o.s)) ctx.buy(o.s, o.delta, o.why);
   }
 
-  /** Every day: the stop loss (trailing: below the highest close since bought) and the take-profit. */
-  private exits(ctx: StrategyContext): Set<string> {
-    const stopped = new Set<string>();
-    for (const s of this.symbols) {
-      const close = this.closes.get(s)?.at(-1);
-      if (!ctx.position(s) || close === undefined) {
-        this.peaks.delete(s);
-        continue;
-      }
-      const peak = Math.max(this.peaks.get(s) ?? close, close);
-      this.peaks.set(s, peak);
-      const drop = (1 - close / peak) * 100;
-      const gain = (close / (ctx.position(s)?.avgPrice ?? close) - 1) * 100;
-      const safe = this.p.safeLast && s === this.symbols.at(-1);
-      if (this.p.takeProfitPct > 0 && !safe && gain >= this.p.takeProfitPct) {
-        ctx.sell(
-          s,
-          ctx.position(s)?.qty ?? 0,
-          `take profit: up ${gain.toFixed(1)}% from the buy price`,
-        );
-        this.peaks.delete(s);
-        stopped.add(s);
-        continue;
-      }
-      if (this.p.stopPct > 0 && !safe && drop >= this.p.stopPct) {
-        ctx.sell(
-          s,
-          ctx.position(s)?.qty ?? 0,
-          `stop: down ${drop.toFixed(1)}% from its high`,
-        );
-        this.peaks.delete(s);
-        stopped.add(s);
-      }
-    }
-    return stopped;
-  }
-
   /** Above its own trendSma-day average (always true with trendSma off). */
   private aboveTrend(s: string): boolean {
     const n = this.p.trendSma;
@@ -163,28 +159,42 @@ export class MomentumRotationStrategy implements Strategy {
     return c.length === n && (c.at(-1) ?? 0) > c.reduce((a, b) => a + b, 0) / n;
   }
 
-  /** Whether every symbol has enough history to rank. */
-  get ready(): boolean {
-    return this.symbols.every(
-      (s) => (this.closes.get(s)?.length ?? 0) >= this.warmupBars,
+  /**
+   * The symbols it can rank now: those with enough history (a stock listed
+   * recently waits until it has a full window), and the safe asset, last.
+   */
+  private eligible(): string[] {
+    const safe = this.p.safeLast ? this.symbols.at(-1) : undefined;
+    return this.symbols.filter(
+      (s) =>
+        s === safe ||
+        ((this.closes.get(s)?.length ?? 0) >= this.warmupBars &&
+          pointInTime.allowed(s, this.now)),
     );
   }
 
-  /** Target share of the account per symbol, with the reason (what it would hold now). */
+  /** Whether it can trade: at least one symbol besides the safe asset has enough history. */
+  get ready(): boolean {
+    const safe = this.p.safeLast ? this.symbols.at(-1) : undefined;
+    // A safe asset without history yet (e.g. BIL before 2007) leaves its share in cash.
+    return this.eligible().some((s) => s !== safe);
+  }
+
   /** Every symbol to rank, best first (e.g. "#3 of 50" on the broker page). */
   ranking(): string[] {
     return rankSymbols({
       p: this.p,
-      symbols: this.symbols,
+      symbols: this.eligible(),
       closes: this.closes,
       vols: this.vols,
     }).ranked;
   }
 
+  /** Target share of the account per symbol, with the reason (what it would hold now). */
   targets(): Map<string, { weight: number; why: string }> {
     return rotationTargets({
       p: this.p,
-      symbols: this.symbols,
+      symbols: this.eligible(),
       closes: this.closes,
       vols: this.vols,
       marketDown: this.marketDown() === true,

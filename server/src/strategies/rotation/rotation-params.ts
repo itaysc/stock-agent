@@ -101,6 +101,30 @@ export const ROTATION_PARAMS: ParamSpecs = {
     description:
       'Sell a holding (checked daily) once it is up this % from its buy price. 0 = off.',
   },
+  maxPerSector: whole(
+    0,
+    0,
+    20,
+    'Hold at most this many symbols from one sector (2 = no more than two tech stocks); the next-best from other sectors take the slots. 0 = no limit.',
+  ),
+  guardPct: {
+    default: 0,
+    min: 0,
+    max: 90,
+    zeroIsOff: true,
+    description:
+      'Crash guard: when the whole account falls this % below its peak, sell everything into the safe asset and wait. 0 = off.',
+  },
+  guardDays: whole(
+    21,
+    1,
+    500,
+    'Crash guard: wait at least this many trading days before buying again.',
+  ),
+  guardResume: flag(
+    0,
+    '1 = after a crash-guard sale, also wait until SPY is back above its 200-day average.',
+  ),
   fractional: flag(
     0,
     '1 = buy fractional shares (e.g. 0.25 of a share), so small accounts can hold pricey stocks.',

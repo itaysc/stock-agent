@@ -15,50 +15,59 @@ const trade = (symbol: string, side: 'buy' | 'sell') => ({
   price: 100,
   realizedPnl: side === 'sell' ? 5 : undefined,
 });
-
-function setup(notifiedTrades: number | undefined) {
+const investment = (id: string, name: string, symbols: string[]) => {
   const l = emptyLedger(1_000);
-  l.trades = [trade('CAT', 'buy'), trade('MRK', 'buy'), trade('CAT', 'sell')];
-  const d = {
+  l.trades = symbols.map((s) => trade(s, 'buy'));
+  return {
+    id,
+    name,
     ledgers: [l],
     sleeves: [{ params: { stopPct: '25' } }],
   } as unknown as Deployment;
-  let state = { notifiedTrades } as BrokerState;
+};
+
+function setup(list: Deployment[], state: Partial<BrokerState>) {
+  let saved = { deploymentId: null, ...state } as BrokerState;
   const send = vi.fn(async () => undefined);
   const notices = new BrokerNoticesService(
-    { deployment: async () => d } as unknown as BrokerService,
+    { investments: async () => list } as unknown as BrokerService,
     {
-      get: async () => state,
-      save: async (s: BrokerState) => void (state = s),
+      get: async () => saved,
+      save: async (s: BrokerState) => void (saved = s),
     } as unknown as BrokerStore,
     {} as WalkForwardService,
     { send } as unknown as NotifierService,
   );
-  return { notices, send, l, state: () => state };
+  return { notices, send, state: () => saved };
 }
 
 describe('fill notices', () => {
-  it('sends each new fill once', async () => {
-    const { notices, send, l, state } = setup(1);
+  it('sends each new fill once, per investment, labelled when there are several', async () => {
+    const a = investment('a', 'Aggressive · $1,000', ['CAT', 'MRK']);
+    const b = investment('b', 'Careful · $5,000', ['SPY']);
+    const { notices, send, state } = setup([a, b], {
+      notified: { a: 1, b: 0 },
+    });
     await notices.notifyFills();
-    expect(send).toHaveBeenCalledTimes(1);
     const text = (send.mock.calls[0] as unknown as [string])[0];
-    expect(text).toMatch(/^✅ Bought 1 MRK at \$100.00 = \$100.00\n/);
-    expect(text).toContain('\n\n💰 Sold 1 CAT at $100.00');
-    expect(state().notifiedTrades).toBe(3);
+    expect(text).toMatch(/^Aggressive · \$1,000: ✅ Bought 1 MRK at \$100.00/);
+    expect(text).toContain('\n\nCareful · $5,000: ✅ Bought 1 SPY');
+    expect(state().notified).toEqual({ a: 2, b: 1 });
     await notices.notifyFills();
     expect(send).toHaveBeenCalledTimes(1);
-    l.trades.push(trade('NVDA', 'buy'));
-    await notices.notifyFills();
-    expect(send).toHaveBeenLastCalledWith(
-      expect.stringMatching(/^✅ Bought 1 NVDA/),
-    );
   });
 
-  it('does not replay old trades for a broker started before fill notices', async () => {
-    const { notices, send, state } = setup(undefined);
+  it('carries over an older single investment, and does not replay trades it never counted', async () => {
+    const old = investment('old', 'Broker', ['CAT', 'MRK', 'AMD']);
+    const fresh = investment('new', 'Balanced · $2,000', ['NVDA']);
+    const { notices, send, state } = setup([old, fresh], {
+      deploymentId: 'old',
+      notifiedTrades: 2,
+    });
     await notices.notifyFills();
-    expect(send).not.toHaveBeenCalled();
-    expect(state().notifiedTrades).toBe(3);
+    const text = (send.mock.calls[0] as unknown as [string])[0];
+    expect(text).toContain('AMD'); // the old one's third trade was not sent yet
+    expect(text).not.toContain('NVDA'); // unknown to the state: start from now
+    expect(state().notified).toEqual({ old: 3, new: 1 });
   });
 });

@@ -64,6 +64,16 @@ export interface SleeveLedger {
   pending: PendingOrder[];
   /** Buys waiting for the pre-open news check (older deployments: absent). */
   staged?: StagedBuy[];
+  /**
+   * Orders Alpaca refused as a possible wash trade (another investment has an
+   * opposite order open on the same stock): sent again once that one is done.
+   */
+  retry?: Array<{
+    symbol: string;
+    side: 'buy' | 'sell';
+    qty: number;
+    reason?: string;
+  }>;
   realizedPnl: number;
   /** Last close per symbol, for valuing positions. */
   lastPrices: Record<string, number>;
@@ -99,6 +109,8 @@ export interface Deployment {
   source: {
     kind: 'manual' | 'research' | 'portfolio' | 'autopilot' | 'broker';
     researchId?: string;
+    /** A broker investment's risk profile (aggressive / balanced / careful). */
+    profile?: string;
   };
   timeframe: '1Day';
   capital: number;
@@ -115,6 +127,11 @@ export interface Deployment {
   lastBarAt: Date | null;
   peakEquity: number;
   snapshots: Snapshot[];
+  /**
+   * Instead of the drawdown guard (which sells everything by itself): ask you
+   * in Telegram once it falls `pct` below its peak, again every 10% deeper.
+   */
+  drawdownAlert?: { pct: number; alertedAtPct: number | null };
   /** Your own sell levels per symbol, on top of the strategy's rules (checked on daily closes). */
   manual?: Record<string, ManualLevels>;
   /** Symbols you sold (or your levels sold): the strategy does not buy them again before this. */

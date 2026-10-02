@@ -194,7 +194,7 @@ export class DeploymentRunnerService
           new Date(clock.nextOpen).getTime() - Date.now() <= PRE_OPEN_MS
         );
       },
-      notify: (text) => this.notifier.send(text),
+      notify: (text, buttons) => this.notifier.send(text, buttons),
     };
   }
 }

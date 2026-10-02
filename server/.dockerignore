@@ -8,3 +8,4 @@ test
 *.log
 *.tsbuildinfo
 .DS_Store
+.cache

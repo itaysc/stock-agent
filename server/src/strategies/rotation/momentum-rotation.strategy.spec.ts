@@ -2,6 +2,7 @@ import { makeBars } from '../../../test/support/bars.js';
 import { runBacktest } from '../../backtest/backtest-engine.js';
 import type { StrategyBar } from '../strategy.types.js';
 import { createStrategy } from '../strategy-registry.js';
+import { pointInTime } from './rotation-universe.js';
 
 const options = { initialCash: 10_000, slippageBps: 0, feePerShare: 0 };
 const series = (start: number, steps: number[]) =>
@@ -273,5 +274,116 @@ describe('momentum rotation ranking modes', () => {
         },
       ).fills.map((f) => f.symbol),
     ).toEqual(['CALM']);
+  });
+});
+
+describe('momentum rotation with a newly listed symbol', () => {
+  it('trades the symbols with enough history, and adds a new one once it has a full window', () => {
+    const old = makeBars('OLD', series(100, Array(15).fill(0.01)));
+    // Listed at bar 6, rising much faster: 6 bars (the window) later it can be ranked.
+    const ipo = makeBars('NEW', series(50, Array(9).fill(0.08))).map(
+      (b, i) => ({
+        ...b,
+        timestamp: old[6 + i].timestamp,
+      }),
+    );
+    const r = runBacktest(
+      createStrategy('momentum-rotation', ['OLD', 'NEW'], {
+        ...base,
+        rebalanceDays: '1',
+        volLookback: '5',
+      }),
+      { OLD: old, NEW: ipo },
+      options,
+    );
+    expect(r.fills[0]).toMatchObject({ symbol: 'OLD', side: 'buy' }); // did not wait for NEW
+    const firstNew = r.fills.find((f) => f.symbol === 'NEW');
+    expect(firstNew).toMatchObject({ side: 'buy' });
+    expect(firstNew!.timestamp.getTime()).toBeGreaterThan(
+      old[11].timestamp.getTime(),
+    ); // after its window
+  });
+});
+
+describe('momentum rotation with a point-in-time universe (lab)', () => {
+  afterEach(() => pointInTime.set(null));
+  it('only holds the symbols allowed at each date, and sells the ones that leave', () => {
+    const a = makeBars('A', series(100, Array(15).fill(0.03)));
+    const b = makeBars('B', series(100, Array(15).fill(0.01)));
+    const cut = a[10].timestamp;
+    pointInTime.set((s, at) => s === 'B' || at < cut); // A leaves the list at bar 10
+    const r = runBacktest(
+      createStrategy('momentum-rotation', ['A', 'B'], {
+        ...base,
+        rebalanceDays: '1',
+        volLookback: '5',
+      }),
+      { A: a, B: b },
+      options,
+    );
+    expect(r.fills[0]).toMatchObject({ symbol: 'A', side: 'buy' }); // the stronger one, while allowed
+    const soldA = r.fills.find((f) => f.symbol === 'A' && f.side === 'sell');
+    expect(soldA!.timestamp.getTime()).toBeGreaterThan(cut.getTime());
+    expect(r.openPositions.map((p) => p.symbol)).toEqual(['B']);
+  });
+});
+
+describe('momentum rotation crash guard', () => {
+  it('sells into the safe asset after a big fall, waits, then buys again', () => {
+    const crash = series(
+      100,
+      [
+        0.02, 0.02, 0.02, 0.02, 0.02, 0.02, -0.15, -0.15, 0.02, 0.03, 0.03,
+        0.03, 0.03, 0.03, 0.03, 0.03,
+      ],
+    );
+    const bil = series(100, Array(16).fill(0.0001));
+    const r = runBacktest(
+      createStrategy('momentum-rotation', ['A', 'BIL'], {
+        ...base,
+        safeLast: '1',
+        rebalanceDays: '100',
+        guardPct: '20',
+        guardDays: '3',
+      }),
+      { A: makeBars('A', crash), BIL: makeBars('BIL', bil) },
+      options,
+    );
+    const sold = r.fills.find((f) => f.symbol === 'A' && f.side === 'sell');
+    expect(sold?.reason).toBe(
+      'crash guard: the account fell 20% from its peak',
+    );
+    expect(
+      r.fills.find((f) => f.symbol === 'BIL' && f.side === 'buy')?.reason,
+    ).toMatch(/^crash guard: .*waiting in T-bills$/);
+    const rebuy = r.fills.filter(
+      (f) => f.symbol === 'A' && f.side === 'buy',
+    )[1];
+    expect(rebuy).toBeDefined(); // back in after the wait
+    expect(
+      rebuy!.timestamp.getTime() - sold!.timestamp.getTime(),
+    ).toBeGreaterThanOrEqual(3 * 86_400_000);
+  });
+});
+
+describe('momentum rotation sector limit', () => {
+  it('holds at most maxPerSector stocks from one sector', () => {
+    const fast = (k: number) => series(100, Array(11).fill(0.02 + k * 0.005));
+    const run2 = (maxPerSector: string) =>
+      held(
+        run(
+          {
+            AMD: fast(4),
+            AMAT: fast(3),
+            NVDA: fast(2),
+            XOM: fast(0),
+            CAT: fast(-1),
+          },
+          { ...base, topN: '3', rebalanceDays: '100', maxPerSector },
+        ),
+      );
+    expect(run2('0')).toEqual(['AMAT', 'AMD', 'NVDA']); // three chip makers
+    expect(run2('2')).toEqual(['AMAT', 'AMD', 'XOM']); // the 3rd tech one makes way for energy
+    expect(run2('1')).toEqual(['AMD', 'CAT', 'XOM']);
   });
 });

@@ -48,3 +48,39 @@ describe('placeOne', () => {
     expect(d.events[0].message).toMatch(/not sent: insufficient buying power/);
   });
 });
+
+describe('wash-trade retry', () => {
+  it('keeps an order Alpaca refused as a wash trade, and sends it once the opposite one is done', async () => {
+    const { retryOrders } = await import('./deployment-orders.js');
+    let refuse = true;
+    const placeOrder = vi.fn(async () => {
+      if (refuse)
+        throw new Error('potential wash trade detected. use complex orders');
+    });
+    const deps = {
+      placeOrder,
+      opensSoon: async () => true,
+    } as unknown as CycleDeps;
+    const d = deployment();
+    await placeOne(
+      d,
+      0,
+      { symbol: 'NVDA', side: 'buy', qty: 0.5 },
+      deps,
+      new Date(),
+    );
+    expect(d.ledgers[0].pending).toEqual([]);
+    expect(d.ledgers[0].retry).toEqual([
+      { symbol: 'NVDA', side: 'buy', qty: 0.5 },
+    ]);
+    expect(d.events[0].message).toMatch(
+      /waits: another investment has an opposite order open/,
+    );
+    await retryOrders(d, deps, new Date()); // still refused: keeps waiting
+    expect(d.ledgers[0].retry).toHaveLength(1);
+    refuse = false; // the other investment's order filled
+    await retryOrders(d, deps, new Date());
+    expect(d.ledgers[0].retry).toEqual([]);
+    expect(d.ledgers[0].pending[0]).toMatchObject({ symbol: 'NVDA', qty: 0.5 });
+  });
+});
