@@ -44,7 +44,12 @@ function setup(over: Partial<Deployment> = {}) {
     ...over,
   };
   const orders: Record<string, OrderStatus> = {};
-  const sent: Array<{ clientOrderId: string; side: string; qty: number }> = [];
+  const sent: Array<{
+    clientOrderId: string;
+    side: string;
+    qty?: number;
+    notional?: number;
+  }> = [];
   let cutoff = dayAfter(5);
   let news: Array<{ headline: string; createdAt: Date }> = [];
   let opensSoon = false;
@@ -62,6 +67,7 @@ function setup(over: Partial<Deployment> = {}) {
         filledAvgPrice: null,
       };
     },
+    cashToBuy: async () => 1_000_000,
     now: () => cutoff,
     recentNews: async () => news,
     aiNewsCheck: async () => null,
@@ -74,7 +80,7 @@ function setup(over: Partial<Deployment> = {}) {
     if (last)
       orders[last.clientOrderId] = {
         status: 'filled',
-        filledQty: last.qty,
+        filledQty: last.qty ?? (last.notional ?? 0) / price,
         filledAvgPrice: price,
       };
   };
@@ -104,7 +110,7 @@ describe('paper deployment daily cycle', () => {
     expect(sent).toEqual([
       expect.objectContaining({
         side: 'buy',
-        qty: 833,
+        qty: 825,
         clientOrderId: expect.stringMatching(/^dep-abcdef12-0-AAA-/),
       }),
     ]);
@@ -115,23 +121,23 @@ describe('paper deployment daily cycle', () => {
     await runCycle(d, runtime, deps);
     expect(d.ledgers[0].positions.AAA).toEqual({
       symbol: 'AAA',
-      qty: 833,
+      qty: 825,
       avgPrice: expect.closeTo(12.05),
     });
-    expect(d.ledgers[0].cash).toBeCloseTo(10_000 - 833 * 12.05);
+    expect(d.ledgers[0].cash).toBeCloseTo(10_000 - 825 * 12.05);
     expect(d.ledgers[0].pending).toEqual([]);
     expect(d.events.map((e) => e.message)).toContain(
-      'Bought 833 AAA at $12.05',
+      'Bought 825 AAA at $12.05',
     );
 
     setCutoff(10); // 3 days at once (runner was off): 14 → 12 → 11, trailing stop hit
     await runCycle(d, runtime, deps);
-    expect(sent.at(-1)).toMatchObject({ side: 'sell', qty: 833 });
+    expect(sent.at(-1)).toMatchObject({ side: 'sell', qty: 825 });
     expect(sent).toHaveLength(2); // one order, from the latest day only
     fill(10.9);
     await runCycle(d, runtime, deps);
     expect(d.ledgers[0].positions).toEqual({});
-    expect(d.ledgers[0].realizedPnl).toBeCloseTo(833 * (10.9 - 12.05));
+    expect(d.ledgers[0].realizedPnl).toBeCloseTo(825 * (10.9 - 12.05));
     expect(d.snapshots.at(-1)?.equity).toBeCloseTo(d.ledgers[0].cash);
   });
 
@@ -155,7 +161,7 @@ describe('paper deployment daily cycle', () => {
     await runCycle(d, runtime, deps);
     expect(d.status).toBe('paused');
     expect(d.statusReason).toMatch(/below its peak \(limit 5%\)/);
-    expect(sent.at(-1)).toMatchObject({ side: 'sell', qty: 833 });
+    expect(sent.at(-1)).toMatchObject({ side: 'sell', qty: 825 });
 
     const count = sent.length;
     fill(11.9);
@@ -175,7 +181,7 @@ describe('paper deployment daily cycle', () => {
     await runCycle(d, runtime, deps);
     expect(sent).toEqual([]);
     expect(d.ledgers[0].staged).toEqual([
-      expect.objectContaining({ symbol: 'AAA', qty: 833 }),
+      expect.objectContaining({ symbol: 'AAA', qty: 825 }),
     ]);
 
     setOpensSoon(true);
@@ -184,7 +190,7 @@ describe('paper deployment daily cycle', () => {
     expect(sent).toEqual([]);
     expect(d.ledgers[0].staged).toEqual([]);
     expect(d.events.at(-1)?.message).toMatch(
-      /^Skipped buying 833 AAA: the news since the signal is negative/,
+      /^Skipped buying 825 AAA: the news since the signal is negative/,
     );
   });
 
@@ -199,7 +205,7 @@ describe('paper deployment daily cycle', () => {
     setOpensSoon(true);
     setNews(['AAA to present at a conference']);
     await runCycle(d, runtime, deps);
-    expect(sent).toEqual([expect.objectContaining({ side: 'buy', qty: 833 })]);
+    expect(sent).toEqual([expect.objectContaining({ side: 'buy', qty: 825 })]);
     expect(d.events.at(-1)?.message).toMatch(/passed the news check$/);
   });
 });

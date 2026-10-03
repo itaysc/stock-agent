@@ -1,11 +1,13 @@
 export const pct = (n: number | null | undefined, sign = true) =>
   n === null || n === undefined ? 'n/a' : `${sign && n > 0 ? '+' : ''}${n.toFixed(2)}%`;
 
+/** Whole dollars, with cents below $1,000 (so a $1.46 gain doesn't read as "$1"). */
 export const money = (n: number) =>
   n.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: Math.abs(n) < 1000 ? 2 : 0,
+    maximumFractionDigits: Math.abs(n) < 1000 ? 2 : 0,
   });
 
 export const day = (iso: string | null) => (iso ? iso.slice(0, 10) : 'n/a');

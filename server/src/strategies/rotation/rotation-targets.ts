@@ -1,5 +1,6 @@
 import { sectors } from './rotation-sectors.js';
 import { volScale, type VolTracker } from '../sizing.js';
+import { basketVolPct, mixedReturn, steadiness } from './rotation-signals.js';
 
 type Params = Record<string, number>;
 const pct = (n: number) => `${n >= 0 ? '+' : ''}${(n * 100).toFixed(1)}%`;
@@ -13,6 +14,20 @@ export interface RotationState {
   marketDown: boolean;
   /** Above its own trendSma average (the per-stock trend filter). */
   aboveTrend: (symbol: string) => boolean;
+  /** Held now (recentDrop only blocks new buys unless recentDropHeld). */
+  held?: (symbol: string) => boolean;
+}
+
+/** Not down more than recentDrop % over the last month (always true with it off). */
+export function recentOk(
+  p: Params,
+  closes: Map<string, number[]>,
+  s: string,
+): boolean {
+  if (!(p.recentDrop > 0)) return true;
+  const c = closes.get(s) ?? [];
+  const then = c.at(-22);
+  return !then || (c.at(-1) ?? then) / then - 1 > -p.recentDrop / 100;
 }
 
 /** The best `n`, with at most `max` from one sector (0 = no limit): a full sector's next ones are skipped. */
@@ -48,13 +63,54 @@ export function rankSymbols({
     return c[end] / c[end - p.lookback] - 1;
   };
   const volOf = (s: string) => Math.max(vols.get(s)?.volPct ?? 1, 1);
-  // 0 momentum, 1 risk-adjusted momentum, 2 lowest volatility, 3 biggest dip (mean reversion).
+  const mixed = (s: string) => {
+    const c = closes.get(s) ?? [];
+    return mixedReturn(c, c.length - 1 - p.skipRecent, p.lookback);
+  };
+  // 0 momentum, 1 risk-adjusted momentum, 2 lowest volatility, 3 biggest dip (mean reversion),
+  // 4 momentum averaged over 3, 6 and 12 months.
   const rank = (s: string) =>
-    [score(s), score(s) / volOf(s), -volOf(s), -score(s)][p.rankBy] ?? score(s);
+    [
+      score,
+      (x: string) => score(x) / volOf(x),
+      (x: string) => -volOf(x),
+      (x: string) => -score(x),
+      mixed,
+    ][p.rankBy]?.(s) ?? score(s);
   const ranked = symbols
     .filter((s) => s !== safe)
     .sort((a, b) => rank(b) - rank(a));
   return { ranked, score, volOf };
+}
+
+/** With keepRank: the stocks it holds come first while they still rank in the top `keepRank` (fewer trades). */
+function keepHeld(
+  p: Params,
+  ranked: string[],
+  candidates: string[],
+  held?: (symbol: string) => boolean,
+) {
+  if (!(p.keepRank > 0) || !held) return candidates;
+  const keep = (s: string) => held(s) && ranked.indexOf(s) < p.keepRank;
+  return [...candidates.filter(keep), ...candidates.filter((s) => !keep(s))];
+}
+
+/** With steadyPool: of the best `steadyPool`, the steadiest risers first (then the rest, in rank order). */
+function steadyFirst(
+  p: Params,
+  closes: Map<string, number[]>,
+  ranked: string[],
+) {
+  if (!(p.steadyPool > 0)) return ranked;
+  const steady = (s: string) => {
+    const c = closes.get(s) ?? [];
+    return steadiness(c, c.length - 1 - p.skipRecent, p.lookback);
+  };
+  const pool = ranked.slice(0, p.steadyPool);
+  return [
+    ...pool.sort((a, b) => steady(b) - steady(a)),
+    ...ranked.slice(p.steadyPool),
+  ];
 }
 
 /**
@@ -69,13 +125,27 @@ export function rotationTargets({
   vols,
   marketDown,
   aboveTrend,
+  held,
 }: RotationState): Map<string, { weight: number; why: string }> {
   const safe = p.safeLast ? symbols.at(-1) : undefined;
   const { ranked, score, volOf } = rankSymbols({ p, symbols, closes, vols });
   const picks = marketDown
     ? []
     : capBySector(
-        ranked.filter((s) => aboveTrend(s)),
+        keepHeld(
+          p,
+          ranked,
+          steadyFirst(
+            p,
+            closes,
+            ranked.filter(
+              (s) =>
+                aboveTrend(s) &&
+                ((!p.recentDropHeld && held?.(s)) || recentOk(p, closes, s)),
+            ),
+          ),
+          held,
+        ),
         p.topN,
         p.maxPerSector,
       ).filter((s) => !p.absMomentum || score(s) > 0);
@@ -90,7 +160,15 @@ export function rotationTargets({
   const avgVol =
     picks.reduce((n, s, i) => n + w[i] * (vol(s) ?? 0), 0) /
     (w.reduce((a, b) => a + b, 0) || 1);
-  const scale = volScale(p.targetVol, picks.length ? avgVol : null);
+  // basketVol: the picks together over the last 6 months (with how they move together); the rest goes to the safe asset.
+  const basket = volScale(
+    p.basketVol,
+    p.basketVol > 0 ? basketVolPct(picks, w, closes, 126) : null,
+  );
+  const scale = Math.min(
+    volScale(p.targetVol, picks.length ? avgVol : null),
+    basket,
+  );
   w = w.map((x) => x * scale * p.allocation);
   const out = new Map<string, { weight: number; why: string }>();
   picks.forEach((s, i) =>
@@ -99,15 +177,17 @@ export function rotationTargets({
       why:
         p.rankBy === 2
           ? `rank ${ranked.indexOf(s) + 1}: one of the calmest (${volOf(s).toFixed(0)}% yearly volatility)`
-          : `rank ${ranked.indexOf(s) + 1}: ${pct(score(s))} over ${p.lookback} bars${scale < 1 ? `, sized to ${p.targetVol}% volatility` : ''}`,
+          : `rank ${ranked.indexOf(s) + 1}: ${pct(score(s))} over ${p.lookback} bars${scale < 1 ? `, sized to ${basket < 1 ? p.basketVol : p.targetVol}% volatility` : ''}`,
     }),
   );
-  if (safe && picks.length < p.topN) {
+  if (safe && (picks.length < p.topN || basket < 1)) {
     out.set(safe, {
-      weight: (1 - riskyShare) * p.allocation,
+      weight: (1 - riskyShare * basket) * p.allocation,
       why: marketDown
         ? `market down: SPY below its ${p.marketFilter}-day average`
-        : `safe asset for ${p.topN - picks.length} empty slot${p.topN - picks.length === 1 ? '' : 's'}`,
+        : picks.length < p.topN
+          ? `safe asset for ${p.topN - picks.length} empty slot${p.topN - picks.length === 1 ? '' : 's'}`
+          : `safe asset: the stocks swing more than ${p.basketVol}% a year, so they are held smaller`,
     });
   }
   return out;

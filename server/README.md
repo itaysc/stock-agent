@@ -883,6 +883,27 @@ Results (Jan 2007 → Oct 2026, scored on data the settings never saw): momentum
 +2,751% (+18.5%/yr, worst drop -46% in 2008) vs SPY +675% (+10.9%/yr) and holding the 50 biggest
 equally +822% (+11.9%/yr, -63%). Trend-following: +389% (+8.4%/yr) but only -19%.
 
+## Login
+
+The web app has a login (passport-local) that returns a JWT (HS256, `stock-invest` issuer) and sets
+it as an httpOnly cookie; every API route is guarded by passport-jwt (cookie or
+`Authorization: Bearer <jwt>`), except `/health` and `/api/v1/auth/*`. The `API_TOKEN` still works
+for scripts (`Authorization: Bearer <API_TOKEN>` or `x-api-key`). `/reports` and `/docs` need the
+same. After 5 wrong passwords an address is blocked for 15 minutes.
+
+One user, set in `.env` (no sign-up):
+
+```
+ADMIN_EMAIL=you@example.com
+ADMIN_PASSWORD_HASH=<npm run hash-password>   # a bcrypt hash; the password is never stored
+JWT_SECRET=<openssl rand -hex 32>
+JWT_EXPIRES_IN=12h
+```
+
+All empty = no login (local development). Endpoints: `POST /api/v1/auth/login`
+(`{"email","password"}` → `{accessToken, tokenType, expiresIn, user}`), `POST /api/v1/auth/logout`,
+`GET /api/v1/auth/me`. On Railway the server refuses to start without the login or an API_TOKEN.
+
 ## Deploy to Railway
 
 Same setup as foozool-initiatives: a Dockerfile build from `server/`, with a health check.
@@ -891,8 +912,9 @@ Same setup as foozool-initiatives: a Dockerfile build from `server/`, with a hea
 2. Service settings: **Root Directory** `server`, **Config file** `server/railway.toml`.
 3. Add a database: New → Database → **MongoDB**.
 4. Variables (service → Variables):
-   - `NODE_ENV=production` and `API_TOKEN=<openssl rand -hex 32>`: both required, the server
-     refuses to start on Railway without them (the API can trade and sell: it must not be open).
+   - `NODE_ENV=production`, and the login (`ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `JWT_SECRET`)
+     and/or `API_TOKEN`: the server refuses to start on Railway without production mode and some
+     authentication (the API can trade and sell: it must not be open).
    - `MONGODB_URI=${{MongoDB.MONGO_URL}}/stock-invest?authSource=admin`
    - `ALPACA_API_KEY`, `ALPACA_API_SECRET`, `ALPACA_PAPER=true`, `ALPACA_STREAMS_ENABLED=false`
    - `PAPER_TRADING_ENABLED=true`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and the optional keys

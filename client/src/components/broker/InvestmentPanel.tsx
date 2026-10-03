@@ -8,7 +8,7 @@ import { BrokerActivity } from './BrokerActivity';
 import { BrokerHoldings } from './BrokerHoldings';
 import { BrokerHow } from './BrokerHow';
 
-const STATUS = {
+export const STATUS = {
   active: { color: 'teal', label: 'Trading' },
   paused: { color: 'orange', label: 'Paused' },
   stopped: { color: 'gray', label: 'Stopped' },

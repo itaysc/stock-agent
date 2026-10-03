@@ -50,14 +50,17 @@ describe('a new deployment', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     } as unknown as Deployment;
-    const sent: Array<{ symbol: string; side: string; qty: number }> = [];
+    const sent: Array<{ symbol: string; side: string; notional?: number }> = [];
     const cutoff = new Date(bars.AAA.at(-1)!.timestamp.getTime() + 86_400_000);
     const deps = {
       fetchDaily: async () => bars,
       completedBefore: async () => cutoff,
       getOrder: async () => null,
-      placeOrder: async (o: { symbol: string; side: string; qty: number }) =>
-        void sent.push(o),
+      placeOrder: async (o: {
+        symbol: string;
+        side: string;
+        notional?: number;
+      }) => void sent.push(o),
       now: () => cutoff,
       notify: async () => undefined,
     } as unknown as CycleDeps;
@@ -65,7 +68,9 @@ describe('a new deployment', () => {
     expect(sent).toEqual([
       expect.objectContaining({ symbol: 'AAA', side: 'buy' }),
     ]);
-    expect(sent[0].qty * bars.AAA.at(-1)!.close).toBeGreaterThan(990); // fractional: nearly all of it
+    // Fractional: a dollar amount, nearly all of it (it fills at the open for exactly that).
+    expect(sent[0].notional).toBeGreaterThan(995);
+    expect(sent[0].notional).toBeLessThanOrEqual(1_000);
     expect(d.lastBarAt).toEqual(bars.AAA.at(-1)!.timestamp);
   });
 });

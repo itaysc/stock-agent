@@ -6,11 +6,13 @@ import {
   MemoryHealthIndicator,
   MongooseHealthIndicator,
 } from '@nestjs/terminus';
+import { Public } from '../auth/auth.constants.js';
 import { AlpacaStreamsHealthIndicator } from './alpaca-streams.health.js';
 
 const HEAP_LIMIT_BYTES = 512 * 1024 * 1024;
 
 @ApiTags('health')
+@Public() // probes (Railway) need no login
 @Controller({ path: 'health', version: VERSION_NEUTRAL })
 export class HealthController {
   constructor(

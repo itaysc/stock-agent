@@ -88,7 +88,7 @@ export function BrokerHoldings({
           </Alert>
         )}
         {holdings.length ? (
-          <Table.ScrollContainer minWidth={820}>
+          <Table.ScrollContainer minWidth={940}>
             <Table verticalSpacing={6} highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
@@ -99,11 +99,12 @@ export function BrokerHoldings({
                     'Bought at',
                     'Now',
                     'Gain',
+                    'Since buy',
                     'Sells when',
                     'Value',
                     '',
                   ].map((t, i) => (
-                    <Table.Th key={t || i} ta={i >= 2 && i <= 7 ? 'right' : undefined}>
+                    <Table.Th key={t || i} ta={i >= 2 && i <= 8 && i !== 6 ? 'right' : undefined}>
                       {t}
                     </Table.Th>
                   ))}

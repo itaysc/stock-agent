@@ -2,6 +2,7 @@ import { Badge, Group, Table, Text, Tooltip } from '@mantine/core';
 import type { BrokerHolding } from '../../api/broker-types';
 import { money, pct, tone } from '../../lib/format';
 import { type HoldingAction, HoldingActions } from './HoldingActions';
+import { Sparkline } from './Sparkline';
 
 const usd = (n: number | null) => (n === null ? '—' : `$${n.toFixed(2)}`);
 const shares = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(4));
@@ -38,6 +39,9 @@ export function HoldingRow({
       <Table.Td ta="right">{usd(h.price)}</Table.Td>
       <Table.Td ta="right" c={tone(h.gainPct)}>
         {pct(h.gainPct)}
+      </Table.Td>
+      <Table.Td>
+        <Sparkline points={h.spark ?? []} entryPrice={h.entryPrice} boughtAt={h.boughtAt} />
       </Table.Td>
       <Table.Td ta="right">
         <Text size="sm" c="red">

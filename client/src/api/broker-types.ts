@@ -24,6 +24,8 @@ export interface BrokerHolding {
   /** Latest close. */
   price: number;
   highSinceBuy: number;
+  /** Closes from a month before the buy to now (the small chart in the row). */
+  spark: Array<{ t: string; c: number }>;
   /** It sells when a close falls below this: the higher of the automatic stop and yours. */
   stopPrice: number | null;
   /** The automatic trailing stop alone. */

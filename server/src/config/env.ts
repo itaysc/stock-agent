@@ -13,6 +13,12 @@ const envSchema = z
     API_TOKEN: z.string().default(''),
     // Set by Railway on every deployment.
     RAILWAY_ENVIRONMENT: z.string().optional(),
+    // The login (web app): your email and a bcrypt hash of your password (npm run hash-password),
+    // and the secret that signs the JWTs it returns (at least 32 characters). All empty = no login.
+    ADMIN_EMAIL: z.string().default(''),
+    ADMIN_PASSWORD_HASH: z.string().default(''),
+    JWT_SECRET: z.string().default(''),
+    JWT_EXPIRES_IN: z.string().default('12h'),
     PORT: z.coerce.number().int().positive().default(3000),
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
@@ -50,21 +56,37 @@ const envSchema = z
     ...tradingEnv,
   })
   .superRefine((env, ctx) => {
-    // Deployed: refuse to start without production mode and a real API token.
+    const issue = (path: string, message: string) =>
+      ctx.addIssue({ code: 'custom', path: [path], message });
+    // The login needs all three, and a long enough secret.
+    const login = [env.ADMIN_EMAIL, env.ADMIN_PASSWORD_HASH, env.JWT_SECRET];
+    if (login.some(Boolean) && !login.every(Boolean))
+      issue(
+        'ADMIN_EMAIL',
+        'ADMIN_EMAIL, ADMIN_PASSWORD_HASH and JWT_SECRET go together (all set, or all empty)',
+      );
+    if (env.JWT_SECRET && env.JWT_SECRET.length < 32)
+      issue(
+        'JWT_SECRET',
+        'must be at least 32 characters (e.g. openssl rand -hex 32)',
+      );
+    if (
+      env.ADMIN_PASSWORD_HASH &&
+      !/^\$2[aby]\$\d\d\$/.test(env.ADMIN_PASSWORD_HASH)
+    )
+      issue(
+        'ADMIN_PASSWORD_HASH',
+        'must be a bcrypt hash (npm run hash-password), not the password',
+      );
+    // Deployed: refuse to start without production mode and some authentication.
     if (!env.RAILWAY_ENVIRONMENT?.trim()) return;
     if (env.NODE_ENV !== 'production')
-      ctx.addIssue({
-        code: 'custom',
-        path: ['NODE_ENV'],
-        message: 'must be production on Railway',
-      });
-    if (env.API_TOKEN.length < 24)
-      ctx.addIssue({
-        code: 'custom',
-        path: ['API_TOKEN'],
-        message:
-          'is required on Railway (at least 24 characters, e.g. openssl rand -hex 32): the API trades your account',
-      });
+      issue('NODE_ENV', 'must be production on Railway');
+    if (env.API_TOKEN.length < 24 && !env.JWT_SECRET)
+      issue(
+        'API_TOKEN',
+        'or the login (ADMIN_EMAIL, ADMIN_PASSWORD_HASH, JWT_SECRET) is required on Railway (API_TOKEN: at least 24 characters, e.g. openssl rand -hex 32): the API trades your account',
+      );
   });
 
 export type Env = z.infer<typeof envSchema>;

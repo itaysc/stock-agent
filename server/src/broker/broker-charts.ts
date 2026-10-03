@@ -6,6 +6,8 @@ import { plainReason } from './broker-view.js';
 import { SAFE_SYMBOLS } from './broker-holdings.js';
 
 const DAY_MS = 86_400_000;
+/** The small chart in each holding row starts this many days before the buy. */
+export const SPARK_DAYS_BEFORE = 30;
 
 const daily = async (
   backtests: BacktestService,
@@ -33,7 +35,8 @@ export async function holdingHistory(
   return daily(
     backtests,
     held.map((h) => h.s),
-    new Date(Math.min(Date.now(), ...opened) - 3 * DAY_MS),
+    // From a month before the first buy: the stop levels, and each row's small chart.
+    new Date(Math.min(Date.now(), ...opened) - SPARK_DAYS_BEFORE * DAY_MS),
   );
 }
 

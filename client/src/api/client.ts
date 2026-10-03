@@ -21,6 +21,8 @@ export class ApiError extends Error {
 }
 
 const UNREACHABLE = 'The server is not reachable (it may still be starting).';
+/** Fired when the server answers 401: the app shows the login page. */
+export const AUTH_REQUIRED = 'auth:required';
 
 /** Nest errors carry `message` as a string or a list of validation messages. */
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -39,6 +41,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok && body === null && [502, 503, 504].includes(res.status)) {
     throw new ApiError(UNREACHABLE, true);
   }
+  // Not logged in (or the login expired): the app shows the login page.
+  if (res.status === 401 && !path.startsWith('/api/v1/auth/'))
+    window.dispatchEvent(new Event(AUTH_REQUIRED));
   if (!res.ok) {
     const message = body?.message;
     throw new ApiError(
@@ -75,6 +80,14 @@ export const api = {
       body: JSON.stringify(body),
     }),
   paperAccount: () => request<PaperAccount>('/api/v1/paper/account'),
+  authMe: () =>
+    request<{ loginRequired: boolean; user: { email: string } | null }>('/api/v1/auth/me'),
+  login: (email: string, password: string) =>
+    request<{ accessToken: string; user: { email: string } }>('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  logout: () => request<{ ok: true }>('/api/v1/auth/logout', { method: 'POST' }),
   broker: () => request<BrokerOverview>('/api/v1/broker'),
   brokerProfiles: (capital: number) =>
     request<BrokerProfiles>(`/api/v1/broker/profiles?capital=${encodeURIComponent(capital)}`),

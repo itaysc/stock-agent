@@ -15,6 +15,7 @@ import {
   sendOrders,
   retryOrders,
 } from './deployment-orders.js';
+import { step } from './cycle-step.js';
 import { drawdownAlert } from './drawdown-alert.js';
 import { dropHeldOffBuys, manualExits } from './manual-exits.js';
 import { releaseStaged, watchHeld } from './news-check.js';
@@ -52,11 +53,14 @@ export async function runCycle(
   deps: CycleDeps,
 ): Promise<void> {
   const now = deps.now();
-  const booked = await reconcile(d, (id) => deps.getOrder(id), now);
+  const booked = await step(
+    'checking orders',
+    reconcile(d, (id) => deps.getOrder(id), now),
+  );
   for (const message of booked) logEvent(d, message, now);
   if (d.status === 'stopped') return;
 
-  const cutoff = await deps.completedBefore();
+  const cutoff = await step('reading the market clock', deps.completedBefore());
   const { traded, market } = symbolsToFetch(runtime);
   const since =
     runtime.warmed && d.lastBarAt
@@ -67,11 +71,16 @@ export async function runCycle(
   // Market data (e.g. SPY) never needs news or earnings; traded symbols may.
   const needs = d.sleeves.map((s) => infoNeeds([s.strategy], s.params));
   const all = {
-    ...(market.length ? await deps.fetchDaily(market, since, cutoff) : {}),
-    ...(await deps.fetchDaily(traded, since, cutoff, {
-      news: needs.some((n) => n.news),
-      earnings: needs.some((n) => n.earnings),
-    })),
+    ...(market.length
+      ? await step('fetching prices', deps.fetchDaily(market, since, cutoff))
+      : {}),
+    ...(await step(
+      'fetching prices',
+      deps.fetchDaily(traded, since, cutoff, {
+        news: needs.some((n) => n.news),
+        earnings: needs.some((n) => n.earnings),
+      }),
+    )),
   };
   const pick = (symbols: string[]) =>
     Object.fromEntries(
@@ -125,24 +134,33 @@ export async function runCycle(
       snapshot(d, t),
     );
     d.lastBarAt = new Date(latest);
-    await manualExits(d, runtime, deps, now);
+    await step(
+      'checking your own stop / target levels',
+      manualExits(d, runtime, deps, now),
+    );
     dropHeldOffBuys(d, runtime, now);
-    await sendOrders(d, runtime, deps, now);
+    await step('sending orders', sendOrders(d, runtime, deps, now));
   }
   // Fills since the last close change the cash: refresh today's point.
   // Real-time news: buys that waited for the pre-open check, and held symbols' breaking news.
-  await releaseStaged(d, deps, now, (i, buy) =>
-    placeOne(
-      d,
-      i,
-      { symbol: buy.symbol, side: 'buy', qty: buy.qty, reason: buy.reason },
-      deps,
-      now,
-      'passed the news check',
+  await step(
+    'checking the news before buying',
+    releaseStaged(d, deps, now, (i, buy) =>
+      placeOne(
+        d,
+        i,
+        { symbol: buy.symbol, side: 'buy', qty: buy.qty, reason: buy.reason },
+        deps,
+        now,
+        'passed the news check',
+      ),
     ),
   );
-  await retryOrders(d, deps, now);
-  for (const s of await watchHeld(d, deps, now)) {
+  await step('sending orders that waited', retryOrders(d, deps, now));
+  for (const s of await step(
+    'watching the news on holdings',
+    watchHeld(d, deps, now),
+  )) {
     if (!d.ledgers[s.sleeve].pending.some((o) => o.symbol === s.symbol)) {
       await placeOne(
         d,
@@ -155,9 +173,12 @@ export async function runCycle(
     }
   }
   if (d.lastBarAt) snapshot(d, new Date(d.lastBarAt));
-  await (d.drawdownAlert
-    ? drawdownAlert(d, deps, now)
-    : guard(d, runtime, deps, now));
+  await step(
+    'checking the drop alert',
+    d.drawdownAlert
+      ? drawdownAlert(d, deps, now)
+      : guard(d, runtime, deps, now),
+  );
 }
 
 /** Equity at a day's close (one point per day; the same day is updated). */

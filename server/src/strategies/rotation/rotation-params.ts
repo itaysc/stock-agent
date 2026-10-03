@@ -34,6 +34,18 @@ export const ROTATION_PARAMS: ParamSpecs = {
     undefined,
     'Leave out the last this-many bars when ranking (21 = skip the last month, the classic "12-1" momentum).',
   ),
+  recentDrop: {
+    default: 0,
+    min: 0,
+    max: 90,
+    zeroIsOff: true,
+    description:
+      'Don’t buy a stock that fell more than this % over the last month (21 bars), however strong its year. 0 = off.',
+  },
+  recentDropHeld: flag(
+    0,
+    '1 = recentDrop also sells a stock it already holds (at the re-check); 0 = it only blocks new buys.',
+  ),
   topN: whole(2, 1, 100, 'How many of the best-ranked symbols to hold.'),
   rebalanceDays: whole(
     21,
@@ -70,9 +82,29 @@ export const ROTATION_PARAMS: ParamSpecs = {
   rankBy: whole(
     0,
     0,
-    3,
-    'How to rank: 0 = highest return over the window (momentum); 1 = return ÷ volatility; 2 = lowest volatility (calmest first); 3 = biggest drop over the window (buy the dip).',
+    4,
+    'How to rank: 0 = highest return over the window (momentum); 1 = return ÷ volatility; 2 = lowest volatility (calmest first); 3 = biggest drop over the window (buy the dip); 4 = average of the returns over a quarter, half and all of the window (3, 6 and 12 months).',
   ),
+  keepRank: whole(
+    0,
+    0,
+    100,
+    'Keep a stock it holds while it still ranks in the top this-many (buy the top topN, sell only below keepRank): fewer trades. 0 = sell as soon as it leaves the top topN.',
+  ),
+  steadyPool: whole(
+    0,
+    0,
+    100,
+    'Of the best this-many by rank, pick the steadiest risers first (up on most days, not a few jumps). 0 = off.',
+  ),
+  basketVol: {
+    default: 0,
+    min: 0,
+    max: 100,
+    zeroIsOff: true,
+    description:
+      'Hold the stocks smaller (the rest in the safe asset) when, together, they swung more than this % a year over the last 6 months. 0 = off.',
+  },
   trendSma: whole(
     0,
     0,

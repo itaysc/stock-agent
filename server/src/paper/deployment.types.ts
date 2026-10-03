@@ -25,6 +25,8 @@ export interface PendingOrder {
   submittedAt: Date;
   /** Quantity already booked into the ledger (for partial fills). */
   bookedQty: number;
+  /** A buy sent as a dollar amount (qty is then the estimate at the last close). */
+  notional?: number;
 }
 
 /** A buy that waits for the pre-open news check before it's sent. */

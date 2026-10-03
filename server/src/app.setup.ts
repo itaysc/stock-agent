@@ -1,4 +1,6 @@
-import { apiTokenMiddleware } from './api-token.middleware.js';
+import cookieParser from 'cookie-parser';
+import { pagesAuth } from './auth/auth-request.js';
+import { AuthService } from './auth/auth.service.js';
 import { HttpAdapterHost } from '@nestjs/core';
 import { RateLimitFilter } from './alpaca/rate-limit.filter.js';
 import {
@@ -41,8 +43,9 @@ export function setupApp(app: INestApplication): void {
     new RateLimitFilter(app.get(HttpAdapterHost).httpAdapter),
   );
   app.use(helmet());
-  const token = config.get('API_TOKEN', { infer: true });
-  if (token) app.use(apiTokenMiddleware(token));
+  // The JWT cookie, and the login on the pages outside the API (/reports, /docs).
+  app.use(cookieParser());
+  app.use(pagesAuth(app.get(AuthService)));
 
   // Generated HTML reports, at /reports/<file>.html (outside the /api prefix).
   app.use(

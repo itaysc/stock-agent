@@ -21,6 +21,11 @@ export default defineConfig({
       TELEGRAM_BOT_TOKEN: '',
       TELEGRAM_CHAT_ID: '',
       OPENAI_API_KEY: '', // never call OpenAI from tests
+      // No login or API token: the API is open in tests (auth.e2e-spec turns the login on).
+      API_TOKEN: '',
+      ADMIN_EMAIL: '',
+      ADMIN_PASSWORD_HASH: '',
+      JWT_SECRET: '',
     },
   },
 });

@@ -9,7 +9,8 @@ import {
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
-import { IconChartLine, IconMoon, IconSparkles, IconSun } from '@tabler/icons-react';
+import { IconChartLine, IconLogout, IconMoon, IconSparkles, IconSun } from '@tabler/icons-react';
+import { useAuth } from './auth/AuthGate';
 import type { BacktestOptions } from '../api/types';
 
 export type Page = 'broker' | 'lab' | 'paper';
@@ -22,6 +23,7 @@ interface Props {
 
 export function Header({ options, page, onPage }: Props) {
   const { setColorScheme } = useMantineColorScheme();
+  const { user, logout } = useAuth();
   const scheme = useComputedColorScheme('light');
 
   return (
@@ -71,6 +73,18 @@ export function Header({ options, page, onPage }: Props) {
             AI {options.aiEnabled ? 'on' : 'off'}
           </Badge>
         </Tooltip>
+        {user && (
+          <Tooltip label={`Log out ${user.email}`}>
+            <ActionIcon
+              variant="default"
+              size="lg"
+              aria-label="Log out"
+              onClick={() => void logout()}
+            >
+              <IconLogout size={18} />
+            </ActionIcon>
+          </Tooltip>
+        )}
         <ActionIcon
           variant="default"
           size="lg"

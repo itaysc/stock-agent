@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import type { BrokerOverview } from '../../api/broker-types';
 import type { PaperAccount } from '../../api/paper-types';
-import { money } from '../../lib/format';
+import { money, pct } from '../../lib/format';
+import { AllInvestments } from './AllInvestments';
 import { BrokerStart } from './BrokerStart';
 import { FundsLine } from './FundsLine';
 import { InvestmentPanel } from './InvestmentPanel';
@@ -62,10 +63,14 @@ export function BrokerPage() {
       }}
     />
   );
+  // With two or more, "All" comes first and is where it opens.
+  const many = list.length > 1;
   const current =
-    list.some((v) => v.deploymentId === tab) || tab === 'add'
+    list.some((v) => v.deploymentId === tab) || tab === 'add' || (many && tab === 'all')
       ? tab
-      : (list[0]?.deploymentId ?? null);
+      : many
+        ? 'all'
+        : (list[0]?.deploymentId ?? null);
   return (
     <Stack gap="lg">
       {error && (
@@ -91,8 +96,17 @@ export function BrokerPage() {
       ) : (
         <Tabs value={current} onChange={setTab} keepMounted={false}>
           <Tabs.List>
+            {many && <Tabs.Tab value="all">All</Tabs.Tab>}
             {list.map((v) => (
-              <Tabs.Tab key={v.deploymentId} value={v.deploymentId}>
+              <Tabs.Tab
+                key={v.deploymentId}
+                value={v.deploymentId}
+                rightSection={
+                  <Text size="xs" c={v.pnlPct >= 0 ? 'teal' : 'red'}>
+                    {pct(v.pnlPct)}
+                  </Text>
+                }
+              >
                 {v.name}
               </Tabs.Tab>
             ))}
@@ -100,6 +114,11 @@ export function BrokerPage() {
               Add investment{free !== null ? ` (${money(free)} free)` : ''}
             </Tabs.Tab>
           </Tabs.List>
+          {many && (
+            <Tabs.Panel value="all" pt="md">
+              <AllInvestments list={list} onOpen={setTab} />
+            </Tabs.Panel>
+          )}
           {list.map((v) => (
             <Tabs.Panel key={v.deploymentId} value={v.deploymentId} pt="md">
               <InvestmentPanel view={v} onOverview={changed} onError={setError} />

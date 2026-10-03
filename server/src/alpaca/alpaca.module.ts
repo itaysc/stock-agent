@@ -16,6 +16,8 @@ import { AlpacaService } from './alpaca.service.js';
           keyId: config.get('ALPACA_API_KEY', { infer: true }),
           secret: config.get('ALPACA_API_SECRET', { infer: true }),
           paper: config.get('ALPACA_PAPER', { infer: true }),
+          // Alpaca's data API is sometimes slow: wait up to a minute (the library's default is 30 s).
+          timeoutMs: 60_000,
         }),
     },
     { provide: ALPACA_STREAM_OPTIONS, useValue: {} },

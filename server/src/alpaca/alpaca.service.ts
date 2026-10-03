@@ -6,7 +6,13 @@ import {
   type trading,
   type values,
 } from '@alpacahq/alpaca-trade-api';
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleInit,
+  HttpException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../config/env.js';
 import { ALPACA_CLIENT } from './alpaca.constants.js';
@@ -31,8 +37,9 @@ export type ListOrdersInput = Parameters<OrdersApi['getAllOrders']>[0];
 /** Waits before retrying a rate-limited request (the limit resets every minute). */
 const RATE_LIMIT_WAITS_S = [5, 20, 40];
 
-/** Alpaca's "too many requests" (HTTP 429). */
+/** Alpaca's "too many requests" (HTTP 429): its error, not the app's own 429s (e.g. the login lockout). */
 export function isRateLimited(err: unknown): boolean {
+  if (err instanceof HttpException) return false;
   const e = err as { name?: string; status?: number };
   return e?.name === 'RateLimitError' || e?.status === 429;
 }

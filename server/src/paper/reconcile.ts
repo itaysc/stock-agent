@@ -61,9 +61,12 @@ export async function reconcile(
         );
       }
       if (DONE.has(order.status)) {
-        if (p.bookedQty < p.qty)
+        // A dollar-amount buy's qty was only an estimate: it is short only when nothing filled.
+        if (p.notional !== undefined ? p.bookedQty === 0 : p.bookedQty < p.qty)
           events.push(
-            `${p.side} ${p.symbol}: ${order.status} after ${p.bookedQty} of ${p.qty}`,
+            p.notional !== undefined
+              ? `buy $${p.notional.toFixed(2)} of ${p.symbol}: ${order.status}, nothing bought`
+              : `${p.side} ${p.symbol}: ${order.status} after ${p.bookedQty} of ${p.qty}`,
           );
       } else {
         still.push(p);

@@ -17,13 +17,16 @@ export interface CycleDeps {
   /** Bars before this time are complete (the session has closed). */
   completedBefore(): Promise<Date>;
   getOrder(clientOrderId: string): Promise<OrderStatus | null>;
-  /** Sends a market order (through the risk checks); throws when refused. */
-  placeOrder(order: {
-    clientOrderId: string;
-    symbol: string;
-    side: 'buy' | 'sell';
-    qty: number;
-  }): Promise<void>;
+  /** Sends a market order for a quantity or a dollar amount (through the risk checks); throws when refused. */
+  placeOrder(
+    order: {
+      clientOrderId: string;
+      symbol: string;
+      side: 'buy' | 'sell';
+    } & ({ qty: number } | { notional: number }),
+  ): Promise<void>;
+  /** The account's cash that can pay for buys now (no margin). */
+  cashToBuy(): Promise<number>;
   now(): Date;
   /** Headlines about a symbol published after `since`, newest first. */
   recentNews(symbol: string, since: Date): Promise<Headline[]>;

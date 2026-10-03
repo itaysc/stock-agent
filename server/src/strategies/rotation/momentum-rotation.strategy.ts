@@ -123,7 +123,10 @@ export class MomentumRotationStrategy implements Strategy {
     const empty = this.symbols.every((s) => !ctx.position(s));
     if (guard === 'in' && this.steps++ % this.p.rebalanceDays !== 0 && !empty)
       return;
-    const weights = guard === 'trip' ? this.safeOnly() : this.targets();
+    const weights =
+      guard === 'trip'
+        ? this.safeOnly()
+        : this.targets((s) => (ctx.position(s)?.qty ?? 0) > 0);
     const exitWhy =
       guard === 'trip'
         ? `crash guard: the account fell ${this.p.guardPct}% from its peak`
@@ -191,7 +194,9 @@ export class MomentumRotationStrategy implements Strategy {
   }
 
   /** Target share of the account per symbol, with the reason (what it would hold now). */
-  targets(): Map<string, { weight: number; why: string }> {
+  targets(
+    held?: (symbol: string) => boolean,
+  ): Map<string, { weight: number; why: string }> {
     return rotationTargets({
       p: this.p,
       symbols: this.eligible(),
@@ -199,6 +204,7 @@ export class MomentumRotationStrategy implements Strategy {
       vols: this.vols,
       marketDown: this.marketDown() === true,
       aboveTrend: (s) => this.aboveTrend(s),
+      held,
     });
   }
 }

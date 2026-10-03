@@ -12,7 +12,8 @@ restartPolicyType = "on_failure"
 #
 # Variables (Railway dashboard → the server service):
 # NODE_ENV=production            (required — the server refuses to start on Railway otherwise)
-# API_TOKEN=<openssl rand -hex 32> (required — every route but /health needs it; the API can sell)
+# ADMIN_EMAIL, ADMIN_PASSWORD_HASH (npm run hash-password), JWT_SECRET (openssl rand -hex 32): the login
+# API_TOKEN=<openssl rand -hex 32> (for scripts; the login and/or this one is required)
 # MONGODB_URI=${{MongoDB.MONGO_URL}}/stock-invest?authSource=admin
 # ALPACA_API_KEY / ALPACA_API_SECRET  (paper keys)  ALPACA_PAPER=true
 # ALPACA_STREAMS_ENABLED=false   (the broker doesn't need them; Alpaca allows one stream per account)

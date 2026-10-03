@@ -9,6 +9,7 @@ import { AlpacaService } from '../alpaca/alpaca.service.js';
 import { BacktestService } from '../backtest/backtest.service.js';
 import type { Env } from '../config/env.js';
 import { OrdersService } from '../orders/orders.service.js';
+import { cycleFailure } from './cycle-step.js';
 import { runCycle } from './deployment-cycle.js';
 import { type CycleDeps, logEvent } from './deployment-events.js';
 import { flatten, placeOne } from './deployment-orders.js';
@@ -98,7 +99,7 @@ export class DeploymentRunnerService
     try {
       await runCycle(d, this.runtime(d), this.deps());
     } catch (err) {
-      logEvent(d, `Cycle failed: ${(err as Error).message}`, new Date());
+      logEvent(d, cycleFailure(err), new Date());
       this.logger.warn(`Deployment ${d.name}: ${(err as Error).message}`);
     }
     await this.store.save(d);
@@ -167,6 +168,10 @@ export class DeploymentRunnerService
           timeInForce: 'day',
           ...o,
         });
+      },
+      cashToBuy: async () => {
+        const a = await this.alpaca.getAccount();
+        return Number(a.nonMarginableBuyingPower ?? a.cash ?? 0);
       },
       now: () => new Date(),
       recentNews: async (symbol, since) =>
