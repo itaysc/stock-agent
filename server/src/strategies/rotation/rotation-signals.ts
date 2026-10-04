@@ -62,3 +62,39 @@ export function basketVolPct(
   const variance = daily.reduce((a, x) => a + (x - mean) ** 2, 0) / (n - 1);
   return Math.sqrt(variance * 252) * 100;
 }
+
+/**
+ * Residual momentum: how much a stock beat what the market's move explains
+ * (its own part, return minus beta × the market's), per unit of that part's
+ * noise, over the n bars before `end`. `market` ends on the same day as `c`.
+ */
+export function residualScore(
+  c: number[],
+  market: number[],
+  end: number,
+  n: number,
+): number {
+  const lag = c.length - 1 - end;
+  const mEnd = market.length - 1 - lag;
+  if (end - n < 0 || mEnd - n < 0) return NaN;
+  const rs = moves(c, end - n, end);
+  const rm = moves(market, mEnd - n, mEnd);
+  const mean = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
+  const ms = mean(rs);
+  const mm = mean(rm);
+  const cov = rs.reduce((n2, x, i) => n2 + (x - ms) * (rm[i] - mm), 0);
+  const varM = rm.reduce((n2, x) => n2 + (x - mm) ** 2, 0);
+  const beta = varM > 0 ? cov / varM : 1;
+  const resid = rs.map((x, i) => x - beta * rm[i]);
+  const mr = mean(resid);
+  const sd = Math.sqrt(
+    resid.reduce((n2, x) => n2 + (x - mr) ** 2, 0) / (resid.length - 1),
+  );
+  return sd > 0 ? mr / sd : 0;
+}
+
+/** How close the last close is to the highest close of the last n bars (1 = at the high). */
+export function nearHigh(c: number[], n: number): number {
+  const last = c.slice(-n);
+  return last.length ? (c.at(-1) ?? 0) / Math.max(...last) : 0;
+}

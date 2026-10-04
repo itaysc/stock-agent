@@ -1,4 +1,10 @@
-import { basketVolPct, mixedReturn, steadiness } from './rotation-signals.js';
+import {
+  basketVolPct,
+  mixedReturn,
+  nearHigh,
+  residualScore,
+  steadiness,
+} from './rotation-signals.js';
 
 // Both end 20% up over 20 days: one a little every day, one in a single jump.
 const steady = Array.from({ length: 21 }, (_, i) => 100 * 1.2 ** (i / 20));
@@ -44,5 +50,46 @@ describe('rotation signals', () => {
   it('basketVolPct: null without enough history or picks', () => {
     expect(basketVolPct([], [], new Map(), 30)).toBeNull();
     expect(basketVolPct(['A'], [1], new Map([['A', [1, 2]]]), 30)).toBeNull();
+  });
+});
+
+describe('residual momentum and the 52-week high', () => {
+  const market = Array.from(
+    { length: 61 },
+    (_, i) => 100 * (1 + (i % 3 ? 0.01 : -0.015)) ** i,
+  );
+  // Follows the market with this beta, plus `own(k)` of its own each day.
+  const follow = (beta: number, own: (k: number) => number) =>
+    market.map((_, i) =>
+      market
+        .slice(1, i + 1)
+        .reduce(
+          (n, m, k) => n * (1 + beta * (m / market[k] - 1) + own(k)),
+          100,
+        ),
+    );
+  const noise = (k: number) => (k % 2 ? 0.002 : -0.002);
+
+  it('scores a stock by what it did beyond the market, not by riding it', () => {
+    const riding = residualScore(follow(2, noise), market, 60, 40);
+    const own = residualScore(
+      follow(1, (k) => noise(k) + 0.003),
+      market,
+      60,
+      40,
+    );
+    expect(Math.abs(riding)).toBeLessThan(0.2);
+    expect(own).toBeGreaterThan(1);
+  });
+
+  it('is NaN without enough market history', () => {
+    expect(
+      residualScore(follow(1, noise), market.slice(-10), 60, 40),
+    ).toBeNaN();
+  });
+
+  it('nearHigh is 1 at the high and below it after a fall', () => {
+    expect(nearHigh([90, 95, 100], 3)).toBe(1);
+    expect(nearHigh([90, 120, 96], 3)).toBeCloseTo(0.8);
   });
 });

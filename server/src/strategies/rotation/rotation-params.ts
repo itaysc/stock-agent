@@ -82,8 +82,14 @@ export const ROTATION_PARAMS: ParamSpecs = {
   rankBy: whole(
     0,
     0,
-    4,
-    'How to rank: 0 = highest return over the window (momentum); 1 = return ÷ volatility; 2 = lowest volatility (calmest first); 3 = biggest drop over the window (buy the dip); 4 = average of the returns over a quarter, half and all of the window (3, 6 and 12 months).',
+    6,
+    'How to rank: 0 = highest return over the window (momentum); 1 = return ÷ volatility; 2 = lowest volatility (calmest first); 3 = biggest drop over the window (buy the dip); 4 = average of the returns over a quarter, half and all of the window (3, 6 and 12 months); 5 = residual momentum (how much it beat what the market explains, per unit of noise); 6 = nearest its 52-week high.',
+  ),
+  sectorTop: whole(
+    0,
+    0,
+    20,
+    'Only buy from the this-many sectors whose stocks rose most on average over the window (industry momentum). 0 = any sector.',
   ),
   keepRank: whole(
     0,

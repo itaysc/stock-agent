@@ -1,3 +1,4 @@
+import { sectors } from './rotation-sectors.js';
 import { recentOk, rotationTargets } from './rotation-targets.js';
 
 const P = {
@@ -92,5 +93,27 @@ describe('rotation keepRank', () => {
     expect([...at({ keepRank: 0 }, (s) => s === 'BBB').keys()]).toEqual([
       'AAA',
     ]);
+  });
+});
+
+describe('rotation sectorTop (industry momentum)', () => {
+  it('only buys from the sectors that rose most on average', () => {
+    sectors.add({ T1: 'Tech', T2: 'Tech', E1: 'Energy', E2: 'Energy' });
+    const closes = new Map([
+      ['T1', rising(1)], // Tech: one weak, one fair
+      ['T2', rising(2)],
+      ['E1', rising(3)], // Energy: the strongest on average
+      ['E2', rising(2.5)],
+      ['BIL', Array.from({ length: 63 }, () => 100)],
+    ]);
+    const t = rotationTargets({
+      p: { ...P, recentDrop: 0, topN: 2, sectorTop: 1 },
+      symbols: ['T1', 'T2', 'E1', 'E2', 'BIL'],
+      closes,
+      vols: new Map(),
+      marketDown: false,
+      aboveTrend: () => true,
+    });
+    expect([...t.keys()].sort()).toEqual(['E1', 'E2']);
   });
 });

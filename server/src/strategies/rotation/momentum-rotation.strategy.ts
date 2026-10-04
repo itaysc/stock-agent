@@ -50,12 +50,19 @@ export class MomentumRotationStrategy implements Strategy {
         `topN (${p.topN}) is more than the ${risky} symbols to rank`,
       );
     this.marketSymbols =
-      p.marketFilter > 0 || p.guardResume ? [MARKET_SYMBOL] : [];
+      p.marketFilter > 0 || p.guardResume || p.rankBy === 5
+        ? [MARKET_SYMBOL]
+        : [];
     this.guard = new RotationGuard(p.guardPct, p.guardDays, !!p.guardResume);
   }
 
   onMarketBar(bar: StrategyBar): void {
-    const keep = Math.max(this.p.marketFilter, this.p.guardResume ? 200 : 0);
+    // Residual momentum (rankBy 5) compares each stock with SPY over the whole window.
+    const keep = Math.max(
+      this.p.marketFilter,
+      this.p.guardResume ? 200 : 0,
+      this.p.rankBy === 5 ? this.warmupBars : 0,
+    );
     if (bar.symbol !== MARKET_SYMBOL || !(keep > 0)) return;
     this.market.push(bar.close);
     if (this.market.length > keep) this.market.shift();
@@ -190,6 +197,7 @@ export class MomentumRotationStrategy implements Strategy {
       symbols: this.eligible(),
       closes: this.closes,
       vols: this.vols,
+      market: this.market,
     }).ranked;
   }
 
@@ -205,6 +213,7 @@ export class MomentumRotationStrategy implements Strategy {
       marketDown: this.marketDown() === true,
       aboveTrend: (s) => this.aboveTrend(s),
       held,
+      market: this.market,
     });
   }
 }

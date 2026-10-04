@@ -1,6 +1,12 @@
 import { sectors } from './rotation-sectors.js';
 import { volScale, type VolTracker } from '../sizing.js';
-import { basketVolPct, mixedReturn, steadiness } from './rotation-signals.js';
+import {
+  basketVolPct,
+  mixedReturn,
+  nearHigh,
+  residualScore,
+  steadiness,
+} from './rotation-signals.js';
 
 type Params = Record<string, number>;
 const pct = (n: number) => `${n >= 0 ? '+' : ''}${(n * 100).toFixed(1)}%`;
@@ -16,6 +22,8 @@ export interface RotationState {
   aboveTrend: (symbol: string) => boolean;
   /** Held now (recentDrop only blocks new buys unless recentDropHeld). */
   held?: (symbol: string) => boolean;
+  /** SPY closes ending on the same day (for rankBy 5, residual momentum). */
+  market?: number[];
 }
 
 /** Not down more than recentDrop % over the last month (always true with it off). */
@@ -55,7 +63,8 @@ export function rankSymbols({
   symbols,
   closes,
   vols,
-}: Pick<RotationState, 'p' | 'symbols' | 'closes' | 'vols'>) {
+  market = [],
+}: Pick<RotationState, 'p' | 'symbols' | 'closes' | 'vols' | 'market'>) {
   const safe = p.safeLast ? symbols.at(-1) : undefined;
   const score = (s: string) => {
     const c = closes.get(s) ?? [];
@@ -67,8 +76,14 @@ export function rankSymbols({
     const c = closes.get(s) ?? [];
     return mixedReturn(c, c.length - 1 - p.skipRecent, p.lookback);
   };
+  const residual = (s: string) => {
+    const c = closes.get(s) ?? [];
+    const r = residualScore(c, market, c.length - 1 - p.skipRecent, p.lookback);
+    return Number.isNaN(r) ? -Infinity : r;
+  };
   // 0 momentum, 1 risk-adjusted momentum, 2 lowest volatility, 3 biggest dip (mean reversion),
-  // 4 momentum averaged over 3, 6 and 12 months.
+  // 4 momentum averaged over 3, 6 and 12 months, 5 residual momentum (beat the market's
+  // part), 6 nearest its 52-week high.
   const rank = (s: string) =>
     [
       score,
@@ -76,6 +91,8 @@ export function rankSymbols({
       (x: string) => -volOf(x),
       (x: string) => -score(x),
       mixed,
+      residual,
+      (x: string) => nearHigh(closes.get(x) ?? [], 252),
     ][p.rankBy]?.(s) ?? score(s);
   const ranked = symbols
     .filter((s) => s !== safe)
@@ -93,6 +110,32 @@ function keepHeld(
   if (!(p.keepRank > 0) || !held) return candidates;
   const keep = (s: string) => held(s) && ranked.indexOf(s) < p.keepRank;
   return [...candidates.filter(keep), ...candidates.filter((s) => !keep(s))];
+}
+
+/** With sectorTop: only stocks from the `sectorTop` sectors whose stocks rose most on average (industry momentum). */
+function inTopSectors(
+  p: Params,
+  ranked: string[],
+  score: (s: string) => number,
+): (s: string) => boolean {
+  if (!(p.sectorTop > 0)) return () => true;
+  const by = new Map<string, number[]>();
+  for (const s of ranked) {
+    const sector = sectors.of(s);
+    if (sector.startsWith('(')) continue; // unknown sector
+    by.set(sector, [...(by.get(sector) ?? []), score(s)]);
+  }
+  const top = new Set(
+    [...by]
+      .map(([sector, xs]) => ({
+        sector,
+        avg: xs.reduce((a, b) => a + b, 0) / xs.length,
+      }))
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, p.sectorTop)
+      .map((x) => x.sector),
+  );
+  return (s) => top.has(sectors.of(s));
 }
 
 /** With steadyPool: of the best `steadyPool`, the steadiest risers first (then the rest, in rank order). */
@@ -126,9 +169,17 @@ export function rotationTargets({
   marketDown,
   aboveTrend,
   held,
+  market,
 }: RotationState): Map<string, { weight: number; why: string }> {
   const safe = p.safeLast ? symbols.at(-1) : undefined;
-  const { ranked, score, volOf } = rankSymbols({ p, symbols, closes, vols });
+  const { ranked, score, volOf } = rankSymbols({
+    p,
+    symbols,
+    closes,
+    vols,
+    market,
+  });
+  const topSector = inTopSectors(p, ranked, score);
   const picks = marketDown
     ? []
     : capBySector(
@@ -141,6 +192,7 @@ export function rotationTargets({
             ranked.filter(
               (s) =>
                 aboveTrend(s) &&
+                topSector(s) &&
                 ((!p.recentDropHeld && held?.(s)) || recentOk(p, closes, s)),
             ),
           ),

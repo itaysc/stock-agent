@@ -36,3 +36,12 @@ export const HOLD_BAND = [
   ...both('keep while top 10', { keepRank: '10' }),
   ...both('keep while top 15', { keepRank: '15' }),
 ];
+
+/** Ideas from the research: residual momentum, the 52-week high, and industry momentum. */
+export const RESEARCH = [
+  ...both('now'),
+  ...both('residual momentum', { rankBy: '5' }),
+  ...both('nearest 52-week high', { rankBy: '6' }),
+  ...both('top 3 sectors only', { sectorTop: '3' }),
+  ...both('top 2 sectors only', { sectorTop: '2' }),
+];

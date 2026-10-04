@@ -13,7 +13,7 @@ import type { StrategyBar } from '../../strategies/strategy.types.js';
 import { SAFE_ASSET } from '../universe.js';
 import { mixCurves } from './lab-mix.js';
 import { RECENT_DROP } from './lab-recent.js';
-import { HOLD_BAND, SIGNALS } from './lab-signals.js';
+import { HOLD_BAND, RESEARCH, SIGNALS } from './lab-signals.js';
 import {
   CRASH,
   SECTOR_CAPS,
@@ -140,6 +140,7 @@ for (const v of (
     recent: RECENT_DROP,
     signals: SIGNALS,
     hold: HOLD_BAND,
+    research: RESEARCH,
   }[values.set ?? ''] ?? VARIANTS
 ).filter((x) => !values.only || values.only.split(',').includes(x.name))) {
   const r = await app.get(WalkForwardService).run(
