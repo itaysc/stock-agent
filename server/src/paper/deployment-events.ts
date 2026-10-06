@@ -39,6 +39,16 @@ export interface CycleDeps {
   ): Promise<{ avoid: boolean; reason: string } | null>;
   /** Official facts: a trading halt now, and 8-K filings since `since`. */
   officialEvents(symbol: string, since: Date): Promise<OfficialEvents>;
+  /** The symbol's next earnings day (YYYY-MM-DD) from today on, within ~3 months; null when unknown or off. */
+  nextEarnings(symbol: string): Promise<string | null>;
+  /** The latest reported quarter (reported vs expected), or null when unknown. */
+  lastEarnings(symbol: string): Promise<EarningsResult | null>;
+  /** The AI's reading of an earnings report (numbers and headlines); null when the AI is not available. */
+  aiEarningsCheck(
+    symbol: string,
+    result: EarningsResult | null,
+    headlines: Headline[],
+  ): Promise<{ avoid: boolean; reason: string } | null>;
   /** True when the market opens within the pre-open window, or is open. */
   opensSoon(): Promise<boolean>;
   /** Sends a notification (no-op when none is configured). */
@@ -57,6 +67,16 @@ export interface OfficialEvents {
     acceptedAt: Date;
     url: string;
   }>;
+}
+
+/** One quarter's results against the analysts' estimate. */
+export interface EarningsResult {
+  /** YYYY-MM-DD the results came out. */
+  date: string;
+  reportedEps: number | null;
+  estimatedEps: number | null;
+  /** Beat (+) or miss (-) against the estimate, in %. */
+  surprisePct: number | null;
 }
 
 export interface Headline {

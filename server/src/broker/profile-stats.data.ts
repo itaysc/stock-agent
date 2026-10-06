@@ -2,13 +2,13 @@
 import type { ProfileStatsFile } from './profile-stats.types.js';
 
 export const PROFILE_STATS: ProfileStatsFile = {
-  testedAt: '2026-10-02T12:11:01.940Z',
+  testedAt: '2026-10-06T08:41:39.242Z',
   profiles: {
     aggressive: {
       from: '2007-01-03T00:00:00.000Z',
-      to: '2026-10-01T00:00:00.000Z',
-      totalPct: 2751.41,
-      annualPct: 18.5,
+      to: '2026-10-05T00:00:00.000Z',
+      totalPct: 2764.53,
+      annualPct: 18.51,
       maxDrawdownPct: 45.86,
       worstYear: {
         year: 2008,
@@ -98,18 +98,18 @@ export const PROFILE_STATS: ProfileStatsFile = {
         },
         {
           year: 2026,
-          pct: 99.89,
+          pct: 100.81,
         },
       ],
       spy: {
         from: '2007-01-03T00:00:00.000Z',
-        to: '2026-10-01T00:00:00.000Z',
-        totalPct: 674.64,
-        annualPct: 10.93,
+        to: '2026-10-05T00:00:00.000Z',
+        totalPct: 685.64,
+        annualPct: 11,
         maxDrawdownPct: 55.19,
         worstYear: {
           year: 2008,
-          pct: -36.79,
+          pct: -36.8,
         },
         bestYear: {
           year: 2013,
@@ -123,7 +123,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2008,
-            pct: -36.79,
+            pct: -36.8,
           },
           {
             year: 2009,
@@ -195,207 +195,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2026,
-            pct: 12.91,
-          },
-        ],
-      },
-      method:
-        'Walk-forward (settings picked on 2 years, scored on the 6 months after), 2007-2026',
-      universe:
-        "Each year's 50 most-traded S&P 500 members (Yahoo prices; delisted companies missing)",
-    },
-    growth: {
-      from: '2007-01-03T00:00:00.000Z',
-      to: '2026-10-01T00:00:00.000Z',
-      totalPct: 1752.33,
-      annualPct: 15.93,
-      maxDrawdownPct: 34.74,
-      worstYear: {
-        year: 2008,
-        pct: -26.55,
-      },
-      bestYear: {
-        year: 2024,
-        pct: 61.81,
-      },
-      positiveYearsPct: 77.78,
-      years: [
-        {
-          year: 2007,
-          pct: 16.47,
-        },
-        {
-          year: 2008,
-          pct: -26.55,
-        },
-        {
-          year: 2009,
-          pct: 14.9,
-        },
-        {
-          year: 2010,
-          pct: 13.16,
-        },
-        {
-          year: 2011,
-          pct: -5.01,
-        },
-        {
-          year: 2012,
-          pct: 13.25,
-        },
-        {
-          year: 2013,
-          pct: 40.06,
-        },
-        {
-          year: 2014,
-          pct: 12.38,
-        },
-        {
-          year: 2015,
-          pct: 1.7,
-        },
-        {
-          year: 2016,
-          pct: 2.86,
-        },
-        {
-          year: 2017,
-          pct: 25.1,
-        },
-        {
-          year: 2018,
-          pct: -7.48,
-        },
-        {
-          year: 2019,
-          pct: 33.65,
-        },
-        {
-          year: 2020,
-          pct: 42.41,
-        },
-        {
-          year: 2021,
-          pct: 11.62,
-        },
-        {
-          year: 2022,
-          pct: -15.35,
-        },
-        {
-          year: 2023,
-          pct: 26.88,
-        },
-        {
-          year: 2024,
-          pct: 61.81,
-        },
-        {
-          year: 2025,
-          pct: 27.41,
-        },
-        {
-          year: 2026,
-          pct: 72.66,
-        },
-      ],
-      spy: {
-        from: '2007-01-03T00:00:00.000Z',
-        to: '2026-10-01T00:00:00.000Z',
-        totalPct: 674.64,
-        annualPct: 10.93,
-        maxDrawdownPct: 55.19,
-        worstYear: {
-          year: 2008,
-          pct: -36.79,
-        },
-        bestYear: {
-          year: 2013,
-          pct: 32.31,
-        },
-        positiveYearsPct: 83.33,
-        years: [
-          {
-            year: 2007,
-            pct: 5.33,
-          },
-          {
-            year: 2008,
-            pct: -36.79,
-          },
-          {
-            year: 2009,
-            pct: 26.35,
-          },
-          {
-            year: 2010,
-            pct: 15.06,
-          },
-          {
-            year: 2011,
-            pct: 1.89,
-          },
-          {
-            year: 2012,
-            pct: 15.99,
-          },
-          {
-            year: 2013,
-            pct: 32.31,
-          },
-          {
-            year: 2014,
-            pct: 13.46,
-          },
-          {
-            year: 2015,
-            pct: 1.23,
-          },
-          {
-            year: 2016,
-            pct: 12,
-          },
-          {
-            year: 2017,
-            pct: 21.71,
-          },
-          {
-            year: 2018,
-            pct: -4.57,
-          },
-          {
-            year: 2019,
-            pct: 31.22,
-          },
-          {
-            year: 2020,
-            pct: 18.33,
-          },
-          {
-            year: 2021,
-            pct: 28.73,
-          },
-          {
-            year: 2022,
-            pct: -18.18,
-          },
-          {
-            year: 2023,
-            pct: 26.18,
-          },
-          {
-            year: 2024,
-            pct: 24.89,
-          },
-          {
-            year: 2025,
-            pct: 17.72,
-          },
-          {
-            year: 2026,
-            pct: 12.91,
+            pct: 14.51,
           },
         ],
       },
@@ -406,110 +206,110 @@ export const PROFILE_STATS: ProfileStatsFile = {
     },
     balanced: {
       from: '2007-01-03T00:00:00.000Z',
-      to: '2026-10-01T00:00:00.000Z',
-      totalPct: 1681.79,
-      annualPct: 15.71,
-      maxDrawdownPct: 29.74,
+      to: '2026-10-05T00:00:00.000Z',
+      totalPct: 1481.5,
+      annualPct: 15,
+      maxDrawdownPct: 32.32,
       worstYear: {
         year: 2022,
-        pct: -13.92,
+        pct: -19.11,
       },
       bestYear: {
         year: 2024,
-        pct: 77.17,
+        pct: 69.27,
       },
       positiveYearsPct: 77.78,
       years: [
         {
           year: 2007,
-          pct: 13.31,
+          pct: 7.35,
         },
         {
           year: 2008,
-          pct: -3.08,
+          pct: -1.71,
         },
         {
           year: 2009,
-          pct: 19.91,
+          pct: 18.56,
         },
         {
           year: 2010,
-          pct: 5.18,
+          pct: 3.9,
         },
         {
           year: 2011,
-          pct: 8.81,
+          pct: 0.19,
         },
         {
           year: 2012,
-          pct: 10.2,
+          pct: 9.84,
         },
         {
           year: 2013,
-          pct: 45.12,
+          pct: 41.65,
         },
         {
           year: 2014,
-          pct: 3.1,
+          pct: 13.09,
         },
         {
           year: 2015,
-          pct: -4.83,
+          pct: -7.38,
         },
         {
           year: 2016,
-          pct: 6.42,
+          pct: 3.53,
         },
         {
           year: 2017,
-          pct: 27.31,
+          pct: 28.03,
         },
         {
           year: 2018,
-          pct: -5.42,
+          pct: -5.02,
         },
         {
           year: 2019,
-          pct: 21.73,
+          pct: 21.39,
         },
         {
           year: 2020,
-          pct: 32.11,
+          pct: 38.64,
         },
         {
           year: 2021,
-          pct: 4.01,
+          pct: 5.89,
         },
         {
           year: 2022,
-          pct: -13.92,
+          pct: -19.11,
         },
         {
           year: 2023,
-          pct: 20.35,
+          pct: 21.47,
         },
         {
           year: 2024,
-          pct: 77.17,
+          pct: 69.27,
         },
         {
           year: 2025,
-          pct: 4.45,
+          pct: 13.9,
         },
         {
           year: 2026,
-          pct: 83.39,
+          pct: 75.36,
         },
       ],
       spy: {
         from: '2007-01-03T00:00:00.000Z',
-        to: '2026-10-01T00:00:00.000Z',
-        totalPct: 674.64,
-        annualPct: 10.93,
+        to: '2026-10-05T00:00:00.000Z',
+        totalPct: 685.64,
+        annualPct: 11,
         maxDrawdownPct: 55.19,
         worstYear: {
           year: 2008,
-          pct: -36.79,
+          pct: -36.8,
         },
         bestYear: {
           year: 2013,
@@ -523,7 +323,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2008,
-            pct: -36.79,
+            pct: -36.8,
           },
           {
             year: 2009,
@@ -595,7 +395,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2026,
-            pct: 12.91,
+            pct: 14.51,
           },
         ],
       },
@@ -606,110 +406,110 @@ export const PROFILE_STATS: ProfileStatsFile = {
     },
     careful: {
       from: '2007-01-03T00:00:00.000Z',
-      to: '2026-10-01T00:00:00.000Z',
-      totalPct: 869.82,
-      annualPct: 12.2,
-      maxDrawdownPct: 23.57,
+      to: '2026-10-05T00:00:00.000Z',
+      totalPct: 808.59,
+      annualPct: 11.82,
+      maxDrawdownPct: 23.44,
       worstYear: {
         year: 2022,
-        pct: -14.08,
+        pct: -16.68,
       },
       bestYear: {
         year: 2024,
-        pct: 51.57,
+        pct: 47.62,
       },
-      positiveYearsPct: 77.78,
+      positiveYearsPct: 72.22,
       years: [
         {
           year: 2007,
-          pct: 4.31,
+          pct: 1.33,
         },
         {
           year: 2008,
-          pct: -2.17,
+          pct: -1.49,
         },
         {
           year: 2009,
-          pct: 20.98,
+          pct: 20.3,
         },
         {
           year: 2010,
-          pct: 2.11,
+          pct: 1.47,
         },
         {
           year: 2011,
-          pct: 0.62,
+          pct: -3.69,
         },
         {
           year: 2012,
-          pct: 10.72,
+          pct: 10.55,
         },
         {
           year: 2013,
-          pct: 36.69,
+          pct: 34.95,
         },
         {
           year: 2014,
-          pct: 4.77,
+          pct: 9.77,
         },
         {
           year: 2015,
-          pct: -5.24,
+          pct: -6.51,
         },
         {
           year: 2016,
-          pct: 9.88,
+          pct: 8.43,
         },
         {
           year: 2017,
-          pct: 23.63,
+          pct: 23.99,
         },
         {
           year: 2018,
-          pct: -6.7,
+          pct: -6.51,
         },
         {
           year: 2019,
-          pct: 19.69,
+          pct: 19.52,
         },
         {
           year: 2020,
-          pct: 20.56,
+          pct: 23.83,
         },
         {
           year: 2021,
-          pct: 16.7,
+          pct: 17.64,
         },
         {
           year: 2022,
-          pct: -14.08,
+          pct: -16.68,
         },
         {
           year: 2023,
-          pct: 17.53,
+          pct: 18.09,
         },
         {
           year: 2024,
-          pct: 51.57,
+          pct: 47.62,
         },
         {
           year: 2025,
-          pct: 6.51,
+          pct: 11.23,
         },
         {
           year: 2026,
-          pct: 46.25,
+          pct: 43.02,
         },
       ],
       spy: {
         from: '2007-01-03T00:00:00.000Z',
-        to: '2026-10-01T00:00:00.000Z',
-        totalPct: 674.64,
-        annualPct: 10.93,
+        to: '2026-10-05T00:00:00.000Z',
+        totalPct: 685.64,
+        annualPct: 11,
         maxDrawdownPct: 55.19,
         worstYear: {
           year: 2008,
-          pct: -36.79,
+          pct: -36.8,
         },
         bestYear: {
           year: 2013,
@@ -723,7 +523,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2008,
-            pct: -36.79,
+            pct: -36.8,
           },
           {
             year: 2009,
@@ -795,7 +595,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2026,
-            pct: 12.91,
+            pct: 14.51,
           },
         ],
       },

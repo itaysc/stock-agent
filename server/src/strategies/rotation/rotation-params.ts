@@ -53,6 +53,22 @@ export const ROTATION_PARAMS: ParamSpecs = {
     undefined,
     'Re-rank and rebalance every this many bars (21 ≈ monthly).',
   ),
+  tranches: whole(
+    0,
+    0,
+    21,
+    "Split the money into this many parts, re-ranking one part each day (it holds the average of the last this-many days' picks), so no single re-rank day decides the result. 0 or 1 = off (all of it on the re-rank day).",
+  ),
+  lookbackMix: flag(
+    0,
+    '1 = a third each ranked over about 6, 9 and 12 months (instead of one window), so no single window decides the result.',
+  ),
+  rebalanceOffset: whole(
+    0,
+    0,
+    100,
+    'Shift the re-rank day by this many bars (e.g. 1 = a day later in each cycle), to check the day itself does not matter.',
+  ),
   absMomentum: flag(
     1,
     '1 = only hold a symbol whose own return over the window is positive; its share goes to the safe asset (safeLast) or stays in cash.',
@@ -84,6 +100,12 @@ export const ROTATION_PARAMS: ParamSpecs = {
     0,
     6,
     'How to rank: 0 = highest return over the window (momentum); 1 = return ÷ volatility; 2 = lowest volatility (calmest first); 3 = biggest drop over the window (buy the dip); 4 = average of the returns over a quarter, half and all of the window (3, 6 and 12 months); 5 = residual momentum (how much it beat what the market explains, per unit of noise); 6 = nearest its 52-week high.',
+  ),
+  blend: whole(
+    0,
+    0,
+    5,
+    'Mix in the company reports (algo lab only, from SEC data): 1 momentum + value, 2 momentum + quality, 3 all three, 4 momentum among the better-quality half, 5 value + quality without momentum. 0 = momentum only.',
   ),
   sectorTop: whole(
     0,

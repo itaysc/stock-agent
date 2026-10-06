@@ -22,3 +22,23 @@ export interface ProfileStatsFile {
   testedAt: string | Date;
   profiles: Record<string, ProfileStats>;
 }
+
+/** How solid a profile's numbers are: the same test with the re-rank day moved and random stocks left out. */
+export interface ProfileRobustness {
+  /** The middle half of the yearly returns over all the variations (in %). */
+  usualPct: [number, number];
+  /** The deepest drop in any variation (in %). */
+  worstDropPct: number;
+  /** How many variations were run. */
+  runs: number;
+  /** Its yearly return in each part of the test, next to SPY's. */
+  periods: Array<{ from: number; to: number; pct: number; spyPct: number }>;
+  /** Beating SPY month by month: 2 or more means more than luck. */
+  tVsSpy: number;
+}
+
+export interface ProfileRobustnessFile {
+  testedAt: string | Date;
+  method: string;
+  profiles: Record<string, ProfileRobustness>;
+}

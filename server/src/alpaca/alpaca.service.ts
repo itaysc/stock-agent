@@ -250,4 +250,21 @@ export class AlpacaService implements OnModuleInit {
   getLatestPrice(symbol: string): Promise<number | undefined> {
     return this.client.marketData.getLatestPrice(symbol, { feed: this.feed });
   }
+
+  /** Each symbol's latest trade (price and time), in one request. */
+  async getLatestTrades(
+    symbols: string[],
+  ): Promise<Record<string, { price: number; at: Date }>> {
+    if (!symbols.length) return {};
+    const r = await this.client.marketData.stocks.stockLatestTrades({
+      symbols: symbols.join(','),
+      feed: this.feed,
+    });
+    return Object.fromEntries(
+      Object.entries(r.trades).map(([s, t]) => [
+        s,
+        { price: t.p, at: new Date(t.t) },
+      ]),
+    );
+  }
 }

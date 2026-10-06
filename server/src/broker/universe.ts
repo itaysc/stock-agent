@@ -87,7 +87,12 @@ export const TESTED =
 /** The algo in one sentence, for these settings. */
 export function algoText(p: Record<string, string>): string {
   const months = Math.max(1, Math.round(Number(p.lookback) / 21));
-  const every = Number(p.rebalanceDays) <= 5 ? 'every week' : 'every month';
+  const every =
+    Number(p.tranches) > 1
+      ? `a ${p.tranches === '5' ? 'fifth' : `1/${p.tranches}`} of the money every day (each part once a week)`
+      : Number(p.rebalanceDays) <= 5
+        ? 'every week'
+        : 'every month';
   const skip =
     Number(p.skipRecent) > 0
       ? ' (leaving out the latest month, which tends to reverse)'

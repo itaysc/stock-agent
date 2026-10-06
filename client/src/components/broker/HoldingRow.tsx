@@ -6,6 +6,14 @@ import { Sparkline } from './Sparkline';
 
 const usd = (n: number | null) => (n === null ? '—' : `$${n.toFixed(2)}`);
 const shares = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(4));
+/** "14:32" today, "Fri 22:59" on another day: when the live price traded. */
+const tradedAt = (iso: string) => {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === new Date().toDateString()
+    ? time
+    : `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+};
 const TONE = { good: 'teal', watch: 'orange', danger: 'red', neutral: 'gray' } as const;
 
 /** One holding: status, prices, its sell levels, and the actions menu. */
@@ -36,7 +44,12 @@ export function HoldingRow({
           </Text>
         )}
       </Table.Td>
-      <Table.Td ta="right">{usd(h.price)}</Table.Td>
+      <Table.Td ta="right">
+        {usd(h.price)}
+        <Text size="xs" c="dimmed">
+          {h.liveAt ? tradedAt(h.liveAt) : 'last close'}
+        </Text>
+      </Table.Td>
       <Table.Td ta="right" c={tone(h.gainPct)}>
         {pct(h.gainPct)}
       </Table.Td>

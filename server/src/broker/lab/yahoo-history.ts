@@ -24,7 +24,7 @@ interface YahooQuote {
 }
 
 /** Tickers that changed (Yahoo keeps the history under the new one). */
-const RENAMED: Record<string, string> = {
+export const RENAMED: Record<string, string> = {
   FB: 'META',
   ANTM: 'ELV',
   FISV: 'FI',

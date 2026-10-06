@@ -5,6 +5,7 @@ import { api } from '../../api/client';
 import type { BrokerOverview } from '../../api/broker-types';
 import type { PaperAccount } from '../../api/paper-types';
 import { money, pct } from '../../lib/format';
+import { applyLive, type LivePrices } from '../../lib/live';
 import { AllInvestments } from './AllInvestments';
 import { BrokerStart } from './BrokerStart';
 import { FundsLine } from './FundsLine';
@@ -16,6 +17,7 @@ export function BrokerPage() {
   const [account, setAccount] = useState<PaperAccount | null>(null);
   const [tab, setTab] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [live, setLive] = useState<LivePrices>({});
   const load = useCallback(async () => {
     try {
       const [o, a] = await Promise.all([api.broker(), api.paperAccount()]);
@@ -30,6 +32,23 @@ export function BrokerPage() {
     const timer = setInterval(() => void load(), 60_000);
     return () => clearInterval(timer);
   }, [load]);
+  // ~Live prices: on opening the page (and whenever the stocks held change), then every 10 minutes.
+  const held = [
+    ...new Set(overview?.investments.flatMap((v) => v.holdings.map((h) => h.symbol)) ?? []),
+  ]
+    .sort()
+    .join(',');
+  useEffect(() => {
+    if (!held) return;
+    const fetchLive = () =>
+      void api.brokerPrices(held.split(',')).then(
+        (r) => setLive(r.prices),
+        () => undefined, // keep showing the last closes
+      );
+    fetchLive();
+    const timer = setInterval(fetchLive, 10 * 60_000);
+    return () => clearInterval(timer);
+  }, [held]);
   // After a change, the money figures change too.
   const changed = (o: BrokerOverview) => {
     setOverview(o);
@@ -44,7 +63,7 @@ export function BrokerPage() {
         <Loader />
       </Center>
     );
-  const list = overview.investments;
+  const list = overview.investments.map((v) => applyLive(v, live));
   const free = account?.free ?? null;
   const canAdd = free === null || free >= 100;
   const start = (

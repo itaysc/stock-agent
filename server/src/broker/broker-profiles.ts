@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { PROFILE_ROBUSTNESS } from './profile-robustness.data.js';
 import { PROFILE_STATS } from './profile-stats.data.js';
 import {
   PROFILES,
@@ -30,6 +31,7 @@ export function profilesFor(capital: number) {
     suggested,
     profiles: PROFILES.map((p) => {
       const stats = PROFILE_STATS.profiles[p.id];
+      const robust = PROFILE_ROBUSTNESS.profiles[p.id] ?? null;
       const years = stats
         ? (new Date(stats.to).getTime() - new Date(stats.from).getTime()) /
           (365.25 * 86_400_000)
@@ -38,7 +40,16 @@ export function profilesFor(capital: number) {
         ...p,
         suggested: p.id === suggested.profile,
         stats: stats ?? null,
+        /** The usual range over the test's variations (the single run in `stats` is its luckiest setup). */
+        robust,
+        robustMethod: PROFILE_ROBUSTNESS.method,
         forAmount: stats && {
+          /** A usual year in dollars, low and high. */
+          usualYear: robust
+            ? robust.usualPct.map((x) => (capital * x) / 100)
+            : null,
+          /** The deepest drop in any variation, in dollars. */
+          worstDropAny: robust ? (-capital * robust.worstDropPct) / 100 : null,
           worstDrop: (-capital * stats.maxDrawdownPct) / 100,
           worstYear: (capital * stats.worstYear.pct) / 100,
           typicalYear: (capital * stats.annualPct) / 100,

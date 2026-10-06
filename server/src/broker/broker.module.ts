@@ -13,6 +13,7 @@ import {
 } from './broker-store.js';
 import { BrokerNoticesService } from './broker-notices.service.js';
 import { BrokerService } from './broker.service.js';
+import { LivePricesService } from './live-prices.service.js';
 
 /** The broker: picks stocks and trades them by itself (paper), reports daily. */
 @Module({
@@ -31,6 +32,7 @@ import { BrokerService } from './broker.service.js';
     BrokerService,
     BrokerNoticesService,
     BrokerSchedulerService,
+    LivePricesService,
   ],
   exports: [BrokerService, BrokerNoticesService],
 })

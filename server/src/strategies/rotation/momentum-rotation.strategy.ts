@@ -2,6 +2,11 @@ import { MARKET_SYMBOL } from '../rules/rules-validate.js';
 import { cleanQty, roundQty } from '../qty.js';
 import { VolTracker } from '../sizing.js';
 import { rankSymbols, rotationTargets } from './rotation-targets.js';
+import {
+  averageTargets,
+  MIXED_LOOKBACKS,
+  Tranches,
+} from './rotation-tranches.js';
 import { holdingExits } from './rotation-exits.js';
 import { RotationGuard } from './rotation-guard.js';
 import { pointInTime } from './rotation-universe.js';
@@ -33,6 +38,8 @@ export class MomentumRotationStrategy implements Strategy {
   private readonly peaks = new Map<string, number>();
   readonly marketSymbols: string[];
   private readonly guard: RotationGuard;
+  /** With tranches: the last days' targets (one tranche re-ranked a day). */
+  private readonly tranches: Tranches;
   /** The latest close it saw (for a point-in-time universe in the lab). */
   private now = new Date(0);
 
@@ -54,6 +61,7 @@ export class MomentumRotationStrategy implements Strategy {
         ? [MARKET_SYMBOL]
         : [];
     this.guard = new RotationGuard(p.guardPct, p.guardDays, !!p.guardResume);
+    this.tranches = new Tranches(Math.max(1, p.tranches));
   }
 
   onMarketBar(bar: StrategyBar): void {
@@ -92,7 +100,11 @@ export class MomentumRotationStrategy implements Strategy {
 
   get warmupBars(): number {
     return Math.max(
-      this.p.lookback + this.p.skipRecent + 1,
+      (this.p.lookbackMix
+        ? Math.max(this.p.lookback, ...MIXED_LOOKBACKS)
+        : this.p.lookback) +
+        this.p.skipRecent +
+        1,
       this.p.volLookback + 1,
       this.p.trendSma,
     );
@@ -128,12 +140,20 @@ export class MomentumRotationStrategy implements Strategy {
     if (guard === 'out') return;
     // Holding nothing yet (just started, or everything was sold): invest now, not at the next re-check.
     const empty = this.symbols.every((s) => !ctx.position(s));
-    if (guard === 'in' && this.steps++ % this.p.rebalanceDays !== 0 && !empty)
+    // rebalanceOffset shifts which day of the cycle it re-ranks on (e.g. Tuesdays instead of Mondays).
+    const step = this.steps++ + this.p.rebalanceOffset;
+    // With tranches it adjusts every day (one tranche's worth); otherwise on the re-rank day only.
+    const daily = this.p.tranches > 1;
+    if (guard === 'in' && !daily && step % this.p.rebalanceDays !== 0 && !empty)
       return;
+    if (guard === 'trip') this.tranches.clear();
+    const today = () => this.targets((s) => (ctx.position(s)?.qty ?? 0) > 0);
     const weights =
       guard === 'trip'
         ? this.safeOnly()
-        : this.targets((s) => (ctx.position(s)?.qty ?? 0) > 0);
+        : daily
+          ? this.tranches.push(today())
+          : today();
     const exitWhy =
       guard === 'trip'
         ? `crash guard: the account fell ${this.p.guardPct}% from its peak`
@@ -198,6 +218,7 @@ export class MomentumRotationStrategy implements Strategy {
       closes: this.closes,
       vols: this.vols,
       market: this.market,
+      now: this.now,
     }).ranked;
   }
 
@@ -205,8 +226,22 @@ export class MomentumRotationStrategy implements Strategy {
   targets(
     held?: (symbol: string) => boolean,
   ): Map<string, { weight: number; why: string }> {
+    // lookbackMix: a third each with a 6, 9 and 12 month window (no single window decides).
+    if (this.p.lookbackMix)
+      return averageTargets(
+        MIXED_LOOKBACKS.map((lookback) =>
+          this.targetsWith({ ...this.p, lookback }, held),
+        ),
+      );
+    return this.targetsWith(this.p, held);
+  }
+
+  private targetsWith(
+    p: Params,
+    held?: (symbol: string) => boolean,
+  ): Map<string, { weight: number; why: string }> {
     return rotationTargets({
-      p: this.p,
+      p,
       symbols: this.eligible(),
       closes: this.closes,
       vols: this.vols,
@@ -214,6 +249,7 @@ export class MomentumRotationStrategy implements Strategy {
       aboveTrend: (s) => this.aboveTrend(s),
       held,
       market: this.market,
+      now: this.now,
     });
   }
 }

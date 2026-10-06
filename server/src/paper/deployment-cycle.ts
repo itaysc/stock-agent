@@ -17,6 +17,7 @@ import {
 } from './deployment-orders.js';
 import { step } from './cycle-step.js';
 import { drawdownAlert } from './drawdown-alert.js';
+import { watchEarnings } from './earnings-check.js';
 import { dropHeldOffBuys, manualExits } from './manual-exits.js';
 import { releaseStaged, watchHeld } from './news-check.js';
 import { ledgerEquity } from './sleeve-ledger.js';
@@ -157,21 +158,29 @@ export async function runCycle(
     ),
   );
   await step('sending orders that waited', retryOrders(d, deps, now));
-  for (const s of await step(
-    'watching the news on holdings',
-    watchHeld(d, deps, now),
-  )) {
-    if (!d.ledgers[s.sleeve].pending.some((o) => o.symbol === s.symbol)) {
-      await placeOne(
-        d,
-        s.sleeve,
-        { symbol: s.symbol, side: 'sell', qty: s.qty, reason: s.why },
-        deps,
-        now,
-        'sold on breaking news',
-      );
-    }
-  }
+  const sell = async (
+    sells: Array<{ sleeve: number; symbol: string; qty: number; why: string }>,
+    when: string,
+  ) => {
+    for (const s of sells)
+      if (!d.ledgers[s.sleeve].pending.some((o) => o.symbol === s.symbol))
+        await placeOne(
+          d,
+          s.sleeve,
+          { symbol: s.symbol, side: 'sell', qty: s.qty, reason: s.why },
+          deps,
+          now,
+          when,
+        );
+  };
+  await sell(
+    await step('watching the news on holdings', watchHeld(d, deps, now)),
+    'sold on breaking news',
+  );
+  await sell(
+    await step('reading earnings reports', watchEarnings(d, deps, now)),
+    'sold on a bad earnings report',
+  );
   if (d.lastBarAt) snapshot(d, new Date(d.lastBarAt));
   await step(
     'checking the drop alert',

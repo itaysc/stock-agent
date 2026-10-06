@@ -25,6 +25,6 @@ import { HaltsService } from './official/halts.service.js';
     HaltsService,
     EdgarService,
   ],
-  exports: [InfoService, HaltsService, EdgarService],
+  exports: [InfoService, HaltsService, EdgarService, EarningsService],
 })
 export class InfoModule {}

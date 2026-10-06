@@ -65,16 +65,18 @@ export const PROFILES: Profile[] = [
     id: 'balanced',
     name: 'Balanced',
     summary:
-      'The 5 strongest stocks, moving to T-bills whenever the S&P 500 is below its 200-day average.',
-    sleeves: [momentum(100, { marketFilter: '200' })],
+      'The 5 strongest stocks, moving to T-bills whenever the S&P 500 is below its 200-day average. Re-checks a fifth of the money each day, so no single day decides.',
+    // Tranches: in the lab they kept the return and cut the unlucky worst drop (-39% → -34%).
+    sleeves: [momentum(100, { marketFilter: '200', tranches: '5' })],
     alertPct: 20,
   },
   {
     id: 'careful',
     name: 'Careful',
     summary:
-      'Half in the strongest stocks, half in the S&P 500, both moving to T-bills when the market is down.',
-    sleeves: [momentum(50, { marketFilter: '200' }), index(50)],
+      'Half in the strongest stocks, half in the S&P 500, both moving to T-bills when the market is down. Re-checks a fifth of the stocks each day.',
+    // Tranches on the stocks half: the unlucky worst drop went from -31% to -24% in the lab.
+    sleeves: [momentum(50, { marketFilter: '200', tranches: '5' }), index(50)],
     alertPct: 15,
   },
 ];

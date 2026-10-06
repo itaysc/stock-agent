@@ -36,6 +36,8 @@ export interface StagedBuy {
   reason?: string;
   /** When the strategy asked for it (after a close). */
   signalAt: Date;
+  /** The stock reports earnings on this day (YYYY-MM-DD): the buy waits until after it. */
+  waitFor?: string;
 }
 
 /** Real-time news checks of a deployment (live only: news tone + optionally the AI). */
@@ -138,6 +140,8 @@ export interface Deployment {
   manual?: Record<string, ManualLevels>;
   /** Symbols you sold (or your levels sold): the strategy does not buy them again before this. */
   noBuyUntil?: Record<string, Date>;
+  /** Per held symbol: its next earnings day, and the last report already read (YYYY-MM-DD). */
+  earnings?: Record<string, { next?: string; seen?: string }>;
   /** What happened, newest last (fills, orders sent or refused, guard pauses). */
   events: Array<{ timestamp: Date; message: string }>;
   createdAt: Date;

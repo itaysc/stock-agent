@@ -1,5 +1,6 @@
 import { type CycleDeps, logEvent } from './deployment-events.js';
 import type { Deployment, StagedBuy } from './deployment.types.js';
+import { earningsGate, waitsForEarnings } from './earnings-check.js';
 import { assessNews } from './news-assess.js';
 
 const STAGED_MAX_MS = 4 * 86_400_000;
@@ -26,14 +27,28 @@ export async function releaseStaged(
     return;
   for (const [i, ledger] of d.ledgers.entries()) {
     const staged = ledger.staged ?? [];
-    ledger.staged = [];
+    const keep: StagedBuy[] = [];
+    ledger.staged = keep;
     for (const buy of staged) {
-      if (now.getTime() - new Date(buy.signalAt).getTime() > STAGED_MAX_MS) {
+      if (
+        now.getTime() - new Date(buy.signalAt).getTime() > STAGED_MAX_MS &&
+        !waitsForEarnings(buy, now)
+      ) {
         logEvent(
           d,
           `Dropped the buy of ${buy.symbol}: its signal is more than 4 days old`,
           now,
         );
+        continue;
+      }
+      // Earnings a few days away: wait, then read the report before buying.
+      const gate = await earningsGate(d, deps, buy, now);
+      if (gate === 'wait') {
+        keep.push(buy);
+        continue;
+      }
+      if (gate !== 'go') {
+        logEvent(d, `Skipped buying ${buy.symbol}: ${gate.skip}`, now);
         continue;
       }
       const veto = await assessNews(

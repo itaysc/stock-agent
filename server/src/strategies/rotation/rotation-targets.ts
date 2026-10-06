@@ -1,3 +1,4 @@
+import { blendScores } from './rotation-fundamentals.js';
 import { sectors } from './rotation-sectors.js';
 import { volScale, type VolTracker } from '../sizing.js';
 import {
@@ -24,6 +25,8 @@ export interface RotationState {
   held?: (symbol: string) => boolean;
   /** SPY closes ending on the same day (for rankBy 5, residual momentum). */
   market?: number[];
+  /** The day it ranks on (for blend: the company reports public by then). */
+  now?: Date;
 }
 
 /** Not down more than recentDrop % over the last month (always true with it off). */
@@ -64,7 +67,11 @@ export function rankSymbols({
   closes,
   vols,
   market = [],
-}: Pick<RotationState, 'p' | 'symbols' | 'closes' | 'vols' | 'market'>) {
+  now,
+}: Pick<
+  RotationState,
+  'p' | 'symbols' | 'closes' | 'vols' | 'market' | 'now'
+>) {
   const safe = p.safeLast ? symbols.at(-1) : undefined;
   const score = (s: string) => {
     const c = closes.get(s) ?? [];
@@ -97,6 +104,11 @@ export function rankSymbols({
   const ranked = symbols
     .filter((s) => s !== safe)
     .sort((a, b) => rank(b) - rank(a));
+  // blend: mix the momentum rank with value / quality from the company reports (algo lab).
+  if (p.blend > 0 && now) {
+    const mixed = blendScores(ranked, now, rank, p.blend);
+    ranked.sort((a, b) => (mixed.get(b) ?? 0) - (mixed.get(a) ?? 0));
+  }
   return { ranked, score, volOf };
 }
 
@@ -170,6 +182,7 @@ export function rotationTargets({
   aboveTrend,
   held,
   market,
+  now,
 }: RotationState): Map<string, { weight: number; why: string }> {
   const safe = p.safeLast ? symbols.at(-1) : undefined;
   const { ranked, score, volOf } = rankSymbols({
@@ -178,6 +191,7 @@ export function rotationTargets({
     closes,
     vols,
     market,
+    now,
   });
   const topSector = inTopSectors(p, ranked, score);
   const picks = marketDown

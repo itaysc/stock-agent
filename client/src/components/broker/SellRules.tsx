@@ -28,6 +28,10 @@ export function SellRules({ params }: { params: Record<string, string> }) {
         <List.Item>
           <b>Breaking news:</b> severe news about it (confirmed by the AI reader).
         </List.Item>
+        <List.Item>
+          <b>A bad earnings report:</b> a clear miss against what analysts expected, or a lower
+          forecast (read by the AI). It then stays out for 30 days.
+        </List.Item>
       </List>
       {!(take > 0) && (
         <Text size="xs" c="dimmed">

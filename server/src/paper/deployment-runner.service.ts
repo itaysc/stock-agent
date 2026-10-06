@@ -18,7 +18,9 @@ import { createRuntime, type Runtime } from './deployment-runtime.js';
 import { DeploymentStore } from './deployment-store.js';
 import type { Deployment } from './deployment.types.js';
 import { completedBefore } from './market-clock.js';
+import { aiEarningsCheck } from './earnings-ai.js';
 import { aiNewsCheck } from './news-ai.js';
+import { EarningsService } from '../info/earnings.service.js';
 import { EdgarService } from '../info/official/edgar.service.js';
 import { HaltsService } from '../info/official/halts.service.js';
 import { LlmService } from '../llm/llm.service.js';
@@ -51,6 +53,7 @@ export class DeploymentRunnerService
     private readonly notifier: NotifierService,
     private readonly halts: HaltsService,
     private readonly edgar: EdgarService,
+    private readonly earnings: EarningsService,
   ) {}
 
   get enabled(): boolean {
@@ -192,6 +195,11 @@ export class DeploymentRunnerService
         halt: await this.halts.haltOf(symbol),
         filings: await this.edgar.eightKs(symbol, since),
       }),
+      nextEarnings: (symbol) =>
+        this.earnings.nextReport(symbol, new Date().toISOString().slice(0, 10)),
+      lastEarnings: (symbol) => this.earnings.latestResult(symbol),
+      aiEarningsCheck: (symbol, result, headlines) =>
+        aiEarningsCheck(this.llm, symbol, result, headlines),
       opensSoon: async () => {
         const clock = await this.alpaca.getClock();
         return (

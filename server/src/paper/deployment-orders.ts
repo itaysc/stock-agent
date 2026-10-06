@@ -171,11 +171,17 @@ export async function sendOrders(
     );
     for (const o of orders) {
       if (o.side === 'buy' && checksNews(d)) {
-        (d.ledgers[i].staged ??= []).push({
+        // A newer signal replaces a buy of the same stock still waiting (it keeps waiting for earnings).
+        const staged = (d.ledgers[i].staged ??= []);
+        const older = staged.findIndex((b) => b.symbol === o.symbol);
+        const waitFor = older >= 0 ? staged[older].waitFor : undefined;
+        if (older >= 0) staged.splice(older, 1);
+        staged.push({
           symbol: o.symbol,
           qty: o.qty,
           reason: o.reason,
           signalAt: now,
+          ...(waitFor ? { waitFor } : {}),
         });
         logEvent(
           d,

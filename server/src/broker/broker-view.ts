@@ -2,6 +2,7 @@ import { deploymentEquity } from '../paper/deployment-cycle.js';
 import type { Deployment, LedgerTrade } from '../paper/deployment.types.js';
 import type { StrategyBar } from '../strategies/strategy.types.js';
 import { brokerHoldings } from './broker-holdings.js';
+import { PROFILE_ROBUSTNESS } from './profile-robustness.data.js';
 import { PROFILE_STATS } from './profile-stats.data.js';
 import { profileById } from './profiles.js';
 import type { Ranks } from './broker-status.js';
@@ -66,8 +67,11 @@ export function brokerView(
       alertPct: profile.alertPct,
     },
     profileStats: (profile && PROFILE_STATS.profiles[profile.id]) ?? null,
-    algo: algoText(state.params),
-    params: state.params,
+    // The honest range: the same test with the re-rank day moved and random stocks left out.
+    profileRobust: (profile && PROFILE_ROBUSTNESS.profiles[profile.id]) ?? null,
+    // This investment's own settings (the stocks part), or the latest ones before any.
+    algo: algoText(d?.sleeves[0]?.params ?? state.params),
+    params: d?.sleeves[0]?.params ?? state.params,
     lastTune: state.lastTune,
     tested: TESTED,
     universe: [...BROKER_STOCKS, SAFE_ASSET],
@@ -83,7 +87,9 @@ export function brokerView(
       symbol: s.symbol,
       qty: s.qty,
       why: plainReason(s.reason),
-      when: 'at the next open, after the news check',
+      when: s.waitFor
+        ? `after its earnings report on ${s.waitFor} (if the report is fine)`
+        : 'at the next open, after the news check',
     })),
     ...all((l) => l.pending).map((o) => ({
       side: o.side,

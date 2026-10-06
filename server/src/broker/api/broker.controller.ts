@@ -21,6 +21,7 @@ import {
 import { BrokerNoticesService } from '../broker-notices.service.js';
 import { PROFILES, type ProfileId } from '../profiles.js';
 import { BrokerService } from '../broker.service.js';
+import { LivePricesService } from '../live-prices.service.js';
 
 export class StartBrokerDto {
   @ApiPropertyOptional({ example: 10000 })
@@ -68,6 +69,7 @@ export class BrokerController {
   constructor(
     private readonly broker: BrokerService,
     private readonly notices: BrokerNoticesService,
+    private readonly live: LivePricesService,
   ) {}
 
   @Get()
@@ -88,6 +90,23 @@ export class BrokerController {
     if (!(amount > 0))
       throw new BadRequestException('capital must be a positive number');
     return this.broker.profiles(amount);
+  }
+
+  @Get('prices')
+  @ApiOperation({
+    summary:
+      'The latest traded price of these symbols (comma-separated), for the page',
+  })
+  prices(@Query('symbols') symbols = '') {
+    const list = symbols
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+    if (list.length > 60 || list.some((s) => !/^[A-Z][A-Z0-9.]{0,9}$/.test(s)))
+      throw new BadRequestException(
+        'symbols: up to 60 tickers, comma-separated',
+      );
+    return this.live.prices(list);
   }
 
   @Post('preview')

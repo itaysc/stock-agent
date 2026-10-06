@@ -130,6 +130,11 @@ export const api = {
         method: 'POST',
       },
     ),
+  /** The latest traded price of these symbols (the page's ~live prices). */
+  brokerPrices: (symbols: string[]) =>
+    request<{ prices: Record<string, { price: number; at: string }> }>(
+      `/api/v1/broker/prices?symbols=${encodeURIComponent(symbols.join(','))}`,
+    ),
   brokerChart: (id: string, symbol: string) =>
     request<StockChartData>(`/api/v1/broker/investments/${id}/chart/${encodeURIComponent(symbol)}`),
   testNotification: () =>

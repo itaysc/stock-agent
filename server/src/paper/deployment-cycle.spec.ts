@@ -68,6 +68,9 @@ function setup(over: Partial<Deployment> = {}) {
       };
     },
     cashToBuy: async () => 1_000_000,
+    nextEarnings: async () => null,
+    lastEarnings: async () => null,
+    aiEarningsCheck: async () => null,
     now: () => cutoff,
     recentNews: async () => news,
     aiNewsCheck: async () => null,

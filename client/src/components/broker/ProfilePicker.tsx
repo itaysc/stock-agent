@@ -1,6 +1,7 @@
 import { Badge, Group, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
 import type { BrokerProfile, BrokerProfiles } from '../../api/broker-types';
 import { money } from '../../lib/format';
+import { periodText, usualRange, vsSpy } from '../../lib/robust';
 
 const pct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 const usd = (n: number) => `${n < 0 ? '-' : n > 0 ? '+' : ''}${money(Math.abs(n))}`;
@@ -52,23 +53,31 @@ export function ProfilePicker({
                   <Text size="xs" c="dimmed">
                     {p.summary}
                   </Text>
-                  {s && a ? (
+                  {s && a && p.robust && a.usualYear && a.worstDropAny !== null ? (
                     <>
                       <Text size="sm">
-                        <b>{pct(s.annualPct)}</b> a year on average (SPY {pct(s.spy.annualPct)})
+                        Usually <b>{usualRange(p.robust)}</b> a year in tests (SPY{' '}
+                        {pct(s.spy.annualPct)})
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        For {money(data.capital)}: {usd(a.usualYear[0])} to {usd(a.usualYear[1])} in
+                        a usual year
                       </Text>
                       <Text size="sm" c="red">
-                        Worst drop: {usd(a.worstDrop)} ({pct(-s.maxDrawdownPct)})
+                        Worst drop: up to {pct(-p.robust.worstDropPct)} ({usd(a.worstDropAny)})
                       </Text>
                       <Text size="sm" c={s.worstYear.pct < 0 ? 'red' : undefined}>
                         Worst year: {s.worstYear.year}, {usd(a.worstYear)} ({pct(s.worstYear.pct)})
                       </Text>
-                      <Text size="sm" c="teal">
-                        Best year: {s.bestYear.year}, {pct(s.bestYear.pct)}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        Up in {s.positiveYearsPct.toFixed(0)}% of years. {money(data.capital)} in{' '}
-                        {since} would be {money(a.grewTo)} now (SPY: {money(a.spyGrewTo)}).
+                      <Stack gap={0}>
+                        {p.robust.periods.map((x) => (
+                          <Text key={x.from} size="xs" c={x.pct >= x.spyPct ? 'teal' : 'red'}>
+                            {periodText(x)}
+                          </Text>
+                        ))}
+                      </Stack>
+                      <Text size="xs" c={vsSpy(p.robust).color}>
+                        {vsSpy(p.robust).text}
                       </Text>
                       <Text size="xs" c="dimmed">
                         Asks you in Telegram if it falls {p.alertPct}% from its peak.
@@ -87,8 +96,10 @@ export function ProfilePicker({
       </SimpleGrid>
       <Text size="xs" c="dimmed">
         Tested {since}–today on each year&apos;s 50 most-traded S&amp;P 500 stocks, every period
-        scored with settings picked only from earlier data. Past results, not a promise; your own
-        rule of thumb, not financial advice.
+        scored with settings picked only from earlier data. The ranges come from{' '}
+        {data.profiles[0]?.robustMethod} ({data.profiles[0]?.robust?.runs ?? 0} runs). The data
+        misses companies that later disappeared, so real results are likely a bit lower. Past
+        results, not a promise; not financial advice.
       </Text>
     </Stack>
   );

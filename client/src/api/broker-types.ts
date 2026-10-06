@@ -6,6 +6,8 @@ interface BrokerBase {
   /** The risk profile it runs. */
   profile: { id: string; name: string; summary: string; alertPct: number } | null;
   profileStats: ProfileStats | null;
+  /** The honest range of its numbers (the test's variations). */
+  profileRobust: ProfileRobustness | null;
   /** The algo in one sentence. */
   algo: string;
   params: Record<string, string>;
@@ -21,8 +23,10 @@ export interface BrokerHolding {
   boughtAt: string | null;
   /** Average buy price. */
   entryPrice: number;
-  /** Latest close. */
+  /** Latest close, or the latest trade once the page has fetched live prices (see liveAt). */
   price: number;
+  /** When `price` is a live trade: its time (otherwise it is the last close). */
+  liveAt?: string;
   highSinceBuy: number;
   /** Closes from a month before the buy to now (the small chart in the row). */
   spark: Array<{ t: string; c: number }>;
@@ -128,6 +132,18 @@ export interface ProfileStats {
   universe: string;
 }
 
+/** How solid a profile's numbers are: the same test with the re-rank day moved and random stocks left out. */
+export interface ProfileRobustness {
+  /** The middle half of the yearly returns (%). */
+  usualPct: [number, number];
+  /** The deepest drop in any variation (%). */
+  worstDropPct: number;
+  runs: number;
+  periods: Array<{ from: number; to: number; pct: number; spyPct: number }>;
+  /** Beating SPY month by month: 2 or more means more than luck. */
+  tVsSpy: number;
+}
+
 export interface BrokerProfile {
   id: 'aggressive' | 'balanced' | 'careful';
   name: string;
@@ -135,8 +151,12 @@ export interface BrokerProfile {
   alertPct: number;
   suggested: boolean;
   stats: ProfileStats | null;
+  robust: ProfileRobustness | null;
+  robustMethod: string;
   /** The history in dollars for the amount asked about. */
   forAmount: {
+    usualYear: [number, number] | null;
+    worstDropAny: number | null;
     worstDrop: number;
     worstYear: number;
     typicalYear: number;
