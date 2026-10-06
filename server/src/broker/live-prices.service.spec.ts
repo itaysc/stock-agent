@@ -19,6 +19,13 @@ describe('LivePricesService', () => {
     expect(getLatestTrades).toHaveBeenCalledWith(['AAPL', 'MSFT']);
   });
 
+  it('asks again when asked for fresh prices (Refresh now)', async () => {
+    const { service, getLatestTrades } = make();
+    await service.prices(['AAPL']);
+    await service.prices(['AAPL'], true);
+    expect(getLatestTrades).toHaveBeenCalledTimes(2);
+  });
+
   it('asks again for a different list', async () => {
     const { service, getLatestTrades } = make();
     await service.prices(['AAPL']);

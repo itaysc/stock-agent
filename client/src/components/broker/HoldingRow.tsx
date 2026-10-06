@@ -1,19 +1,12 @@
 import { Badge, Group, Table, Text, Tooltip } from '@mantine/core';
 import type { BrokerHolding } from '../../api/broker-types';
 import { money, pct, tone } from '../../lib/format';
+import { when } from '../../lib/when';
 import { type HoldingAction, HoldingActions } from './HoldingActions';
 import { Sparkline } from './Sparkline';
 
 const usd = (n: number | null) => (n === null ? '—' : `$${n.toFixed(2)}`);
 const shares = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(4));
-/** "14:32" today, "Fri 22:59" on another day: when the live price traded. */
-const tradedAt = (iso: string) => {
-  const d = new Date(iso);
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return d.toDateString() === new Date().toDateString()
-    ? time
-    : `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`;
-};
 const TONE = { good: 'teal', watch: 'orange', danger: 'red', neutral: 'gray' } as const;
 
 /** One holding: status, prices, its sell levels, and the actions menu. */
@@ -47,7 +40,7 @@ export function HoldingRow({
       <Table.Td ta="right">
         {usd(h.price)}
         <Text size="xs" c="dimmed">
-          {h.liveAt ? tradedAt(h.liveAt) : 'last close'}
+          {h.liveAt ? when(h.liveAt) : 'last close'}
         </Text>
       </Table.Td>
       <Table.Td ta="right" c={tone(h.gainPct)}>

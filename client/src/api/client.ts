@@ -131,9 +131,9 @@ export const api = {
       },
     ),
   /** The latest traded price of these symbols (the page's ~live prices). */
-  brokerPrices: (symbols: string[]) =>
+  brokerPrices: (symbols: string[], fresh = false) =>
     request<{ prices: Record<string, { price: number; at: string }> }>(
-      `/api/v1/broker/prices?symbols=${encodeURIComponent(symbols.join(','))}`,
+      `/api/v1/broker/prices?symbols=${encodeURIComponent(symbols.join(','))}${fresh ? '&fresh=1' : ''}`,
     ),
   brokerChart: (id: string, symbol: string) =>
     request<StockChartData>(`/api/v1/broker/investments/${id}/chart/${encodeURIComponent(symbol)}`),

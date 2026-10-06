@@ -8,8 +8,17 @@ import { money, pct } from '../../lib/format';
 import { applyLive, type LivePrices } from '../../lib/live';
 import { AllInvestments } from './AllInvestments';
 import { BrokerStart } from './BrokerStart';
+import { DataTimes } from './DataTimes';
 import { FundsLine } from './FundsLine';
 import { InvestmentPanel } from './InvestmentPanel';
+
+/** How often the page reloads its data, and fetches the live prices. */
+const PAGE_MS = 60_000;
+const LIVE_MS = 10 * 60_000;
+
+/** The newest of some dates (ISO strings), or null. */
+const latest = (dates: Array<string | null>) =>
+  dates.reduce<string | null>((a, b) => (b && (!a || b > a) ? b : a), null);
 
 /** The broker: your investments (one tab each), the money still free, and a tab to add another. */
 export function BrokerPage() {
@@ -18,20 +27,26 @@ export function BrokerPage() {
   const [tab, setTab] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState<LivePrices>({});
+  // When the page and the live prices were last loaded (shown in DataTimes).
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null);
+  const [liveCheckedAt, setLiveCheckedAt] = useState<Date | null>(null);
+  // Bumped by "Refresh now": reloads everything at once and restarts both timers.
+  const [round, setRound] = useState(0);
   const load = useCallback(async () => {
     try {
       const [o, a] = await Promise.all([api.broker(), api.paperAccount()]);
       setOverview(o);
       setAccount(a);
+      setLoadedAt(new Date());
     } catch (err) {
       setError((err as Error).message);
     }
   }, []);
   useEffect(() => {
     void load();
-    const timer = setInterval(() => void load(), 60_000);
+    const timer = setInterval(() => void load(), PAGE_MS);
     return () => clearInterval(timer);
-  }, [load]);
+  }, [load, round]);
   // ~Live prices: on opening the page (and whenever the stocks held change), then every 10 minutes.
   const held = [
     ...new Set(overview?.investments.flatMap((v) => v.holdings.map((h) => h.symbol)) ?? []),
@@ -40,15 +55,21 @@ export function BrokerPage() {
     .join(',');
   useEffect(() => {
     if (!held) return;
+    // After "Refresh now" the first fetch skips the server's one-minute cache.
+    let fresh = round > 0;
     const fetchLive = () =>
-      void api.brokerPrices(held.split(',')).then(
-        (r) => setLive(r.prices),
+      void api.brokerPrices(held.split(','), fresh).then(
+        (r) => {
+          setLive(r.prices);
+          setLiveCheckedAt(new Date());
+        },
         () => undefined, // keep showing the last closes
       );
     fetchLive();
-    const timer = setInterval(fetchLive, 10 * 60_000);
+    fresh = false;
+    const timer = setInterval(fetchLive, LIVE_MS);
     return () => clearInterval(timer);
-  }, [held]);
+  }, [held, round]);
   // After a change, the money figures change too.
   const changed = (o: BrokerOverview) => {
     setOverview(o);
@@ -110,6 +131,15 @@ export function BrokerPage() {
         </Text>
       )}
       {account && <FundsLine account={account} />}
+      <DataTimes
+        closesAsOf={latest(list.map((v) => v.closesAsOf))}
+        liveTradeAt={latest(Object.values(live).map((l) => l.at))}
+        liveCheckedAt={liveCheckedAt}
+        pageAt={loadedAt}
+        nextPageAt={loadedAt && new Date(loadedAt.getTime() + PAGE_MS)}
+        nextLiveAt={held && liveCheckedAt ? new Date(liveCheckedAt.getTime() + LIVE_MS) : null}
+        onRefresh={() => setRound((r) => r + 1)}
+      />
       {list.length === 0 ? (
         start
       ) : (

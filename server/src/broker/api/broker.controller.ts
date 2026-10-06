@@ -97,7 +97,7 @@ export class BrokerController {
     summary:
       'The latest traded price of these symbols (comma-separated), for the page',
   })
-  prices(@Query('symbols') symbols = '') {
+  prices(@Query('symbols') symbols = '', @Query('fresh') fresh = '') {
     const list = symbols
       .split(',')
       .map((s) => s.trim().toUpperCase())
@@ -106,7 +106,7 @@ export class BrokerController {
       throw new BadRequestException(
         'symbols: up to 60 tickers, comma-separated',
       );
-    return this.live.prices(list);
+    return this.live.prices(list, fresh === '1');
   }
 
   @Post('preview')

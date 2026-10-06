@@ -124,6 +124,8 @@ export function brokerView(
     deploymentId: d.id,
     name: d.name,
     startedAt: d.createdAt,
+    /** The trading day of the latest closing prices it used (null before the first). */
+    closesAsOf: d.lastBarAt,
     capital: d.capital,
     equity,
     cash: d.ledgers.reduce((n, l) => n + l.cash, 0),

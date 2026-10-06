@@ -18,9 +18,14 @@ export class LivePricesService {
 
   constructor(private readonly alpaca: AlpacaService) {}
 
-  async prices(symbols: string[]) {
+  /** `fresh`: skip the cache ("Refresh now" on the page). */
+  async prices(symbols: string[], fresh = false) {
     const key = [...new Set(symbols)].sort().join(',');
-    if (this.last?.key === key && Date.now() - this.last.at < CACHE_MS)
+    if (
+      !fresh &&
+      this.last?.key === key &&
+      Date.now() - this.last.at < CACHE_MS
+    )
       return { prices: this.last.prices };
     const prices = await this.alpaca.getLatestTrades(key ? key.split(',') : []);
     this.last = { key, at: Date.now(), prices };

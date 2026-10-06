@@ -71,6 +71,8 @@ export type BrokerView =
       statusReason: string | null;
       deploymentId: string;
       startedAt: string;
+      /** The trading day of the latest closing prices it used. */
+      closesAsOf: string | null;
       capital: number;
       equity: number;
       cash: number;
