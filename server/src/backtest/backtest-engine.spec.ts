@@ -61,6 +61,25 @@ describe('runBacktest', () => {
     ]);
   });
 
+  it('with fillAtClose fills at the same bar close (a market-on-close order)', () => {
+    const strategy = new ScriptedStrategy(['AAPL'], {
+      0: (ctx) => ctx.buy('AAPL', 10),
+      2: (ctx) => ctx.sell('AAPL', 10),
+    });
+    const result = runBacktest(
+      strategy,
+      { AAPL: bars },
+      { ...options, fillAtClose: true },
+    );
+    expect(result.fills.map((f) => [f.side, f.price])).toEqual([
+      ['buy', 100], // bar 0 close
+      ['sell', 105], // bar 2 close
+    ]);
+    expect(result.equityCurve.map((p) => p.equity)).toEqual([
+      10_000, 10_020, 10_050, 10_050, 10_050,
+    ]);
+  });
+
   it('reports orders placed on the last bar as unfilled', () => {
     const strategy = new ScriptedStrategy(['AAPL'], {
       4: (ctx) => ctx.buy('AAPL', 1),

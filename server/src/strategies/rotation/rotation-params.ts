@@ -63,6 +63,12 @@ export const ROTATION_PARAMS: ParamSpecs = {
     0,
     '1 = a third each ranked over about 6, 9 and 12 months (instead of one window), so no single window decides the result.',
   ),
+  earningsWait: whole(
+    0,
+    0,
+    30,
+    "Don't start a position in a stock that releases earnings within this many days (held ones stay; algo lab: SEC release days). 0 = off.",
+  ),
   rebalanceOffset: whole(
     0,
     0,

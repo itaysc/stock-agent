@@ -1,3 +1,4 @@
+import { earningsDays } from './rotation-events.js';
 import { sectors } from './rotation-sectors.js';
 import { recentOk, rotationTargets } from './rotation-targets.js';
 
@@ -115,5 +116,36 @@ describe('rotation sectorTop (industry momentum)', () => {
       aboveTrend: () => true,
     });
     expect([...t.keys()].sort()).toEqual(['E1', 'E2']);
+  });
+});
+
+describe('rotation earningsWait', () => {
+  afterEach(() => earningsDays.set(null));
+  const closes = new Map([
+    ['AAA', rising(3)],
+    ['BBB', rising(2)],
+    ['BIL', Array.from({ length: 63 }, () => 100)],
+  ]);
+  const at = (held?: (s: string) => boolean) =>
+    rotationTargets({
+      p: { ...P, recentDrop: 0, topN: 1, earningsWait: 4 },
+      symbols: ['AAA', 'BBB', 'BIL'],
+      closes,
+      vols: new Map(),
+      marketDown: false,
+      aboveTrend: () => true,
+      held,
+      now: new Date('2026-10-19T21:00:00Z'),
+    });
+
+  it('skips starting a stock that reports within the next days, keeps a held one', () => {
+    earningsDays.set({ AAA: ['2026-10-21'] });
+    expect([...at().keys()]).toEqual(['BBB']);
+    expect([...at((s) => s === 'AAA').keys()]).toEqual(['AAA']);
+  });
+
+  it('buys it when the report is today (already out) or further away', () => {
+    earningsDays.set({ AAA: ['2026-10-19', '2026-11-30'] });
+    expect([...at().keys()]).toEqual(['AAA']);
   });
 });

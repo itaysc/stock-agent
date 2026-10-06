@@ -38,9 +38,44 @@ const PREDECESSORS: Record<string, number[]> = {
   AVGO: [1441634], // Avago Technologies
   XOM: [34088], // Exxon Mobil before its new holding company
 };
-const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function getJson(url: string, userAgent: string): Promise<unknown> {
+/**
+ * The SEC ids to read for a symbol: its earlier registrations first (see
+ * PREDECESSORS), then the current one. The SEC's ticker list is cached.
+ */
+export async function secCiks(
+  cacheDir: string,
+  userAgent: string,
+): Promise<(symbol: string) => number[]> {
+  mkdirSync(cacheDir, { recursive: true });
+  const tickersFile = join(cacheDir, 'company_tickers.json');
+  if (!existsSync(tickersFile)) {
+    if (!userAgent) throw new Error('Set SEC_USER_AGENT in server/.env first');
+    const t = await getJson(
+      'https://www.sec.gov/files/company_tickers.json',
+      userAgent,
+    );
+    writeFileSync(tickersFile, JSON.stringify(t));
+  }
+  const listed = Object.values(
+    JSON.parse(readFileSync(tickersFile, 'utf8')) as Record<
+      string,
+      { cik_str: number; ticker: string }
+    >,
+  );
+  const cikOf = new Map(listed.map((x) => [x.ticker, x.cik_str]));
+  return (symbol) => {
+    const cik = cikOf.get((RENAMED[symbol] ?? symbol).replace('.', '-'));
+    return [...(PREDECESSORS[symbol] ?? []), ...(cik ? [cik] : [])];
+  };
+}
+
+/** A JSON document from the SEC (null when it doesn't exist). */
+export async function getJson(
+  url: string,
+  userAgent: string,
+): Promise<unknown> {
   const res = await fetch(url, {
     headers: { 'User-Agent': userAgent, Accept: 'application/json' },
   });
@@ -60,23 +95,7 @@ export async function secFacts(
   cacheDir: string,
   userAgent: string,
 ): Promise<{ facts: Record<string, Facts>; missing: string[] }> {
-  mkdirSync(cacheDir, { recursive: true });
-  const tickersFile = join(cacheDir, 'company_tickers.json');
-  if (!existsSync(tickersFile)) {
-    if (!userAgent) throw new Error('Set SEC_USER_AGENT in server/.env first');
-    const t = await getJson(
-      'https://www.sec.gov/files/company_tickers.json',
-      userAgent,
-    );
-    writeFileSync(tickersFile, JSON.stringify(t));
-  }
-  const listed = Object.values(
-    JSON.parse(readFileSync(tickersFile, 'utf8')) as Record<
-      string,
-      { cik_str: number; ticker: string }
-    >,
-  );
-  const cikOf = new Map(listed.map((x) => [x.ticker, x.cik_str]));
+  const ciks = await secCiks(cacheDir, userAgent);
   const facts: Record<string, Facts> = {};
   const missing: string[] = [];
   for (const symbol of symbols) {
@@ -87,9 +106,8 @@ export async function secFacts(
       else missing.push(symbol);
       continue;
     }
-    const cik = cikOf.get((RENAMED[symbol] ?? symbol).replace('.', '-'));
     let kept: Facts | null = null;
-    for (const id of [...(PREDECESSORS[symbol] ?? []), ...(cik ? [cik] : [])]) {
+    for (const id of ciks(symbol)) {
       const raw = (await getJson(
         `https://data.sec.gov/api/xbrl/companyfacts/CIK${String(id).padStart(10, '0')}.json`,
         userAgent,

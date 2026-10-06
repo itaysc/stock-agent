@@ -76,6 +76,15 @@ export class BacktestStepper {
       this.strategy.onBar(bar, paused ? this.readOnly : this.broker);
     }
     this.strategy.onClose?.(t, paused ? this.readOnly : this.broker);
+    // fillAtClose: today's orders fill in today's closing auction (sells first, as at the open).
+    if (this.options.fillAtClose)
+      for (const side of ['sell', 'buy'] as const)
+        for (const bar of bars)
+          for (const fill of this.broker.fillPending(
+            { ...bar, open: bar.close },
+            side,
+          ))
+            this.strategy.onFill?.(fill, this.broker);
     this.equityCurve.push({ timestamp: t, equity: this.broker.equity() });
   }
 

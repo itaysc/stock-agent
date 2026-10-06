@@ -24,6 +24,12 @@ export interface BrokerOptions {
    * (0.3 = tone -0.3). Needs bars with news. Omitted/0 = off.
    */
   newsGateTone?: number;
+  /**
+   * Fill the orders placed after a bar's close at that same close (like a
+   * market-on-close order sent just before the closing auction), instead of
+   * at the next bar's open. Omitted = the next open.
+   */
+  fillAtClose?: boolean;
 }
 
 const YEAR_MS = 365.25 * 86_400_000;

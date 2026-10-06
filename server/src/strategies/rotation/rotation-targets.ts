@@ -1,3 +1,4 @@
+import { earningsDays } from './rotation-events.js';
 import { blendScores } from './rotation-fundamentals.js';
 import { sectors } from './rotation-sectors.js';
 import { volScale, type VolTracker } from '../sizing.js';
@@ -207,6 +208,11 @@ export function rotationTargets({
               (s) =>
                 aboveTrend(s) &&
                 topSector(s) &&
+                // earningsWait: don't start a position days before its earnings (held ones stay).
+                (!(p.earningsWait > 0) ||
+                  !now ||
+                  held?.(s) ||
+                  !earningsDays.within(s, now, p.earningsWait)) &&
                 ((!p.recentDropHeld && held?.(s)) || recentOk(p, closes, s)),
             ),
           ),

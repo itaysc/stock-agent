@@ -1,14 +1,17 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { ConfigService } from '@nestjs/config';
 import { createBacktestApp } from '../../backtest/cli-app.js';
 import { WalkForwardService } from '../../backtest/walkforward/walkforward.service.js';
+import { earningsDays } from '../../strategies/rotation/rotation-events.js';
 import { pointInTime } from '../../strategies/rotation/rotation-universe.js';
 import type { StrategyBar } from '../../strategies/strategy.types.js';
 import { INDEX_PARAMS, INDEX_SYMBOLS, profileById } from '../profiles.js';
 import { SAFE_ASSET } from '../universe.js';
 import { mixedCurve, type Curve } from './profile-stats.js';
 import { saveRobustness } from './robust-save.js';
+import { secEarningsDays } from './sec-announcements.js';
 import {
   periodReturns,
   precision,
@@ -35,6 +38,8 @@ const { values } = parseArgs({
     // A variant to test, e.g. --with tranches=5,lookbackMix=1 (saved under variants/, not merged by save).
     with: { type: 'string', default: '' },
     offsets: { type: 'string', default: '0,1,2,3,4' },
+    // close: orders fill in the signal day's closing auction instead of the next open.
+    fill: { type: 'string', default: 'open' },
   },
 });
 const variant = Object.fromEntries(
@@ -43,7 +48,10 @@ const variant = Object.fromEntries(
     .filter(Boolean)
     .map((kv) => kv.split('=') as [string, string]),
 );
-const tag = values.with.replace(/[^a-zA-Z0-9]+/g, '_');
+const tag = [values.with, values.fill === 'close' ? 'fillclose' : '']
+  .filter(Boolean)
+  .join('_')
+  .replace(/[^a-zA-Z0-9]+/g, '_');
 const dir = resolve(process.cwd(), '.cache/robust');
 mkdirSync(dir, { recursive: true });
 const pct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
@@ -71,6 +79,16 @@ const bars: Record<string, StrategyBar[]> = await yahooDaily(
   cache,
 );
 
+// earningsWait needs each stock's past earnings days (from the SEC's filing lists).
+if (Number(variant.earningsWait) > 0)
+  earningsDays.set(
+    await secEarningsDays(
+      u.symbols,
+      resolve(process.cwd(), '.cache/sec'),
+      app.get(ConfigService).get<string>('SEC_USER_AGENT') ?? '',
+    ),
+  );
+
 async function run(
   symbols: string[],
   params: Record<string, string>,
@@ -94,6 +112,7 @@ async function run(
       slippageBps: 5,
       feePerShare: 0,
       cashYieldPct: 3,
+      fillAtClose: values.fill === 'close',
     },
     Object.fromEntries(symbols.map((x) => [x, bars[x] ?? []])),
     { SPY: bars.SPY },
