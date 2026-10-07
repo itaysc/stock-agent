@@ -30,6 +30,8 @@ type Params = Record<string, number>;
 export class MomentumRotationStrategy implements Strategy {
   readonly name = 'momentum-rotation';
   private readonly closes = new Map<string, number[]>();
+  /** Daily share volumes, as long as closes (for crowdFilter). */
+  private readonly volumes = new Map<string, number[]>();
   private readonly vols = new Map<string, VolTracker>();
   private steps = 0;
   /** SPY closes for the market filter. */
@@ -115,6 +117,12 @@ export class MomentumRotationStrategy implements Strategy {
     list.push(bar.close);
     if (list.length > this.warmupBars) list.shift();
     this.closes.set(bar.symbol, list);
+    if (this.p.crowdFilter > 0) {
+      const v = this.volumes.get(bar.symbol) ?? [];
+      v.push(bar.volume ?? 0);
+      if (v.length > this.warmupBars) v.shift();
+      this.volumes.set(bar.symbol, v);
+    }
     let vol = this.vols.get(bar.symbol);
     if (!vol)
       this.vols.set(bar.symbol, (vol = new VolTracker(this.p.volLookback)));
@@ -250,6 +258,7 @@ export class MomentumRotationStrategy implements Strategy {
       held,
       market: this.market,
       now: this.now,
+      volumes: this.volumes,
     });
   }
 }

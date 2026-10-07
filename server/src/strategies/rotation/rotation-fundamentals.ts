@@ -12,6 +12,8 @@ export interface Fundamentals {
   gpa: number | null;
   /** Return on assets: net income ÷ assets. */
   roa: number | null;
+  /** Turnover: average daily dollar volume (6 months) ÷ market value (crowdFilter 2). */
+  turnover?: number | null;
 }
 
 type Source = (symbol: string, at: Date) => Fundamentals | null;

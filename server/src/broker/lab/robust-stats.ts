@@ -4,6 +4,8 @@ import { curveStats, type Curve } from './profile-stats.js';
 export interface Variation {
   annualPct: number;
   maxDrawdownPct: number;
+  /** Its yearly return in each of PERIODS. */
+  periods?: Array<{ from: number; to: number; pct: number }>;
 }
 
 /** What one robustness part found (saved under .cache/robust, merged by `--part save`). */
@@ -21,7 +23,11 @@ export const PERIODS = [
 
 export const variation = (c: Curve[]): Variation => {
   const s = curveStats(c);
-  return { annualPct: s.annualPct, maxDrawdownPct: s.maxDrawdownPct };
+  return {
+    annualPct: s.annualPct,
+    maxDrawdownPct: s.maxDrawdownPct,
+    periods: periodReturns(c),
+  };
 };
 
 /** The curve's yearly return in each of PERIODS. */

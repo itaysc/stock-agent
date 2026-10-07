@@ -63,6 +63,12 @@ export const ROTATION_PARAMS: ParamSpecs = {
     0,
     '1 = a third each ranked over about 6, 9 and 12 months (instead of one window), so no single window decides the result.',
   ),
+  crowdFilter: whole(
+    0,
+    0,
+    2,
+    'Skip the most crowded third of the best 3×topN (held ones stay): 1 = volume high against its own past year, 2 = high turnover (algo lab, SEC market value). 0 = off.',
+  ),
   earningsWait: whole(
     0,
     0,

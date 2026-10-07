@@ -31,6 +31,7 @@ describe('fundamentalsFrom', () => {
       bm: 100 / 2000,
       gpa: null,
       roa: 20 / 200,
+      turnover: null, // no volumes given
     });
   });
 

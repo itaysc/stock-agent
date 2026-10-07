@@ -1,16 +1,25 @@
-import { earningsDays } from './rotation-events.js';
-import { blendScores } from './rotation-fundamentals.js';
-import { sectors } from './rotation-sectors.js';
 import { volScale, type VolTracker } from '../sizing.js';
+import { blendScores, fundamentals } from './rotation-fundamentals.js';
 import {
+  capBySector,
+  dropCrowded,
+  inTopSectors,
+  keepHeld,
+  recentOk,
+  steadyFirst,
+} from './rotation-filters.js';
+import { earningsDays } from './rotation-events.js';
+import {
+  volumeSurge,
   basketVolPct,
   mixedReturn,
   nearHigh,
   residualScore,
-  steadiness,
 } from './rotation-signals.js';
 
-type Params = Record<string, number>;
+export type Params = Record<string, number>;
+
+export { capBySector, recentOk } from './rotation-filters.js';
 const pct = (n: number) => `${n >= 0 ? '+' : ''}${(n * 100).toFixed(1)}%`;
 
 export interface RotationState {
@@ -28,37 +37,8 @@ export interface RotationState {
   market?: number[];
   /** The day it ranks on (for blend: the company reports public by then). */
   now?: Date;
-}
-
-/** Not down more than recentDrop % over the last month (always true with it off). */
-export function recentOk(
-  p: Params,
-  closes: Map<string, number[]>,
-  s: string,
-): boolean {
-  if (!(p.recentDrop > 0)) return true;
-  const c = closes.get(s) ?? [];
-  const then = c.at(-22);
-  return !then || (c.at(-1) ?? then) / then - 1 > -p.recentDrop / 100;
-}
-
-/** The best `n`, with at most `max` from one sector (0 = no limit): a full sector's next ones are skipped. */
-export function capBySector(
-  ranked: string[],
-  n: number,
-  max: number,
-): string[] {
-  if (!(max > 0)) return ranked.slice(0, n);
-  const count = new Map<string, number>();
-  const out: string[] = [];
-  for (const s of ranked) {
-    if (out.length >= n) break;
-    const sector = sectors.of(s);
-    if ((count.get(sector) ?? 0) >= max) continue;
-    count.set(sector, (count.get(sector) ?? 0) + 1);
-    out.push(s);
-  }
-  return out;
+  /** Daily volumes (crowdFilter 1). */
+  volumes?: Map<string, number[]>;
 }
 
 /** The symbols to rank (all but the safe asset), best first, with their scores. */
@@ -113,62 +93,6 @@ export function rankSymbols({
   return { ranked, score, volOf };
 }
 
-/** With keepRank: the stocks it holds come first while they still rank in the top `keepRank` (fewer trades). */
-function keepHeld(
-  p: Params,
-  ranked: string[],
-  candidates: string[],
-  held?: (symbol: string) => boolean,
-) {
-  if (!(p.keepRank > 0) || !held) return candidates;
-  const keep = (s: string) => held(s) && ranked.indexOf(s) < p.keepRank;
-  return [...candidates.filter(keep), ...candidates.filter((s) => !keep(s))];
-}
-
-/** With sectorTop: only stocks from the `sectorTop` sectors whose stocks rose most on average (industry momentum). */
-function inTopSectors(
-  p: Params,
-  ranked: string[],
-  score: (s: string) => number,
-): (s: string) => boolean {
-  if (!(p.sectorTop > 0)) return () => true;
-  const by = new Map<string, number[]>();
-  for (const s of ranked) {
-    const sector = sectors.of(s);
-    if (sector.startsWith('(')) continue; // unknown sector
-    by.set(sector, [...(by.get(sector) ?? []), score(s)]);
-  }
-  const top = new Set(
-    [...by]
-      .map(([sector, xs]) => ({
-        sector,
-        avg: xs.reduce((a, b) => a + b, 0) / xs.length,
-      }))
-      .sort((a, b) => b.avg - a.avg)
-      .slice(0, p.sectorTop)
-      .map((x) => x.sector),
-  );
-  return (s) => top.has(sectors.of(s));
-}
-
-/** With steadyPool: of the best `steadyPool`, the steadiest risers first (then the rest, in rank order). */
-function steadyFirst(
-  p: Params,
-  closes: Map<string, number[]>,
-  ranked: string[],
-) {
-  if (!(p.steadyPool > 0)) return ranked;
-  const steady = (s: string) => {
-    const c = closes.get(s) ?? [];
-    return steadiness(c, c.length - 1 - p.skipRecent, p.lookback);
-  };
-  const pool = ranked.slice(0, p.steadyPool);
-  return [
-    ...pool.sort((a, b) => steady(b) - steady(a)),
-    ...ranked.slice(p.steadyPool),
-  ];
-}
-
 /**
  * The rotation's target share of the account per symbol, with the reason:
  * rank (momentum, risk-adjusted, calmest or biggest dip), keep the top N that
@@ -184,6 +108,7 @@ export function rotationTargets({
   held,
   market,
   now,
+  volumes,
 }: RotationState): Map<string, { weight: number; why: string }> {
   const safe = p.safeLast ? symbols.at(-1) : undefined;
   const { ranked, score, volOf } = rankSymbols({
@@ -195,29 +120,31 @@ export function rotationTargets({
     now,
   });
   const topSector = inTopSectors(p, ranked, score);
+  const allowed = ranked.filter(
+    (s) =>
+      aboveTrend(s) &&
+      topSector(s) &&
+      // earningsWait: don't start a position days before its earnings (held ones stay).
+      (!(p.earningsWait > 0) ||
+        !now ||
+        held?.(s) ||
+        !earningsDays.within(s, now, p.earningsWait)) &&
+      ((!p.recentDropHeld && held?.(s)) || recentOk(p, closes, s)),
+  );
+  const crowding = (s: string) =>
+    p.crowdFilter === 2
+      ? now && fundamentals.of(s, now)?.turnover
+      : volumeSurge(volumes?.get(s) ?? []);
+  const candidates = dropCrowded(
+    p,
+    steadyFirst(p, closes, allowed),
+    crowding,
+    held,
+  );
   const picks = marketDown
     ? []
     : capBySector(
-        keepHeld(
-          p,
-          ranked,
-          steadyFirst(
-            p,
-            closes,
-            ranked.filter(
-              (s) =>
-                aboveTrend(s) &&
-                topSector(s) &&
-                // earningsWait: don't start a position days before its earnings (held ones stay).
-                (!(p.earningsWait > 0) ||
-                  !now ||
-                  held?.(s) ||
-                  !earningsDays.within(s, now, p.earningsWait)) &&
-                ((!p.recentDropHeld && held?.(s)) || recentOk(p, closes, s)),
-            ),
-          ),
-          held,
-        ),
+        keepHeld(p, ranked, candidates, held),
         p.topN,
         p.maxPerSector,
       ).filter((s) => !p.absMomentum || score(s) > 0);

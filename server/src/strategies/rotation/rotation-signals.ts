@@ -98,3 +98,15 @@ export function nearHigh(c: number[], n: number): number {
   const last = c.slice(-n);
   return last.length ? (c.at(-1) ?? 0) / Math.max(...last) : 0;
 }
+
+/** Recent volume against the stock's own past: the last `short` days' average ÷ the last `long` days' (null without enough). */
+export function volumeSurge(
+  v: number[],
+  short = 63,
+  long = 252,
+): number | null {
+  if (v.length < long) return null;
+  const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const base = avg(v.slice(-long));
+  return base > 0 ? avg(v.slice(-short)) / base : null;
+}

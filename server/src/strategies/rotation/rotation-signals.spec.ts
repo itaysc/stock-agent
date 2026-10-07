@@ -4,6 +4,7 @@ import {
   nearHigh,
   residualScore,
   steadiness,
+  volumeSurge,
 } from './rotation-signals.js';
 
 // Both end 20% up over 20 days: one a little every day, one in a single jump.
@@ -91,5 +92,14 @@ describe('residual momentum and the 52-week high', () => {
   it('nearHigh is 1 at the high and below it after a fall', () => {
     expect(nearHigh([90, 95, 100], 3)).toBe(1);
     expect(nearHigh([90, 120, 96], 3)).toBeCloseTo(0.8);
+  });
+});
+
+describe('volumeSurge', () => {
+  it('is recent volume against the past year', () => {
+    const v = Array.from({ length: 252 }, (_, i) => (i >= 189 ? 300 : 100));
+    // last 63 days at 300; the year's average (189×100 + 63×300) / 252 = 150
+    expect(volumeSurge(v)).toBeCloseTo(2);
+    expect(volumeSurge(v.slice(-100))).toBeNull();
   });
 });

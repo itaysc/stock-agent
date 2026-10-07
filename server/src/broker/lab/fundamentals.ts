@@ -54,6 +54,8 @@ const freshest = (
 export function fundamentalsFrom(
   facts: Record<string, Facts>,
   price: (symbol: string, at: string) => number | null,
+  /** Average daily dollar volume over the last ~6 months up to a day (for turnover). */
+  dollarVolume?: (symbol: string, at: string) => number | null,
 ): (symbol: string, at: Date) => Fundamentals | null {
   const memo = new Map<string, Fundamentals | null>();
   return (symbol, atDate) => {
@@ -104,6 +106,7 @@ export function fundamentalsFrom(
         bm: per(equity, cap),
         gpa: per(gross, assets),
         roa: per(income, assets),
+        turnover: per(dollarVolume?.(symbol, at) ?? null, cap),
       };
     }
     memo.set(key, out);

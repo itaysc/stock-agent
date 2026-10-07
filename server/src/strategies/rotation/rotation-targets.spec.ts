@@ -149,3 +149,70 @@ describe('rotation earningsWait', () => {
     expect([...at().keys()]).toEqual(['AAA']);
   });
 });
+
+describe('rotation crowdFilter (low-volume winners)', () => {
+  // Six risers (AAA strongest); CCC and DDD trade three times their usual volume lately.
+  const names = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF'];
+  const closes = new Map([
+    ...names.map((s, i) => [s, rising(6 - i)] as [string, number[]]),
+    ['BIL', Array.from({ length: 63 }, () => 100)],
+  ]);
+  const surge = (k: number) =>
+    Array.from({ length: 300 }, (_, i) => (i >= 237 ? 1000 * k : 1000));
+  const volumes = new Map(
+    names.map((s) => [s, surge(s === 'CCC' || s === 'DDD' ? 3 : 1)]),
+  );
+  const at = (crowdFilter: number, held?: (s: string) => boolean) =>
+    rotationTargets({
+      p: { ...P, recentDrop: 0, topN: 2, crowdFilter },
+      symbols: [...names, 'BIL'],
+      closes,
+      vols: new Map(),
+      marketDown: false,
+      aboveTrend: () => true,
+      held,
+      volumes,
+    });
+
+  it('skips the most crowded third of the best 3×topN', () => {
+    expect([...at(0).keys()]).toEqual(['AAA', 'BBB']);
+    // Of the best 6, the 2 with surging volume (CCC, DDD) are out; the top 2 are still AAA and BBB.
+    const crowded = rotationTargets({
+      p: { ...P, recentDrop: 0, topN: 2, crowdFilter: 1 },
+      symbols: ['CCC', 'DDD', 'AAA', 'BBB', 'EEE', 'FFF', 'BIL'],
+      closes: new Map([
+        ['CCC', rising(6)],
+        ['DDD', rising(5)],
+        ['AAA', rising(4)],
+        ['BBB', rising(3)],
+        ['EEE', rising(2)],
+        ['FFF', rising(1)],
+        ['BIL', Array.from({ length: 63 }, () => 100)],
+      ]),
+      vols: new Map(),
+      marketDown: false,
+      aboveTrend: () => true,
+      volumes,
+    });
+    expect([...crowded.keys()]).toEqual(['AAA', 'BBB']);
+  });
+
+  it('keeps a crowded stock it already holds', () => {
+    const t = rotationTargets({
+      p: { ...P, recentDrop: 0, topN: 1, crowdFilter: 1 },
+      symbols: ['CCC', 'AAA', 'BBB', 'BIL'],
+      closes: new Map([
+        ['CCC', rising(6)],
+        ['AAA', rising(4)],
+        ['BBB', rising(3)],
+        ['BIL', Array.from({ length: 63 }, () => 100)],
+      ]),
+      vols: new Map(),
+      marketDown: false,
+      aboveTrend: () => true,
+      held: (s) => s === 'CCC',
+      volumes,
+    });
+    expect([...t.keys()]).toEqual(['CCC']);
+  });
+});

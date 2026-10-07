@@ -1,17 +1,15 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { ConfigService } from '@nestjs/config';
 import { createBacktestApp } from '../../backtest/cli-app.js';
 import { WalkForwardService } from '../../backtest/walkforward/walkforward.service.js';
-import { earningsDays } from '../../strategies/rotation/rotation-events.js';
 import { pointInTime } from '../../strategies/rotation/rotation-universe.js';
 import type { StrategyBar } from '../../strategies/strategy.types.js';
 import { INDEX_PARAMS, INDEX_SYMBOLS, profileById } from '../profiles.js';
 import { SAFE_ASSET } from '../universe.js';
 import { mixedCurve, type Curve } from './profile-stats.js';
 import { saveRobustness } from './robust-save.js';
-import { secEarningsDays } from './sec-announcements.js';
+import { useEarningsDays, useFundamentals } from './lab-data.js';
 import {
   periodReturns,
   precision,
@@ -79,15 +77,10 @@ const bars: Record<string, StrategyBar[]> = await yahooDaily(
   cache,
 );
 
-// earningsWait needs each stock's past earnings days (from the SEC's filing lists).
-if (Number(variant.earningsWait) > 0)
-  earningsDays.set(
-    await secEarningsDays(
-      u.symbols,
-      resolve(process.cwd(), '.cache/sec'),
-      app.get(ConfigService).get<string>('SEC_USER_AGENT') ?? '',
-    ),
-  );
+// Variants that need SEC data: past earnings days, or the reports (value, quality, turnover).
+if (Number(variant.earningsWait) > 0) await useEarningsDays(app, u.symbols);
+if (Number(variant.crowdFilter) === 2 || Number(variant.blend) > 0)
+  await useFundamentals(app, u.symbols, bars);
 
 async function run(
   symbols: string[],
