@@ -31,6 +31,9 @@ export interface BacktestResult {
   rejections: Rejection[];
   /** Interest paid on idle cash (see BrokerOptions.cashYieldPct), included in finalEquity. */
   interestEarned: number;
+  /** With taxRatePct: tax paid along the way, and the account after selling all and paying the rest. */
+  taxPaid?: number;
+  afterTaxEquity?: number;
   /** Orders placed on the last bar, which never got a next bar to fill on. */
   unfilledOrders: number;
   openPositions: Position[];

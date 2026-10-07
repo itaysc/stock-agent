@@ -1,4 +1,5 @@
 import { cleanQty, roundQty } from '../strategies/qty.js';
+import { TaxLedger } from './tax-ledger.js';
 import type {
   Fill,
   OrderSide,
@@ -30,6 +31,12 @@ export interface BrokerOptions {
    * at the next bar's open. Omitted = the next open.
    */
   fillAtClose?: boolean;
+  /**
+   * Capital gains tax, in percent (25 = Israel's rate): each year's net
+   * realized gains (and interest) are taxed when the year ends, losses carry
+   * forward (see TaxLedger). Omitted/0 = no tax.
+   */
+  taxRatePct?: number;
 }
 
 const YEAR_MS = 365.25 * 86_400_000;
@@ -62,9 +69,31 @@ export class SimulatedBroker implements StrategyContext {
   private readonly lastPrices = new Map<string, number>();
   private lastAccrual: Date | null = null;
   private interest = 0;
+  private readonly tax: TaxLedger | null;
 
   constructor(private readonly options: BrokerOptions) {
     this.cashBalance = options.initialCash;
+    this.tax =
+      (options.taxRatePct ?? 0) > 0
+        ? new TaxLedger((options.taxRatePct as number) / 100)
+        : null;
+  }
+
+  /** Tax paid so far (taxRatePct). */
+  taxPaid(): number {
+    return this.tax?.paid() ?? 0;
+  }
+
+  /** What the account would be worth after selling everything now and paying the tax due. */
+  afterTaxEquity(): number {
+    if (!this.tax) return this.equity();
+    const unrealized = [...this.positions.values()].reduce(
+      (n, p) =>
+        n +
+        p.qty * ((this.lastPrices.get(p.symbol) ?? p.avgPrice) - p.avgPrice),
+      0,
+    );
+    return this.equity() - this.tax.ifSoldNow(unrealized);
   }
 
   setTime(timestamp: Date): void {
@@ -76,12 +105,15 @@ export class SimulatedBroker implements StrategyContext {
    * (calendar time, compounded). The first call only starts the clock.
    */
   accrueInterest(to: Date): void {
+    // A new year: pay the tax on last year's net gains (sold from cash, which may go below 0 until the next re-check).
+    this.cashBalance -= this.tax?.roll(to) ?? 0;
     const rate = (this.options.cashYieldPct ?? 0) / 100;
     if (this.lastAccrual && rate > 0 && this.cashBalance > 0) {
       const years = (to.getTime() - this.lastAccrual.getTime()) / YEAR_MS;
       const earned = this.cashBalance * ((1 + rate) ** years - 1);
       this.cashBalance += earned;
       this.interest += earned;
+      this.cashBalance -= this.tax?.record(earned, to) ?? 0;
     }
     this.lastAccrual = to;
   }
@@ -214,6 +246,7 @@ export class SimulatedBroker implements StrategyContext {
       if (remaining <= 0) this.positions.delete(order.symbol);
       else this.positions.set(order.symbol, { ...held, qty: remaining });
       this.cashBalance += qty * (price - this.options.feePerShare);
+      this.cashBalance -= this.tax?.record(realizedPnl, this.clock) ?? 0;
     }
 
     const reduced = order.side === 'buy' && qty !== order.qty;

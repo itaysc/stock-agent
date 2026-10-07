@@ -292,3 +292,35 @@ describe('buildTimeline', () => {
     ]);
   });
 });
+
+describe('runBacktest with taxRatePct', () => {
+  // Buys at 100, sells at 120 the same year, buys again and holds into the next year.
+  const bars = makeBars('AAPL', [
+    [100, 100],
+    [110, 120],
+    [120, 120],
+    [120, 130],
+  ]).map((b, i) => ({
+    ...b,
+    timestamp: new Date(
+      ['2020-06-01', '2020-07-01', '2020-08-03', '2021-01-04'][i],
+    ),
+  }));
+
+  it('pays the year’s tax at the new year and reports the after-tax value', () => {
+    const strategy = new ScriptedStrategy(['AAPL'], {
+      0: (ctx) => ctx.buy('AAPL', 10),
+      1: (ctx) => ctx.sell('AAPL', 10),
+      2: (ctx) => ctx.buy('AAPL', 10),
+    });
+    const r = runBacktest(
+      strategy,
+      { AAPL: bars },
+      { ...options, taxRatePct: 25 },
+    );
+    // 2020: +100 realized (bought at 110 open, sold at 120 open) → 25 tax paid on 2021-01-04.
+    expect(r.taxPaid).toBeCloseTo(25);
+    // Open gain at the end: 10 × (130 - 120) = 100 → 25 more if sold now.
+    expect(r.afterTaxEquity).toBeCloseTo(r.finalEquity - 25);
+  });
+});

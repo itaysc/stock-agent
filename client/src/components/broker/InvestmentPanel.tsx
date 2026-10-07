@@ -7,6 +7,7 @@ import { StatCard } from '../results/StatCard';
 import { BrokerActivity } from './BrokerActivity';
 import { BrokerHoldings } from './BrokerHoldings';
 import { BrokerHow } from './BrokerHow';
+import { MonthCalendar } from './MonthCalendar';
 
 export const STATUS = {
   active: { color: 'teal', label: 'Trading' },
@@ -107,6 +108,7 @@ export function InvestmentPanel({
         noBuyUntil={view.noBuyUntil ?? []}
         onOverview={onOverview}
       />
+      <MonthCalendar days={view.daily ?? []} />
       <BrokerActivity items={view.activity} />
       <BrokerHow view={view} />
     </Stack>

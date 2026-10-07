@@ -2,6 +2,7 @@ import { deploymentEquity } from '../paper/deployment-cycle.js';
 import type { Deployment, LedgerTrade } from '../paper/deployment.types.js';
 import type { StrategyBar } from '../strategies/strategy.types.js';
 import { brokerHoldings } from './broker-holdings.js';
+import { dailyResults } from './broker-daily.js';
 import { PROFILE_ROBUSTNESS } from './profile-robustness.data.js';
 import { PROFILE_STATS } from './profile-stats.data.js';
 import { profileById } from './profiles.js';
@@ -126,6 +127,8 @@ export function brokerView(
     startedAt: d.createdAt,
     /** The trading day of the latest closing prices it used (null before the first). */
     closesAsOf: d.lastBarAt,
+    /** Each trading day's result (the calendar on the page). */
+    daily: dailyResults(d),
     capital: d.capital,
     equity,
     cash: d.ledgers.reduce((n, l) => n + l.cash, 0),

@@ -132,6 +132,8 @@ export class BacktestStepper {
       fills: broker.fills,
       rejections: broker.rejections,
       interestEarned: broker.interestEarned(),
+      taxPaid: broker.taxPaid(),
+      afterTaxEquity: broker.afterTaxEquity(),
       unfilledOrders: broker.pendingOrders().length,
       openPositions: broker.openPositions(),
       equityCurve: curve,

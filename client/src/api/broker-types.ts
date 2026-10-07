@@ -49,6 +49,15 @@ export interface BrokerHolding {
   why: string;
 }
 
+/** One trading day of an investment (or of all of them together). */
+export interface DailyResult {
+  /** YYYY-MM-DD */
+  date: string;
+  equity: number;
+  pnl: number;
+  pct: number;
+}
+
 export interface BrokerPlanned {
   side: 'buy' | 'sell';
   symbol: string;
@@ -73,6 +82,8 @@ export type BrokerView =
       startedAt: string;
       /** The trading day of the latest closing prices it used. */
       closesAsOf: string | null;
+      /** Each trading day's result: worth at the close and the change from the day before. */
+      daily: DailyResult[];
       capital: number;
       equity: number;
       cash: number;

@@ -2,7 +2,9 @@ import { Badge, Group, Paper, SimpleGrid, Stack, Table, Text, Title } from '@man
 import type { InvestmentView } from '../../api/broker-types';
 import { money, pct, tone } from '../../lib/format';
 import { StatCard } from '../results/StatCard';
+import { combineDays } from '../../lib/daily';
 import { STATUS } from './InvestmentPanel';
+import { MonthCalendar } from './MonthCalendar';
 
 const HEAD = ['Investment', 'Since', 'Put in', 'Worth now', 'Gain', 'SPY, same time', 'Holds'];
 
@@ -94,6 +96,10 @@ export function AllInvestments({
           </Table>
         </Table.ScrollContainer>
       </Paper>
+      <MonthCalendar
+        days={combineDays(list.map((v) => v.daily ?? []))}
+        title="Day by day, all investments"
+      />
     </Stack>
   );
 }
