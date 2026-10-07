@@ -58,6 +58,23 @@ export interface DailyResult {
   pct: number;
 }
 
+export interface TrackedTrade {
+  date: string;
+  symbol: string;
+  side: 'buy' | 'sell';
+  price: number;
+}
+
+/** An investment's live days next to the same setup backtested over the same days. */
+export interface Tracking {
+  from: string;
+  days: Array<{ date: string; live: number; test: number | null }>;
+  liveReturnPct: number;
+  testReturnPct: number | null;
+  gapPct: number | null;
+  trades: { both: TrackedTrade[]; liveOnly: TrackedTrade[]; testOnly: TrackedTrade[] };
+}
+
 export interface BrokerPlanned {
   side: 'buy' | 'sell';
   symbol: string;

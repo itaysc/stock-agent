@@ -6,7 +6,13 @@ import type {
   PortfolioResponse,
   WalkForwardResponse,
 } from './types';
-import type { BrokerOverview, BrokerPlan, BrokerProfiles, StockChartData } from './broker-types';
+import type {
+  BrokerOverview,
+  BrokerPlan,
+  BrokerProfiles,
+  StockChartData,
+  Tracking,
+} from './broker-types';
 import type { AutopilotRun, AutopilotState, DeploymentView, PaperAccount } from './paper-types';
 import type { ResearchSession, RobustnessResult } from './research-types';
 
@@ -135,6 +141,8 @@ export const api = {
     request<{ prices: Record<string, { price: number; at: string }> }>(
       `/api/v1/broker/prices?symbols=${encodeURIComponent(symbols.join(','))}${fresh ? '&fresh=1' : ''}`,
     ),
+  brokerTracking: (id: string) =>
+    request<Tracking | null>(`/api/v1/broker/investments/${id}/tracking`),
   brokerChart: (id: string, symbol: string) =>
     request<StockChartData>(`/api/v1/broker/investments/${id}/chart/${encodeURIComponent(symbol)}`),
   testNotification: () =>

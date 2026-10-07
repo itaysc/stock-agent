@@ -128,6 +128,15 @@ export class BrokerController {
     return this.broker.start(dto.capital, dto.profile);
   }
 
+  @Get('investments/:id/tracking')
+  @ApiOperation({
+    summary:
+      'Live results next to the same setup backtested over the same days',
+  })
+  tracking(@Param('id') id: string) {
+    return this.broker.tracking(id);
+  }
+
   @Get('investments/:id/chart/:symbol')
   @ApiOperation({
     summary: "A stock's price chart with its trades, buy price and stop",

@@ -9,6 +9,7 @@ import { DeploymentsService } from '../paper/deployments.service.js';
 import { completedBefore } from '../paper/market-clock.js';
 import { PositionActionsService } from '../paper/position-actions.service.js';
 import { holdingHistory, spySince, stockChart } from './broker-charts.js';
+import { trackingOf } from './broker-tracking.js';
 import { currentRanks, previewPlan } from './broker-preview.js';
 import { pickProfile, profilesFor } from './broker-profiles.js';
 import type { Ranks } from './broker-status.js';
@@ -196,6 +197,11 @@ export class BrokerService {
   async allow(id: string, symbol: string) {
     await this.positions.allow((await this.investment(id)).id, symbol);
     return this.view();
+  }
+
+  /** The investment's live days next to the same setup backtested over the same days. */
+  async tracking(id: string) {
+    return trackingOf(this.backtests, await this.investment(id));
   }
 
   /** One stock's price chart with its trades and sell levels, in one investment. */

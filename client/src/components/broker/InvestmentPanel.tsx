@@ -7,6 +7,7 @@ import { StatCard } from '../results/StatCard';
 import { BrokerActivity } from './BrokerActivity';
 import { BrokerHoldings } from './BrokerHoldings';
 import { BrokerHow } from './BrokerHow';
+import { LiveVsBacktest } from './LiveVsBacktest';
 import { MonthCalendar } from './MonthCalendar';
 
 export const STATUS = {
@@ -109,6 +110,7 @@ export function InvestmentPanel({
         onOverview={onOverview}
       />
       <MonthCalendar days={view.daily ?? []} />
+      <LiveVsBacktest investmentId={view.deploymentId} />
       <BrokerActivity items={view.activity} />
       <BrokerHow view={view} />
     </Stack>

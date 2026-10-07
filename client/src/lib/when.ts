@@ -7,11 +7,15 @@ export function when(iso: string | Date): string {
     : `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`;
 }
 
-/** A trading day, e.g. "Fri, Oct 2" (as dated in New York, where the market is). */
+/**
+ * A trading day, e.g. "Fri, Oct 2": a plain "YYYY-MM-DD" as is, a timestamp
+ * as dated in New York, where the market is.
+ */
 export const tradingDay = (iso: string | Date) =>
   new Date(iso).toLocaleDateString([], {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-    timeZone: 'America/New_York',
+    timeZone:
+      typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? 'UTC' : 'America/New_York',
   });

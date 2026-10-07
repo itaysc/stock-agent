@@ -73,16 +73,42 @@ function sleeve(
     taxPaid: r.taxPaid ?? 0,
   };
 }
-/** Several sleeves as one account (each taxed on its own: a bit pessimistic, losses don't cross). */
-const combine = (runs: Run[]): Run => ({
-  curve: runs[0].curve.map((p, i) => ({
-    timestamp: p.timestamp,
-    equity: runs.reduce((n, r) => n + (r.curve[i]?.equity ?? 0), 0),
-  })),
-  final: runs.reduce((n, r) => n + r.final, 0),
-  afterTax: runs.reduce((n, r) => n + r.afterTax, 0),
-  taxPaid: runs.reduce((n, r) => n + r.taxPaid, 0),
-});
+/** Several sleeves as one account, lined up by day (each taxed on its own: a bit pessimistic, losses don't cross). */
+function combine(runs: Run[]): Run {
+  const day = (t: Date) => new Date(t).toISOString().slice(0, 10);
+  const maps = runs.map(
+    (r) => new Map(r.curve.map((p) => [day(p.timestamp), p.equity])),
+  );
+  const last = runs.map(() => 0);
+  return {
+    curve: runs[0].curve.map((p) => ({
+      timestamp: p.timestamp,
+      equity: maps.reduce((n, m, k) => {
+        last[k] = m.get(day(p.timestamp)) ?? last[k];
+        return n + last[k];
+      }, 0),
+    })),
+    final: runs.reduce((n, r) => n + r.final, 0),
+    afterTax: runs.reduce((n, r) => n + r.afterTax, 0),
+    taxPaid: runs.reduce((n, r) => n + r.taxPaid, 0),
+  };
+}
+
+/** The core: SPY bought with `cash` once and never sold, so its tax (on the whole gain) is due only at the end. */
+function core(cash: number, tax: number): Run {
+  const spy = bars.SPY.filter((b) => b.timestamp >= startAt);
+  const curve = spy.map((b) => ({
+    timestamp: b.timestamp,
+    equity: (cash * b.close) / spy[0].close,
+  }));
+  const final = curve.at(-1)?.equity ?? cash;
+  return {
+    curve,
+    final,
+    afterTax: final - Math.max(0, final - cash) * (tax / 100),
+    taxPaid: 0,
+  };
+}
 
 const START = 10_000;
 const momentum = (id: string, extra: Record<string, string> = {}) => {
@@ -108,6 +134,22 @@ const versions: Array<[string, (tax: number) => Run]> = [
     'Balanced weekly',
     (t) => sleeve('stocks', momentum('balanced', { tranches: '0' }), START, t),
   ],
+  // Core + satellite: a never-sold SPY core, momentum on the rest (no rebalancing between them: that would sell the core).
+  ...(
+    [
+      [0.7, 'aggressive'],
+      [0.5, 'aggressive'],
+      [0.7, 'balanced'],
+      [0.5, 'balanced'],
+    ] as const
+  ).map(([w, id]): [string, (tax: number) => Run] => [
+    `${w * 100}% SPY core + ${id === 'aggressive' ? 'Aggr.' : 'Bal.'}`,
+    (t) =>
+      combine([
+        core(START * w, t),
+        sleeve('stocks', momentum(id), START * (1 - w), t),
+      ]),
+  ]),
   [
     'Careful (now)',
     (t) =>
