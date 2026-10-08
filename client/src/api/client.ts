@@ -10,6 +10,7 @@ import type {
   BrokerOverview,
   BrokerPlan,
   BrokerProfiles,
+  ChartRange,
   StockChartData,
   Tracking,
 } from './broker-types';
@@ -143,8 +144,10 @@ export const api = {
     ),
   brokerTracking: (id: string) =>
     request<Tracking | null>(`/api/v1/broker/investments/${id}/tracking`),
-  brokerChart: (id: string, symbol: string) =>
-    request<StockChartData>(`/api/v1/broker/investments/${id}/chart/${encodeURIComponent(symbol)}`),
+  brokerChart: (id: string, symbol: string, range: ChartRange = 'buy', compareSpy = false) =>
+    request<StockChartData>(
+      `/api/v1/broker/investments/${id}/chart/${encodeURIComponent(symbol)}?range=${range}${compareSpy ? '&compare=SPY' : ''}`,
+    ),
   testNotification: () =>
     request<{ sentTo: string[] }>('/api/v1/notifications/test', { method: 'POST' }),
   deployments: () => request<DeploymentView[]>('/api/v1/paper/deployments'),

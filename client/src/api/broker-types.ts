@@ -56,6 +56,8 @@ export interface DailyResult {
   equity: number;
   pnl: number;
   pct: number;
+  /** Today so far, from the live prices (the close isn't in yet). */
+  live?: boolean;
 }
 
 export interface TrackedTrade {
@@ -135,9 +137,18 @@ export interface BrokerPlan {
   cash: number;
 }
 
+export type ChartRange = '1d' | '5d' | '1m' | '3m' | '6m' | '1y' | '5y' | 'buy';
+
 export interface StockChartData {
   symbol: string;
+  range: ChartRange;
+  /** 1D / 5D: intraday bars (times matter, not just days). */
+  intraday: boolean;
   closes: Array<{ time: string; close: number }>;
+  /** SPY over the same range (when compared). */
+  spy: Array<{ time: string; close: number }>;
+  /** Moving averages by days ("20", "50", "200"), daily ranges only. */
+  ma: Record<string, Array<{ time: string; value: number }>>;
   trades: Array<{ time: string; side: 'buy' | 'sell'; qty: number; price: number; why: string }>;
   entryPrice: number | null;
   boughtAt: string | null;

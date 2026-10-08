@@ -4,6 +4,7 @@ import {
   nearHigh,
   residualScore,
   steadiness,
+  stretch,
   volumeSurge,
 } from './rotation-signals.js';
 
@@ -101,5 +102,13 @@ describe('volumeSurge', () => {
     // last 63 days at 300; the year's average (189×100 + 63×300) / 252 = 150
     expect(volumeSurge(v)).toBeCloseTo(2);
     expect(volumeSurge(v.slice(-100))).toBeNull();
+  });
+});
+
+describe('stretch', () => {
+  it('is how far the close is above its 50-day average', () => {
+    const c = [...Array.from({ length: 49 }, () => 100), 151];
+    expect(stretch(c)).toBeCloseTo(151 / 101 - 1);
+    expect(stretch(c.slice(1))).toBeNull();
   });
 });

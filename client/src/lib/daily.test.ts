@@ -17,3 +17,13 @@ describe('combineDays', () => {
     expect(out[1].pct).toBeCloseTo((30 / 3010) * 100);
   });
 });
+
+describe('combineDays with today so far', () => {
+  it('keeps the live mark when any investment’s day is live', () => {
+    const out = combineDays([
+      [{ date: '2026-10-07', equity: 1010, pnl: 10, pct: 1, live: true }],
+      [{ date: '2026-10-07', equity: 500, pnl: 0, pct: 0 }],
+    ]);
+    expect(out[0].live).toBe(true);
+  });
+});

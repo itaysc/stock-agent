@@ -10,6 +10,7 @@ import { completedBefore } from '../paper/market-clock.js';
 import { PositionActionsService } from '../paper/position-actions.service.js';
 import { holdingHistory, spySince, stockChart } from './broker-charts.js';
 import { trackingOf } from './broker-tracking.js';
+import type { ChartRange } from './broker-chart-range.js';
 import { currentRanks, previewPlan } from './broker-preview.js';
 import { pickProfile, profilesFor } from './broker-profiles.js';
 import type { Ranks } from './broker-status.js';
@@ -205,11 +206,13 @@ export class BrokerService {
   }
 
   /** One stock's price chart with its trades and sell levels, in one investment. */
-  async chart(id: string, symbol: string) {
+  async chart(id: string, symbol: string, range?: ChartRange, compare = false) {
     return stockChart(
       this.backtests,
       await this.investment(id),
       symbol.toUpperCase(),
+      range,
+      compare,
     );
   }
 }

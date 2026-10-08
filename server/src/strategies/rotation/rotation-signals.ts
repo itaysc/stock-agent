@@ -110,3 +110,10 @@ export function volumeSurge(
   const base = avg(v.slice(-long));
   return base > 0 ? avg(v.slice(-short)) / base : null;
 }
+
+/** How far the last close is above (+) or below (−) its `n`-day average, as a fraction (null without `n` closes). */
+export function stretch(c: number[], n = 50): number | null {
+  if (c.length < n) return null;
+  const avg = c.slice(-n).reduce((a, b) => a + b, 0) / n;
+  return avg > 0 ? (c.at(-1) as number) / avg - 1 : null;
+}

@@ -216,3 +216,41 @@ describe('rotation crowdFilter (low-volume winners)', () => {
     expect([...t.keys()]).toEqual(['CCC']);
   });
 });
+
+describe('rotation maxStretch (too far above the 50-day average)', () => {
+  // AAA: the strongest, but jumped 40% in the last week (far above its 50-day average); BBB, CCC rise steadily.
+  const jump = Array.from({ length: 63 }, (_, i) =>
+    i < 58 ? 100 + i * 2 : (100 + 57 * 2) * 1.4,
+  );
+  const closes = new Map([
+    ['AAA', jump],
+    ['BBB', rising(2)],
+    ['CCC', rising(1)],
+    ['BIL', Array.from({ length: 63 }, () => 100)],
+  ]);
+  const at = (p: Record<string, number>, held?: (s: string) => boolean) =>
+    rotationTargets({
+      p: { ...P, recentDrop: 0, topN: 1, maxStretch: 30, ...p }, // BBB is 28% above, AAA 64%
+      symbols: ['AAA', 'BBB', 'CCC', 'BIL'],
+      closes,
+      vols: new Map(),
+      marketDown: false,
+      aboveTrend: () => true,
+      held,
+    });
+
+  it('"next best": the next-ranked stock takes the stretched one’s slot', () => {
+    expect([...at({ stretchMode: 1 }).keys()]).toEqual(['BBB']);
+  });
+
+  it('"wait": the slot waits in the safe asset', () => {
+    expect([...at({ stretchMode: 2 }).keys()]).toEqual(['BIL']);
+  });
+
+  it('keeps it when already held, or when off', () => {
+    expect([...at({ stretchMode: 2 }, (s) => s === 'AAA').keys()]).toEqual([
+      'AAA',
+    ]);
+    expect([...at({ maxStretch: 0 }).keys()]).toEqual(['AAA']);
+  });
+});

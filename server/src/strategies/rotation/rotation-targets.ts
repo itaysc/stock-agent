@@ -10,6 +10,7 @@ import {
 } from './rotation-filters.js';
 import { earningsDays } from './rotation-events.js';
 import {
+  stretch,
   volumeSurge,
   basketVolPct,
   mixedReturn,
@@ -120,6 +121,11 @@ export function rotationTargets({
     now,
   });
   const topSector = inTopSectors(p, ranked, score);
+  /** maxStretch: a stock it doesn't hold yet, more than maxStretch % above its 50-day average. */
+  const tooStretched = (s: string) =>
+    p.maxStretch > 0 &&
+    !held?.(s) &&
+    (stretch(closes.get(s) ?? []) ?? 0) > p.maxStretch / 100;
   const allowed = ranked.filter(
     (s) =>
       aboveTrend(s) &&
@@ -129,7 +135,9 @@ export function rotationTargets({
         !now ||
         held?.(s) ||
         !earningsDays.within(s, now, p.earningsWait)) &&
-      ((!p.recentDropHeld && held?.(s)) || recentOk(p, closes, s)),
+      ((!p.recentDropHeld && held?.(s)) || recentOk(p, closes, s)) &&
+      // maxStretch "next best": a new pick far above its 50-day average makes way for the next one.
+      !(p.stretchMode === 1 && tooStretched(s)),
   );
   const crowding = (s: string) =>
     p.crowdFilter === 2
@@ -143,11 +151,10 @@ export function rotationTargets({
   );
   const picks = marketDown
     ? []
-    : capBySector(
-        keepHeld(p, ranked, candidates, held),
-        p.topN,
-        p.maxPerSector,
-      ).filter((s) => !p.absMomentum || score(s) > 0);
+    : capBySector(keepHeld(p, ranked, candidates, held), p.topN, p.maxPerSector)
+        .filter((s) => !p.absMomentum || score(s) > 0)
+        // maxStretch "wait": its slot waits in the safe asset until it cools down.
+        .filter((s) => !(p.stretchMode === 2 && tooStretched(s)));
   const vol = (s: string) => vols.get(s)?.volPct ?? null;
   const raw = picks.map((s) =>
     p.volWeight && vol(s) ? 1 / (vol(s) as number) : 1,

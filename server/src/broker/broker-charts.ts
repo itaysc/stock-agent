@@ -4,6 +4,12 @@ import type { StrategyBar } from '../strategies/strategy.types.js';
 import { openedAt, sellLevels } from './broker-levels.js';
 import { plainReason } from './broker-view.js';
 import { SAFE_SYMBOLS } from './broker-holdings.js';
+import {
+  CHART_RANGES,
+  type ChartRange,
+  movingAverages,
+  rangeBars,
+} from './broker-chart-range.js';
 
 const DAY_MS = 86_400_000;
 /** The small chart in each holding row starts this many days before the buy. */
@@ -40,11 +46,17 @@ export async function holdingHistory(
   );
 }
 
-/** One stock's chart: closes from 3 months before the buy, its trades, and its levels. */
+/**
+ * One stock's chart for a range (default: from 3 months before the buy), its
+ * trades in that range, its sell levels (always from the daily closes since
+ * the buy), and SPY over the same range when `compare`.
+ */
 export async function stockChart(
   backtests: BacktestService,
   d: Deployment | null,
   symbol: string,
+  range: ChartRange = 'buy',
+  compare = false,
 ) {
   // The part (sleeve) that trades this symbol.
   const sleeve = d
@@ -72,11 +84,22 @@ export async function stockChart(
     stopPrice: Math.max(auto.stopPrice ?? 0, mine?.stopPrice ?? 0) || null,
     takeProfitPrice: mine?.takeProfitPrice ?? auto.takeProfitPrice,
   };
+  const shown =
+    range === 'buy' ? bars : await rangeBars(backtests, symbol, range, opened);
+  const shownFrom = shown[0]?.timestamp ?? start;
+  const spy = compare ? await rangeBars(backtests, 'SPY', range, opened) : [];
+  const intraday = 'sessions' in CHART_RANGES[range];
+  // Moving averages: daily ranges only (a 200-day line doesn't fit 5-minute bars).
+  const ma = intraday ? {} : await movingAverages(backtests, symbol, shownFrom);
   return {
     symbol,
-    closes: bars.map((b) => ({ time: b.timestamp, close: b.close })),
+    range,
+    intraday,
+    ma,
+    closes: shown.map((b) => ({ time: b.timestamp, close: b.close })),
+    spy: spy.map((b) => ({ time: b.timestamp, close: b.close })),
     trades: (l?.trades ?? [])
-      .filter((t) => t.symbol === symbol && new Date(t.timestamp) >= start)
+      .filter((t) => t.symbol === symbol && new Date(t.timestamp) >= shownFrom)
       .map((t) => ({
         time: t.timestamp,
         side: t.side,

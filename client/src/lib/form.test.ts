@@ -94,3 +94,14 @@ describe('form → request body', () => {
     });
   });
 });
+
+describe('cashShown', () => {
+  it('shows a small overspend as $0, fully invested, with why', async () => {
+    const { cashShown } = await import('./format');
+    expect(cashShown(-2.79, 5)).toEqual({
+      value: '$0.00',
+      hint: 'fully invested · 5 holdings · a buy cost $2.79 more than the cash (covered from free cash)',
+    });
+    expect(cashShown(12.5, 1).value).toBe('$12.50');
+  });
+});

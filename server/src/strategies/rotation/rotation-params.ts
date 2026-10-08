@@ -63,6 +63,18 @@ export const ROTATION_PARAMS: ParamSpecs = {
     0,
     '1 = a third each ranked over about 6, 9 and 12 months (instead of one window), so no single window decides the result.',
   ),
+  maxStretch: whole(
+    0,
+    0,
+    200,
+    "Don't start a position in a stock more than this % above its 50-day average (held ones stay). 0 = off.",
+  ),
+  stretchMode: whole(
+    1,
+    1,
+    2,
+    'What happens to a pick maxStretch skips: 1 = the next-ranked stock takes its slot; 2 = the slot waits in the safe asset until it cools down.',
+  ),
   crowdFilter: whole(
     0,
     0,

@@ -22,6 +22,7 @@ import { BrokerNoticesService } from '../broker-notices.service.js';
 import { PROFILES, type ProfileId } from '../profiles.js';
 import { BrokerService } from '../broker.service.js';
 import { LivePricesService } from '../live-prices.service.js';
+import { CHART_RANGES, isChartRange } from '../broker-chart-range.js';
 
 export class StartBrokerDto {
   @ApiPropertyOptional({ example: 10000 })
@@ -141,8 +142,17 @@ export class BrokerController {
   @ApiOperation({
     summary: "A stock's price chart with its trades, buy price and stop",
   })
-  chart(@Param('id') id: string, @Param('symbol') symbol: string) {
-    return this.broker.chart(id, symbol);
+  chart(
+    @Param('id') id: string,
+    @Param('symbol') symbol: string,
+    @Query('range') range = 'buy',
+    @Query('compare') compare = '',
+  ) {
+    if (!isChartRange(range))
+      throw new BadRequestException(
+        `range: one of ${Object.keys(CHART_RANGES).join(', ')}`,
+      );
+    return this.broker.chart(id, symbol, range, compare === 'SPY');
   }
 
   @Post('investments/:id/positions/:symbol/sell')

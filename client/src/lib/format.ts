@@ -23,3 +23,18 @@ export function timeAgo(iso: string): string {
   if (hours < 24) return `${hours} h ago`;
   return new Date(iso).toLocaleDateString();
 }
+
+/**
+ * An investment's cash for display: never below $0 (a small negative is an
+ * early buy that cost a bit more than the cash, covered from the account's
+ * free cash), with a hint saying so.
+ */
+export function cashShown(cash: number, holdings: number): { value: string; hint: string } {
+  const count = `${holdings} holding${holdings === 1 ? '' : 's'}`;
+  return cash < 0
+    ? {
+        value: money(0),
+        hint: `fully invested · ${count} · a buy cost ${money(-cash)} more than the cash (covered from free cash)`,
+      }
+    : { value: money(cash), hint: `not in stocks yet · ${count}` };
+}

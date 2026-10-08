@@ -30,3 +30,27 @@ describe('applyLive', () => {
     expect(applyLive(view, {}).equity).toBe(1000);
   });
 });
+
+describe('applyLive: today so far in the calendar', () => {
+  const withDays = {
+    ...view,
+    daily: [{ date: '2026-10-06', equity: 1000, pnl: 5, pct: 0.5 }],
+  } as unknown as InvestmentView;
+
+  it('adds today from the live prices while its close is not in yet', () => {
+    // 14:30 UTC on Oct 7 = 10:30 in New York.
+    const v = applyLive(withDays, { AAA: { price: 110, at: '2026-10-07T14:30:00Z' } });
+    expect(v.daily.at(-1)).toEqual({
+      date: '2026-10-07',
+      equity: 1020,
+      pnl: 20,
+      pct: 2,
+      live: true,
+    });
+  });
+
+  it('adds nothing once that day is in (or the live trade is from the last close day)', () => {
+    const v = applyLive(withDays, { AAA: { price: 110, at: '2026-10-06T19:59:00Z' } });
+    expect(v.daily).toHaveLength(1);
+  });
+});

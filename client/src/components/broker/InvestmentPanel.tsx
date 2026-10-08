@@ -2,7 +2,7 @@ import { Badge, Button, Group, SimpleGrid, Stack, Text, Title } from '@mantine/c
 import { IconPlayerPause, IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import type { BrokerOverview, InvestmentView } from '../../api/broker-types';
-import { money, pct, tone } from '../../lib/format';
+import { cashShown, money, pct, tone } from '../../lib/format';
 import { StatCard } from '../results/StatCard';
 import { BrokerActivity } from './BrokerActivity';
 import { BrokerHoldings } from './BrokerHoldings';
@@ -99,7 +99,7 @@ export function InvestmentPanel({
                 : 'it is behind SPY'
           }
         />
-        <StatCard label="Cash" value={money(view.cash)} hint={`${view.holdings.length} holdings`} />
+        <StatCard label="Cash" {...cashShown(view.cash, view.holdings.length)} />
       </SimpleGrid>
       <BrokerHoldings
         investmentId={view.deploymentId}

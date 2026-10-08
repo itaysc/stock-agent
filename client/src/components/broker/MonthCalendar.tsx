@@ -3,6 +3,7 @@ import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import type { DailyResult } from '../../api/broker-types';
 import { money, pct } from '../../lib/format';
+import { nyDay } from '../../lib/live';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const monthKey = (date: string) => date.slice(0, 7);
@@ -38,13 +39,14 @@ export function MonthCalendar({
   const length = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const inMonth = days.filter((d) => monthKey(d.date) === month);
   const total = inMonth.reduce((n, d) => n + d.pnl, 0);
-  const startEquity = inMonth[0] ? inMonth[0].equity - inMonth[0].pnl : 0;
+  // Each day's % compounded: right also when an investment starts mid-month (more money, same %).
+  const monthPct = (inMonth.reduce((n, d) => n * (1 + d.pct / 100), 1) - 1) * 100;
   const label = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString([], {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC',
   });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = nyDay(new Date().toISOString());
 
   return (
     <Paper p="md" withBorder>
@@ -74,7 +76,7 @@ export function MonthCalendar({
       </Group>
       <Text size="xs" c={inMonth.length ? (total >= 0 ? 'teal' : 'red') : 'dimmed'} mb="xs">
         {inMonth.length
-          ? `This month: ${total >= 0 ? '+' : '-'}${money(Math.abs(total))} (${pct(startEquity ? (total / startEquity) * 100 : 0)}) over ${inMonth.length} trading days`
+          ? `This month: ${total >= 0 ? '+' : '-'}${money(Math.abs(total))} (${pct(monthPct)}) over ${inMonth.length} trading days`
           : 'No trading days this month'}
       </Text>
       <SimpleGrid cols={7} spacing={4} verticalSpacing={4}>
@@ -98,8 +100,10 @@ export function MonthCalendar({
               style={{
                 background: d ? shade(d.pct) : undefined,
                 outline: date === today ? '1px solid var(--mantine-color-blue-5)' : undefined,
+                // Today so far (live prices): dashed until the close is in.
+                borderStyle: d?.live ? 'dashed' : undefined,
               }}
-              withBorder={!d}
+              withBorder={!d || d.live}
             >
               <Text size="xs" c={d ? undefined : 'dimmed'}>
                 {i + 1}
@@ -123,7 +127,7 @@ export function MonthCalendar({
           return d ? (
             <Tooltip
               key={date}
-              label={`${date}: ${d.pnl >= 0 ? '+' : '-'}${money(Math.abs(d.pnl))} (${pct(d.pct)}) · worth ${money(d.equity)}`}
+              label={`${date}${d.live ? ' so far (live prices; final after the close)' : ''}: ${d.pnl >= 0 ? '+' : '-'}${money(Math.abs(d.pnl))} (${pct(d.pct)}) · worth ${money(d.equity)}`}
               withArrow
             >
               {cell}

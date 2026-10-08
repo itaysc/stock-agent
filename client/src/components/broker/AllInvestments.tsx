@@ -1,6 +1,6 @@
 import { Badge, Group, Paper, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
 import type { InvestmentView } from '../../api/broker-types';
-import { money, pct, tone } from '../../lib/format';
+import { cashShown, money, pct, tone } from '../../lib/format';
 import { StatCard } from '../results/StatCard';
 import { combineDays } from '../../lib/daily';
 import { STATUS } from './InvestmentPanel';
@@ -33,8 +33,10 @@ export function AllInvestments({
         />
         <StatCard
           label="Cash in them"
-          value={money(list.reduce((n, v) => n + v.cash, 0))}
-          hint={`${list.reduce((n, v) => n + v.holdings.length, 0)} holdings`}
+          {...cashShown(
+            list.reduce((n, v) => n + v.cash, 0),
+            list.reduce((n, v) => n + v.holdings.length, 0),
+          )}
         />
       </SimpleGrid>
       <Paper p="md" withBorder>
