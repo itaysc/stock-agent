@@ -128,8 +128,8 @@ export const ROTATION_PARAMS: ParamSpecs = {
   blend: whole(
     0,
     0,
-    5,
-    'Mix in the company reports (algo lab only, from SEC data): 1 momentum + value, 2 momentum + quality, 3 all three, 4 momentum among the better-quality half, 5 value + quality without momentum. 0 = momentum only.',
+    9,
+    'Mix in the company reports (algo lab only, from SEC data): 1 momentum + value, 2 momentum + quality, 3 all three, 4 momentum among the better-quality half, 5 value + quality without momentum, 6 momentum + earnings surprise, 7 momentum + the reaction to the earnings release, 8 momentum + both surprises and the reaction, 9 momentum among the better earnings-momentum half. 0 = momentum only.',
   ),
   sectorTop: whole(
     0,

@@ -37,6 +37,13 @@ export interface BrokerOptions {
    * forward (see TaxLedger). Omitted/0 = no tax.
    */
   taxRatePct?: number;
+  /**
+   * Tax-loss harvesting (with taxRatePct): late each December, when the year
+   * has a net gain to offset, sell the holdings below their cost and buy them
+   * straight back (slippage both ways), so the loss counts this year. See
+   * harvestLosses. Omitted = off.
+   */
+  harvestLosses?: boolean;
 }
 
 const YEAR_MS = 365.25 * 86_400_000;
@@ -94,6 +101,29 @@ export class SimulatedBroker implements StrategyContext {
       0,
     );
     return this.equity() - this.tax.ifSoldNow(unrealized);
+  }
+
+  /**
+   * Sells every holding that is below its cost at its last close and buys it
+   * straight back: the same shares, a lower cost, and a realized loss that
+   * offsets this year's gains. Only when the year has a net gain (otherwise
+   * the loss would just carry forward, for the cost of the trades).
+   */
+  harvestLosses(): void {
+    if (!this.tax || this.tax.netThisYear() <= 0) return;
+    for (const p of this.positions.values()) {
+      const close = this.lastPrices.get(p.symbol);
+      if (close === undefined) continue;
+      const cost =
+        (close * this.options.slippageBps) / 10_000 + this.options.feePerShare;
+      if (close - cost >= p.avgPrice) continue;
+      this.positions.set(p.symbol, { ...p, avgPrice: close + cost });
+      this.cashBalance -= 2 * p.qty * cost;
+      this.cashBalance -= this.tax.record(
+        p.qty * (close - cost - p.avgPrice),
+        this.clock,
+      );
+    }
   }
 
   setTime(timestamp: Date): void {

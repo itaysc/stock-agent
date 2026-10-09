@@ -7,6 +7,7 @@ import { pointInTime } from '../../strategies/rotation/rotation-universe.js';
 import type { StrategyBar } from '../../strategies/strategy.types.js';
 import { INDEX_SYMBOLS, PROFILES, type ProfileSleeve } from '../profiles.js';
 import { SAFE_ASSET } from '../universe.js';
+import { painStats } from './pain-stats.js';
 import { curveStats, mixedCurve, type Curve } from './profile-stats.js';
 import { sp500Top } from './sp500-universe.js';
 import { yahooDaily } from './yahoo-history.js';
@@ -84,19 +85,24 @@ for (const p of PROFILES) {
       weight: s.weightPct / 100,
     })),
   );
-  const stats = curveStats(mixedCurve(parts));
-  const spyBars = bars.SPY.filter(
+  const curve = mixedCurve(parts);
+  const stats = curveStats(curve);
+  const spyCurve = bars.SPY.filter(
     (b) => b.timestamp >= stats.from && b.timestamp <= stats.to,
-  );
-  const spy = curveStats(
-    spyBars.map((b) => ({ timestamp: b.timestamp, equity: b.close })),
-  );
+  ).map((b) => ({ timestamp: b.timestamp, equity: b.close }));
+  const pain = painStats(curve, spyCurve);
+  const spy = { ...curveStats(spyCurve), pain: painStats(spyCurve) };
   console.log(
     `${p.name.padEnd(11)} ${pct(stats.annualPct)}/yr  worst drop -${stats.maxDrawdownPct.toFixed(1)}%  worst year ${stats.worstYear.year} ${pct(stats.worstYear.pct)}  best ${stats.bestYear.year} ${pct(stats.bestYear.pct)}  up years ${stats.positiveYearsPct.toFixed(0)}%   (SPY ${pct(spy.annualPct)}/yr, -${spy.maxDrawdownPct.toFixed(1)}%)`,
+  );
+  const months = (m: number) => `${(m / 12).toFixed(1)}y`;
+  console.log(
+    `${''.padEnd(11)} calmar ${pain.calmar.toFixed(2)} (SPY ${spy.pain.calmar.toFixed(2)})  ulcer ${pain.ulcerIndex.toFixed(1)} (SPY ${spy.pain.ulcerIndex.toFixed(1)})  longest under water ${months(pain.longestUnderwaterMonths)} (SPY ${months(spy.pain.longestUnderwaterMonths)})  trailed SPY in ${pain.vsSpy3y?.trailedPct.toFixed(0)}% of 3-year stretches, worst ${pain.vsSpy3y?.worstGapPct.toFixed(1)} pts/yr`,
   );
   docs.push({
     _id: p.id,
     ...stats,
+    pain,
     spy,
     method: `Walk-forward (settings picked on 2 years, scored on the 6 months after), ${stats.from.getUTCFullYear()}-${stats.to.getUTCFullYear()}`,
     universe:

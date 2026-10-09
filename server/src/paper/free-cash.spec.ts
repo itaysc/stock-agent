@@ -26,4 +26,22 @@ describe('free cash', () => {
     );
     expect(await service.freeCash()).toBe(9_000); // not 9,200 - 1,000 = 8,200
   });
+
+  it('does not count a deployment’s overspend as free again', async () => {
+    // The broker bought $2.79 more than its cash (covered by the free cash): the account cash is already lower.
+    const over = {
+      capital: 200,
+      sleeves: [{ weightPct: 100 }],
+      ledgers: [{ ...emptyLedger(-2.79) }],
+    } as unknown as Deployment;
+    const service = new DeploymentsService(
+      {
+        getAccount: async () => ({ cash: '111.39' }),
+      } as unknown as AlpacaService,
+      {} as never,
+      {} as never,
+      { live: async () => [over] } as unknown as DeploymentStore,
+    );
+    expect(await service.freeCash()).toBeCloseTo(111.39); // not 114.18
+  });
 });

@@ -2,6 +2,7 @@ import { Badge, Group, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@m
 import type { BrokerProfile, BrokerProfiles } from '../../api/broker-types';
 import { money } from '../../lib/format';
 import { periodText, usualRange, vsSpy } from '../../lib/robust';
+import { ProfilePain } from './ProfilePain';
 
 const pct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 const usd = (n: number) => `${n < 0 ? '-' : n > 0 ? '+' : ''}${money(Math.abs(n))}`;
@@ -69,6 +70,7 @@ export function ProfilePicker({
                       <Text size="sm" c={s.worstYear.pct < 0 ? 'red' : undefined}>
                         Worst year: {s.worstYear.year}, {usd(a.worstYear)} ({pct(s.worstYear.pct)})
                       </Text>
+                      {s.pain && <ProfilePain pain={s.pain} spy={s.spy.pain} />}
                       <Stack gap={0}>
                         {p.robust.periods.map((x) => (
                           <Text key={x.from} size="xs" c={x.pct >= x.spyPct ? 'teal' : 'red'}>

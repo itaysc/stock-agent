@@ -4,6 +4,12 @@ import { resolve } from 'node:path';
 import { earningsDays } from '../../strategies/rotation/rotation-events.js';
 import { fundamentals } from '../../strategies/rotation/rotation-fundamentals.js';
 import type { StrategyBar } from '../../strategies/strategy.types.js';
+import {
+  announcementReturn,
+  dailyCloses,
+  quartersOf,
+  sue,
+} from './earnings-momentum.js';
 import { fundamentalsFrom } from './fundamentals.js';
 import { secEarningsDays } from './sec-announcements.js';
 import { secFacts } from './sec-facts.js';
@@ -21,8 +27,9 @@ export async function useEarningsDays(
 }
 
 /**
- * The SEC reports as public on each day (value, quality and turnover), for
- * blend and crowdFilter 2. Prices and volumes come from `bars`.
+ * The SEC reports as public on each day (value, quality, turnover and
+ * earnings momentum), for blend and crowdFilter 2. Prices and volumes come
+ * from `bars` (SPY among them, for the reaction to each earnings release).
  */
 export async function useFundamentals(
   app: INestApplicationContext,
@@ -63,5 +70,44 @@ export async function useFundamentals(
       last.reduce((n, b) => n + b.close * (b.volume ?? 0), 0) / last.length
     );
   };
-  fundamentals.set(fundamentalsFrom(facts, price, dollarVolume));
+  const base = fundamentalsFrom(facts, price, dollarVolume);
+  const releases = await secEarningsDays(symbols, secDir(), agent(app));
+  const income = new Map(
+    Object.entries(facts).map(([s, f]) => [
+      s,
+      quartersOf(f, ['NetIncomeLoss', 'ProfitLoss']),
+    ]),
+  );
+  const revenue = new Map(
+    Object.entries(facts).map(([s, f]) => [
+      s,
+      quartersOf(f, [
+        'Revenues',
+        'RevenueFromContractWithCustomerExcludingAssessedTax',
+        'SalesRevenueNet',
+      ]),
+    ]),
+  );
+  const closes = new Map(
+    Object.entries(bars).map(([s, l]) => [s, dailyCloses(l)]),
+  );
+  const spy = closes.get('SPY') ?? { days: [], closes: [] };
+  const memo = new Map<string, ReturnType<typeof base>>();
+  fundamentals.set((s, atDate) => {
+    const day = atDate.toISOString().slice(0, 10);
+    const key = `${s}|${day}`;
+    if (memo.has(key)) return memo.get(key) ?? null;
+    const f = base(s, atDate);
+    const stock = closes.get(s);
+    const out = f && {
+      ...f,
+      sue: sue(income.get(s) ?? [], day),
+      sueRev: sue(revenue.get(s) ?? [], day),
+      ear: stock
+        ? announcementReturn(stock, spy, releases[s] ?? [], day)
+        : null,
+    };
+    memo.set(key, out);
+    return out;
+  });
 }

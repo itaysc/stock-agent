@@ -114,3 +114,44 @@ describe('SimulatedBroker', () => {
     expect(b.equity()).toBe(10_000 - 1_020 + 1_040);
   });
 });
+
+describe('SimulatedBroker.harvestLosses', () => {
+  const bar = (symbol: string, open: number, close: number, day: string) => ({
+    symbol,
+    timestamp: new Date(day),
+    open,
+    high: Math.max(open, close),
+    low: Math.min(open, close),
+    close,
+    volume: 0,
+  });
+  /** Buys 10 AAPL and 10 MSFT at 100; MSFT is sold at 150 (+500) when `sellMsft`; AAPL ends the year at 80. */
+  function year(sellMsft: boolean) {
+    const b = broker({ taxRatePct: 25 });
+    b.buy('AAPL', 10);
+    b.buy('MSFT', 10);
+    b.setTime(new Date('2020-06-01'));
+    b.fillPending(bar('AAPL', 100, 100, '2020-06-01'));
+    b.fillPending(bar('MSFT', 100, 100, '2020-06-01'));
+    if (sellMsft) {
+      b.sell('MSFT', 10);
+      b.setTime(new Date('2020-07-01'));
+      b.fillPending(bar('MSFT', 150, 150, '2020-07-01'));
+    }
+    b.setTime(new Date('2020-12-21'));
+    b.markPrice(bar('AAPL', 80, 80, '2020-12-21'));
+    b.harvestLosses();
+    b.accrueInterest(new Date('2021-01-04'));
+    return b;
+  }
+
+  it('realizes the open loss against the year’s gain and keeps the shares', () => {
+    const b = year(true);
+    expect(b.position('AAPL')).toMatchObject({ qty: 10, avgPrice: 80 });
+    expect(b.taxPaid()).toBeCloseTo((500 - 200) * 0.25);
+  });
+
+  it('does nothing without a gain to offset', () => {
+    expect(year(false).position('AAPL')).toMatchObject({ avgPrice: 100 });
+  });
+});

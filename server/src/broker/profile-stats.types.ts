@@ -9,6 +9,13 @@ export interface StatsSummary {
   bestYear: { year: number; pct: number };
   positiveYearsPct: number;
   years: Array<{ year: number; pct: number }>;
+  /** How hard it was to live with (see pain-stats in the lab). */
+  pain?: {
+    calmar: number;
+    ulcerIndex: number;
+    longestUnderwaterMonths: number;
+    vsSpy3y?: { trailedPct: number; worstGapPct: number };
+  };
 }
 
 export interface ProfileStats extends StatsSummary {

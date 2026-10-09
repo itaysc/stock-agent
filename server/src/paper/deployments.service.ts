@@ -8,7 +8,7 @@ import { AlpacaService } from '../alpaca/alpaca.service.js';
 import { annualizedPct } from '../backtest/walkforward/walkforward-metrics.js';
 import { PortfolioService } from '../backtest/portfolio/portfolio.service.js';
 import type { Sleeve } from '../backtest/portfolio/portfolio.types.js';
-import { deploymentEquity, reservedCash } from './deployment-cycle.js';
+import { deploymentEquity, heldCash } from './deployment-cycle.js';
 import { logEvent } from './deployment-events.js';
 import { DeploymentRunnerService } from './deployment-runner.service.js';
 import { DeploymentStore } from './deployment-store.js';
@@ -187,7 +187,7 @@ export class DeploymentsService {
       live ?? this.store.live(),
     ]);
     return (
-      Number(account.cash ?? 0) - list.reduce((n, d) => n + reservedCash(d), 0)
+      Number(account.cash ?? 0) - list.reduce((n, d) => n + heldCash(d), 0)
     );
   }
 

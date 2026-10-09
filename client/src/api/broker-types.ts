@@ -168,9 +168,22 @@ export interface ProfileStats {
   bestYear: { year: number; pct: number };
   positiveYearsPct: number;
   years: Array<{ year: number; pct: number }>;
+  /** How hard it was to live with. */
+  pain?: ProfilePain;
   spy: Omit<ProfileStats, 'spy' | 'method' | 'universe'>;
   method: string;
   universe: string;
+}
+
+export interface ProfilePain {
+  /** Yearly return ÷ worst drop. */
+  calmar: number;
+  /** Depth and length of the drops (lower = calmer). */
+  ulcerIndex: number;
+  /** The longest wait to get back to an earlier peak. */
+  longestUnderwaterMonths: number;
+  /** Every 3-year stretch against SPY: how often it did worse, and the worst gap (% points a year). */
+  vsSpy3y?: { trailedPct: number; worstGapPct: number };
 }
 
 /** How solid a profile's numbers are: the same test with the re-rank day moved and random stocks left out. */

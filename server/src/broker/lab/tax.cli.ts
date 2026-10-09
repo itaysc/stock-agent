@@ -13,7 +13,8 @@ import { yahooDaily } from './yahoo-history.js';
 /**
  * The profiles before and after Israeli capital gains tax (25% of each year's
  * net realized gains, losses carried forward, the rest paid on selling at the
- * end), against holding SPY and paying the tax once at the end. One
+ * end), against holding SPY and paying the tax once at the end, and with
+ * tax-loss harvesting (losing holdings sold and bought back each December). One
  * continuous run each from 2007 (no walk-forward: its window ends would sell
  * everything every 6 months and distort the tax), the broker's own settings.
  *   node dist/broker/lab/tax.cli.js
@@ -45,12 +46,14 @@ interface Run {
   afterTax: number;
   taxPaid: number;
 }
-/** One sleeve with `cash`, continuously from startAt, taxed at `tax`%. */
+/** Tax rate in % and whether to harvest losses each December. */
+type Tax = { rate: number; harvest: boolean };
+/** One sleeve with `cash`, continuously from startAt, taxed as `tax` says. */
 function sleeve(
   kind: 'stocks' | 'index',
   params: Record<string, string>,
   cash: number,
-  tax: number,
+  tax: Tax,
 ): Run {
   const symbols = kind === 'stocks' ? stocks : INDEX_SYMBOLS;
   pointInTime.set(kind === 'stocks' ? u.allowed : null);
@@ -62,7 +65,8 @@ function sleeve(
       slippageBps: 5,
       feePerShare: 0,
       cashYieldPct: 3,
-      taxRatePct: tax,
+      taxRatePct: tax.rate,
+      harvestLosses: tax.harvest,
     },
     { startAt, market: { SPY: bars.SPY } },
   );
@@ -95,7 +99,7 @@ function combine(runs: Run[]): Run {
 }
 
 /** The core: SPY bought with `cash` once and never sold, so its tax (on the whole gain) is due only at the end. */
-function core(cash: number, tax: number): Run {
+function core(cash: number, { rate }: Tax): Run {
   const spy = bars.SPY.filter((b) => b.timestamp >= startAt);
   const curve = spy.map((b) => ({
     timestamp: b.timestamp,
@@ -105,7 +109,7 @@ function core(cash: number, tax: number): Run {
   return {
     curve,
     final,
-    afterTax: final - Math.max(0, final - cash) * (tax / 100),
+    afterTax: final - Math.max(0, final - cash) * (rate / 100),
     taxPaid: 0,
   };
 }
@@ -116,7 +120,7 @@ const momentum = (id: string, extra: Record<string, string> = {}) => {
   if (!p) throw new Error(`no profile ${id}`);
   return { ...p.sleeves[0].params, ...extra };
 };
-const versions: Array<[string, (tax: number) => Run]> = [
+const versions: Array<[string, (tax: Tax) => Run]> = [
   [
     'Aggressive (weekly)',
     (t) => sleeve('stocks', momentum('aggressive'), START, t),
@@ -142,7 +146,7 @@ const versions: Array<[string, (tax: number) => Run]> = [
       [0.7, 'balanced'],
       [0.5, 'balanced'],
     ] as const
-  ).map(([w, id]): [string, (tax: number) => Run] => [
+  ).map(([w, id]): [string, (tax: Tax) => Run] => [
     `${w * 100}% SPY core + ${id === 'aggressive' ? 'Aggr.' : 'Bal.'}`,
     (t) =>
       combine([
@@ -164,7 +168,7 @@ const years = (to.getTime() - startAt.getTime()) / (365.25 * 86_400_000);
 const cagr = (end: number) => ((end / START) ** (1 / years) - 1) * 100;
 const pct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 console.log(
-  `${'version'.padEnd(26)} before tax   after tax   tax paid along the way   worst drop`,
+  `${'version'.padEnd(26)} before tax   after tax   tax paid along the way   worst drop   after tax, harvesting losses each December`,
 );
 // SPY held: no tax until the end, then 25% of the whole gain.
 const spy = bars.SPY.filter((b) => b.timestamp >= startAt);
@@ -179,12 +183,15 @@ console.log(
   ) + `   -${spyDd.maxDrawdownPct.toFixed(1)}%`,
 );
 for (const [name, run] of versions) {
-  const pre = run(0);
-  const post = run(TAX);
+  const pre = run({ rate: 0, harvest: false });
+  const post = run({ rate: TAX, harvest: false });
+  const harvested = run({ rate: TAX, harvest: true });
   console.log(
     `${name.padEnd(26)} ${pct(cagr(pre.final)).padStart(7)}/yr  ${pct(cagr(post.afterTax)).padStart(7)}/yr   $${Math.round(post.taxPaid).toLocaleString('en-US')} on $${START.toLocaleString('en-US')}`.padEnd(
       80,
-    ) + `   -${curveStats(post.curve).maxDrawdownPct.toFixed(1)}%`,
+    ) +
+      `   -${curveStats(post.curve).maxDrawdownPct.toFixed(1)}%`.padEnd(13) +
+      `${pct(cagr(harvested.afterTax)).padStart(7)}/yr, $${Math.round(harvested.taxPaid).toLocaleString('en-US')} paid along the way`,
   );
 }
 await app.close();

@@ -15,7 +15,11 @@ import { EdgarService } from '../../info/official/edgar.service.js';
 import { LlmService } from '../../llm/llm.service.js';
 import { mapErrors } from '../../backtest/api/map-errors.js';
 import { ResearchService } from '../../research/research.service.js';
-import { deploymentEquity, reservedCash } from '../deployment-cycle.js';
+import {
+  deploymentEquity,
+  heldCash,
+  reservedCash,
+} from '../deployment-cycle.js';
 import { DeploymentRunnerService } from '../deployment-runner.service.js';
 import { deploymentView } from '../deployment-view.js';
 import { DeploymentsService } from '../deployments.service.js';
@@ -57,8 +61,9 @@ export class DeploymentsController {
     ]);
     const live = list.filter((d) => d.status !== 'stopped');
     const committed = live.reduce((n, d) => n + d.capital, 0);
-    // Not yet invested, but owned by a deployment (incl. buys waiting for the open).
-    const reserved = live.reduce((n, d) => n + reservedCash(d), 0);
+    // Not yet invested, but owned by a deployment (incl. buys waiting for the open); one that overspent holds none.
+    const reserved = live.reduce((n, d) => n + heldCash(d), 0);
+    const uninvested = live.reduce((n, d) => n + reservedCash(d), 0);
     const deploymentsEquity = live.reduce((n, d) => n + deploymentEquity(d), 0);
     return {
       paper: this.alpaca.isPaper,
@@ -67,7 +72,7 @@ export class DeploymentsController {
       equity: Number(account.equity ?? 0),
       committed,
       /** What the deployments hold in stocks now. */
-      invested: deploymentsEquity - reserved,
+      invested: deploymentsEquity - uninvested,
       reserved,
       free: Number(account.cash ?? 0) - reserved,
       deploymentsEquity,

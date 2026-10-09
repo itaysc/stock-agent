@@ -37,4 +37,27 @@ describe('blendScores', () => {
     const s = score(4);
     expect(s.get('HOT')).toBeLessThan(s.get('CHEAP') ?? 0);
   });
+
+  it('earnings momentum: the weaker-earnings half ranks below the better one', () => {
+    fundamentals.set(
+      (s) =>
+        ({
+          HOT: {
+            ep: 0,
+            bm: 0,
+            gpa: 0,
+            roa: 0,
+            sue: -2,
+            sueRev: -1,
+            ear: -0.05,
+          },
+          MID: { ep: 0, bm: 0, gpa: 0, roa: 0, sue: 3, sueRev: 2, ear: 0.06 },
+        })[s] ?? null,
+    );
+    const s = blendScores(['HOT', 'MID'], at, (x) => mom[x], 9);
+    expect(s.get('MID')).toBeGreaterThan(s.get('HOT') ?? 0);
+    expect(blendScores(['HOT', 'MID'], at, (x) => mom[x], 6).get('MID')).toBe(
+      0.5,
+    );
+  });
 });

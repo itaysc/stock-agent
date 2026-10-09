@@ -44,6 +44,11 @@ export class TaxLedger {
     return net > 0 ? net * this.rate : 0;
   }
 
+  /** This year's net realized gain so far, less the losses carried in (what the year-end tax would be on). */
+  netThisYear(): number {
+    return this.gains - this.carried;
+  }
+
   paid(): number {
     return this.paidSoFar;
   }

@@ -32,6 +32,7 @@ export class BacktestStepper {
   private readonly lastBars = new Map<string, StrategyBar>();
   private readonly readOnly: StrategyContext;
   private pausedUntil: Date | null = null;
+  private harvestedYear: number | null = null;
 
   constructor(
     private readonly strategy: Strategy,
@@ -85,6 +86,17 @@ export class BacktestStepper {
             side,
           ))
             this.strategy.onFill?.(fill, this.broker);
+    // Tax-loss harvesting: once a year, on the first trading day from December 20.
+    const year = t.getUTCFullYear();
+    if (
+      this.options.harvestLosses &&
+      t.getUTCMonth() === 11 &&
+      t.getUTCDate() >= 20 &&
+      this.harvestedYear !== year
+    ) {
+      this.harvestedYear = year;
+      this.broker.harvestLosses();
+    }
     this.equityCurve.push({ timestamp: t, equity: this.broker.equity() });
   }
 

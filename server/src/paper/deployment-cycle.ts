@@ -38,6 +38,14 @@ export const deploymentEquity = (d: Deployment) =>
 export const reservedCash = (d: Deployment) =>
   d.ledgers.reduce((n, l) => n + l.cash, 0) + reserveOf(d);
 
+/**
+ * The cash a deployment keeps out of the free cash: its reservedCash, or 0
+ * when that is negative (a buy cost more than its cash and the free cash
+ * covered it: that money already left the account, so it can't be counted
+ * as free again until the deployment sells and pays it back).
+ */
+export const heldCash = (d: Deployment) => Math.max(0, reservedCash(d));
+
 /** The part of the capital no sleeve got (kept in cash). */
 export const reserveOf = (d: Deployment) =>
   d.capital -

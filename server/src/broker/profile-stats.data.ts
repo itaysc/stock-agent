@@ -2,7 +2,7 @@
 import type { ProfileStatsFile } from './profile-stats.types.js';
 
 export const PROFILE_STATS: ProfileStatsFile = {
-  testedAt: '2026-10-06T08:41:39.242Z',
+  testedAt: '2026-10-08T20:10:12.477Z',
   profiles: {
     aggressive: {
       from: '2007-01-03T00:00:00.000Z',
@@ -101,6 +101,15 @@ export const PROFILE_STATS: ProfileStatsFile = {
           pct: 100.81,
         },
       ],
+      pain: {
+        calmar: 0.4,
+        ulcerIndex: 16.77,
+        longestUnderwaterMonths: 63.41,
+        vsSpy3y: {
+          trailedPct: 36.14,
+          worstGapPct: -10.7,
+        },
+      },
       spy: {
         from: '2007-01-03T00:00:00.000Z',
         to: '2026-10-05T00:00:00.000Z',
@@ -198,6 +207,11 @@ export const PROFILE_STATS: ProfileStatsFile = {
             pct: 14.51,
           },
         ],
+        pain: {
+          calmar: 0.2,
+          ulcerIndex: 12.88,
+          longestUnderwaterMonths: 58.22,
+        },
       },
       method:
         'Walk-forward (settings picked on 2 years, scored on the 6 months after), 2007-2026',
@@ -301,6 +315,15 @@ export const PROFILE_STATS: ProfileStatsFile = {
           pct: 75.36,
         },
       ],
+      pain: {
+        calmar: 0.46,
+        ulcerIndex: 12.92,
+        longestUnderwaterMonths: 33.94,
+        vsSpy3y: {
+          trailedPct: 53.47,
+          worstGapPct: -15.89,
+        },
+      },
       spy: {
         from: '2007-01-03T00:00:00.000Z',
         to: '2026-10-05T00:00:00.000Z',
@@ -398,6 +421,11 @@ export const PROFILE_STATS: ProfileStatsFile = {
             pct: 14.51,
           },
         ],
+        pain: {
+          calmar: 0.2,
+          ulcerIndex: 12.88,
+          longestUnderwaterMonths: 58.22,
+        },
       },
       method:
         'Walk-forward (settings picked on 2 years, scored on the 6 months after), 2007-2026',
@@ -501,6 +529,15 @@ export const PROFILE_STATS: ProfileStatsFile = {
           pct: 43.02,
         },
       ],
+      pain: {
+        calmar: 0.5,
+        ulcerIndex: 9.37,
+        longestUnderwaterMonths: 32.92,
+        vsSpy3y: {
+          trailedPct: 72.28,
+          worstGapPct: -17.47,
+        },
+      },
       spy: {
         from: '2007-01-03T00:00:00.000Z',
         to: '2026-10-05T00:00:00.000Z',
@@ -598,6 +635,11 @@ export const PROFILE_STATS: ProfileStatsFile = {
             pct: 14.51,
           },
         ],
+        pain: {
+          calmar: 0.2,
+          ulcerIndex: 12.88,
+          longestUnderwaterMonths: 58.22,
+        },
       },
       method:
         'Walk-forward (settings picked on 2 years, scored on the 6 months after), 2007-2026',
