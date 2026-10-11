@@ -38,6 +38,7 @@ describe('validateEnv', () => {
       PAPER_TRADING_POLL_MINUTES: 15,
       AUTOPILOT_SCHEDULER_ENABLED: true,
       NOTIFY_WEBHOOK_URL: '',
+      TAX_RECORDS_SYNC_ENABLED: true,
       ALPHAVANTAGE_API_KEY: '',
       SEC_USER_AGENT: '',
       TELEGRAM_BOT_TOKEN: '',

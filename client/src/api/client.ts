@@ -16,6 +16,7 @@ import type {
 } from './broker-types';
 import type { AutopilotRun, AutopilotState, DeploymentView, PaperAccount } from './paper-types';
 import type { ResearchSession, RobustnessResult } from './research-types';
+import type { TaxRecord, TaxReport, TaxYears } from './tax-types';
 
 export class ApiError extends Error {
   /** True when the server couldn't be reached at all (e.g. still starting). */
@@ -87,6 +88,12 @@ export const api = {
       body: JSON.stringify(body),
     }),
   paperAccount: () => request<PaperAccount>('/api/v1/paper/account'),
+  taxYears: () => request<TaxYears>('/api/v1/tax/years'),
+  taxReport: (year: number, paper: boolean) =>
+    request<TaxReport>(`/api/v1/tax/report?year=${year}&paper=${paper}`),
+  taxRecords: (year: number, paper: boolean) =>
+    request<TaxRecord[]>(`/api/v1/tax/records?year=${year}&paper=${paper}`),
+  taxSync: () => request<{ added: number }>('/api/v1/tax/sync', { method: 'POST' }),
   authMe: () =>
     request<{ loginRequired: boolean; user: { email: string } | null }>('/api/v1/auth/me'),
   login: (email: string, password: string) =>

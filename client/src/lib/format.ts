@@ -38,3 +38,7 @@ export function cashShown(cash: number, holdings: number): { value: string; hint
       }
     : { value: money(cash), hint: `not in stocks yet · ${count}` };
 }
+
+/** Shekels, with agorot: ₪1,234.56 (negative as -₪1,234.56). */
+export const shekels = (n: number) =>
+  `${n < 0 ? '-' : ''}₪${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

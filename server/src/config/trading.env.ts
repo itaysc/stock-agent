@@ -50,6 +50,8 @@ export const tradingEnv = {
   // The autopilot's schedule check (it only acts when turned on in the Lab).
   AUTOPILOT_SCHEDULER_ENABLED: z.stringbool().default(true),
   // Optional: POST {"text": "..."} here on every autopilot decision (e.g. a Slack incoming webhook).
+  // Copy every account activity (buys, sells, dividends, fees) into tax_records with the day's shekel rate, hourly.
+  TAX_RECORDS_SYNC_ENABLED: z.stringbool().default(true),
   // Optional: earnings dates and surprises (free key at alphavantage.co) for the earnings blocks.
   ALPHAVANTAGE_API_KEY: z.string().default(''),
   // SEC EDGAR asks for a contact in the User-Agent, e.g. "stock-invest you@example.com". Empty = filings check off.

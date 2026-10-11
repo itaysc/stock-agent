@@ -13,7 +13,7 @@ import { IconChartLine, IconLogout, IconMoon, IconSparkles, IconSun } from '@tab
 import { useAuth } from './auth/AuthGate';
 import type { BacktestOptions } from '../api/types';
 
-export type Page = 'broker' | 'lab' | 'paper';
+export type Page = 'broker' | 'tax' | 'lab' | 'paper';
 
 interface Props {
   options: BacktestOptions;
@@ -48,10 +48,11 @@ export function Header({ options, page, onPage }: Props) {
       </Group>
       <SegmentedControl
         size="xs"
-        value={page === 'broker' ? 'broker' : 'advanced'}
-        onChange={(v) => onPage(v === 'broker' ? 'broker' : 'lab')}
+        value={page === 'broker' || page === 'tax' ? page : 'advanced'}
+        onChange={(v) => onPage(v === 'advanced' ? 'lab' : (v as Page))}
         data={[
           { value: 'broker', label: 'Broker' },
+          { value: 'tax', label: 'Tax' },
           { value: 'advanced', label: 'Advanced' },
         ]}
       />

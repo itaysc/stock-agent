@@ -107,6 +107,26 @@ export class AlpacaService implements OnModuleInit {
     return this.client.trading.account.getAccount();
   }
 
+  /**
+   * One page of account activities (fills, dividends, fees, transfers),
+   * oldest first, as Alpaca's REST API returns them (snake_case). The next
+   * page starts after the last id of this one.
+   */
+  async getActivities(input: {
+    after?: Date;
+    pageToken?: string;
+    pageSize?: number;
+  }): Promise<Array<Record<string, string>>> {
+    const res =
+      await this.client.trading.accountActivities.getAccountActivitiesRaw({
+        direction: 'asc',
+        pageSize: input.pageSize ?? 100,
+        ...(input.after ? { after: input.after } : {}),
+        ...(input.pageToken ? { pageToken: input.pageToken } : {}),
+      });
+    return (await res.raw.json()) as Array<Record<string, string>>;
+  }
+
   getClock(): Promise<trading.LegacyClock> {
     return this.client.trading.clock.legacyClock();
   }

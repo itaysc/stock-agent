@@ -15,6 +15,7 @@ export default defineConfig({
       ALPACA_STREAMS_ENABLED: 'false',
       PAPER_TRADING_ENABLED: 'false', // the API works; the daily runner doesn't tick
       AUTOPILOT_SCHEDULER_ENABLED: 'false',
+      TAX_RECORDS_SYNC_ENABLED: 'false', // no broker or Bank of Israel calls from tests
       NOTIFY_WEBHOOK_URL: '',
       ALPHAVANTAGE_API_KEY: '',
       SEC_USER_AGENT: '',

@@ -12,6 +12,7 @@ import { LoggerModule } from './logger/logger.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { PaperModule } from './paper/paper.module.js';
 import { ResearchApiModule } from './research/api/research-api.module.js';
+import { TaxModule } from './tax/tax.module.js';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ResearchApiModule } from './research/api/research-api.module.js';
     PaperModule,
     AutopilotModule,
     BrokerModule,
+    TaxModule,
   ],
 })
 export class AppModule {}

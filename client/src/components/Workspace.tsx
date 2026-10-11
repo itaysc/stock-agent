@@ -23,6 +23,7 @@ import { Header, type Page } from './Header';
 import { DeployModal } from './paper/DeployModal';
 import { PaperPage } from './paper/PaperPage';
 import { BrokerPage } from './broker/BrokerPage';
+import { TaxPage } from './tax/TaxPage';
 import { RecentReports } from './RecentReports';
 import { ResultArea } from './results/ResultArea';
 import { SettingsPanel } from './settings/SettingsPanel';
@@ -120,7 +121,7 @@ export function Workspace({ options }: { options: BacktestOptions }) {
       </AppShell.Header>
       <AppShell.Main>
         <Container size="xl" px={{ base: 0, sm: 'md' }}>
-          {page !== 'broker' && (
+          {page !== 'broker' && page !== 'tax' && (
             <SegmentedControl
               mb="md"
               size="xs"
@@ -134,6 +135,8 @@ export function Workspace({ options }: { options: BacktestOptions }) {
           )}
           {page === 'broker' ? (
             <BrokerPage />
+          ) : page === 'tax' ? (
+            <TaxPage />
           ) : page === 'paper' ? (
             <PaperPage selectId={deployedId} baskets={options.baskets} />
           ) : (
