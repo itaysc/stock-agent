@@ -32,6 +32,13 @@ export interface BrokerOptions {
    */
   fillAtClose?: boolean;
   /**
+   * Sells fill at the next open, buys at the next close (a market-on-close
+   * order the day after the signal): new picks are held over every night
+   * (where momentum's returns mostly come), and the money from the sales is
+   * there for the buys. Omitted = both at the next open.
+   */
+  buysAtNextClose?: boolean;
+  /**
    * Capital gains tax, in percent (25 = Israel's rate): each year's net
    * realized gains (and interest) are taxed when the year ends, losses carry
    * forward (see TaxLedger). Omitted/0 = no tax.

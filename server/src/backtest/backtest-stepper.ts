@@ -61,7 +61,10 @@ export class BacktestStepper {
     if (bars.length === 0) return;
     this.broker.accrueInterest(t);
     // Sells first, so their cash can pay for buys at the same open (like a real account).
-    for (const side of ['sell', 'buy'] as const) {
+    const late = !!this.options.buysAtNextClose;
+    for (const side of late
+      ? (['sell'] as const)
+      : (['sell', 'buy'] as const)) {
       for (const bar of bars) {
         for (const fill of this.broker.fillPending(bar, side)) {
           this.strategy.onFill?.(fill, this.broker);
@@ -72,6 +75,14 @@ export class BacktestStepper {
       this.broker.markPrice(bar);
       this.lastBars.set(bar.symbol, bar);
     }
+    // buysAtNextClose: yesterday's buys fill at today's close, before today's decisions.
+    if (late)
+      for (const bar of bars)
+        for (const fill of this.broker.fillPending(
+          { ...bar, open: bar.close },
+          'buy',
+        ))
+          this.strategy.onFill?.(fill, this.broker);
     const paused = this.pausedUntil !== null && t < this.pausedUntil;
     for (const bar of bars) {
       this.strategy.onBar(bar, paused ? this.readOnly : this.broker);

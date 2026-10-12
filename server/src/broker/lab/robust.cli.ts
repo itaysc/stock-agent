@@ -36,7 +36,8 @@ const { values } = parseArgs({
     // A variant to test, e.g. --with tranches=5,lookbackMix=1 (saved under variants/, not merged by save).
     with: { type: 'string', default: '' },
     offsets: { type: 'string', default: '0,1,2,3,4' },
-    // close: orders fill in the signal day's closing auction instead of the next open.
+    // close: orders fill in the signal day's closing auction instead of the next open;
+    // nextclose: sells at the next open, buys at the next close (held overnight).
     fill: { type: 'string', default: 'open' },
   },
 });
@@ -46,7 +47,7 @@ const variant = Object.fromEntries(
     .filter(Boolean)
     .map((kv) => kv.split('=') as [string, string]),
 );
-const tag = [values.with, values.fill === 'close' ? 'fillclose' : '']
+const tag = [values.with, values.fill === 'open' ? '' : `fill${values.fill}`]
   .filter(Boolean)
   .join('_')
   .replace(/[^a-zA-Z0-9]+/g, '_');
@@ -106,6 +107,7 @@ async function run(
       feePerShare: 0,
       cashYieldPct: 3,
       fillAtClose: values.fill === 'close',
+      buysAtNextClose: values.fill === 'nextclose',
     },
     Object.fromEntries(symbols.map((x) => [x, bars[x] ?? []])),
     { SPY: bars.SPY },

@@ -324,3 +324,29 @@ describe('runBacktest with taxRatePct', () => {
     expect(r.afterTaxEquity).toBeCloseTo(r.finalEquity - 25);
   });
 });
+
+describe('runBacktest with buysAtNextClose', () => {
+  // [open, close] per day.
+  const bars = makeBars('AAPL', [
+    [100, 100],
+    [101, 102],
+    [103, 105],
+    [106, 104],
+  ]);
+
+  it('fills a buy at the next close and a sell at the next open', () => {
+    const strategy = new ScriptedStrategy(['AAPL'], {
+      0: (ctx) => ctx.buy('AAPL', 10),
+      2: (ctx) => ctx.sell('AAPL', 10),
+    });
+    const r = runBacktest(
+      strategy,
+      { AAPL: bars },
+      { ...options, buysAtNextClose: true },
+    );
+    expect(r.fills.map((f) => [f.side, f.price])).toEqual([
+      ['buy', 102], // day 1's close, not its open (101)
+      ['sell', 106], // day 3's open
+    ]);
+  });
+});

@@ -8,6 +8,8 @@ import {
   Tranches,
 } from './rotation-tranches.js';
 import { holdingExits } from './rotation-exits.js';
+import { applyTrim } from './rotation-trim.js';
+import { bearWindow, cutForBear, marketInBear } from './rotation-bear.js';
 import { RotationGuard } from './rotation-guard.js';
 import { pointInTime } from './rotation-universe.js';
 import type {
@@ -59,7 +61,7 @@ export class MomentumRotationStrategy implements Strategy {
         `topN (${p.topN}) is more than the ${risky} symbols to rank`,
       );
     this.marketSymbols =
-      p.marketFilter > 0 || p.guardResume || p.rankBy === 5
+      p.marketFilter > 0 || p.guardResume || p.rankBy === 5 || p.bearCut > 0
         ? [MARKET_SYMBOL]
         : [];
     this.guard = new RotationGuard(p.guardPct, p.guardDays, !!p.guardResume);
@@ -72,6 +74,7 @@ export class MomentumRotationStrategy implements Strategy {
       this.p.marketFilter,
       this.p.guardResume ? 200 : 0,
       this.p.rankBy === 5 ? this.warmupBars : 0,
+      this.p.bearCut > 0 ? bearWindow(this.p.bearMonths) + 1 : 0,
     );
     if (bar.symbol !== MARKET_SYMBOL || !(keep > 0)) return;
     this.market.push(bar.close);
@@ -179,13 +182,20 @@ export class MomentumRotationStrategy implements Strategy {
           s,
           delta: cleanQty(target - (ctx.position(s)?.qty ?? 0)),
           why: weights.get(s)?.why ?? exitWhy,
+          wanted: (weights.get(s)?.weight ?? 0) > 0,
         };
       });
+    const planned = applyTrim(
+      orders,
+      guard === 'trip' ? 0 : this.p.trim,
+      (s) => (ctx.position(s)?.qty ?? 0) > 0,
+      this.p.safeLast ? this.symbols.at(-1) : undefined,
+    );
     const small = (delta: number, s: string) =>
       Math.abs(delta * price(s)) < (equity * this.p.band) / 100;
-    for (const o of orders)
+    for (const o of planned)
       if (o.delta < 0 && !small(o.delta, o.s)) ctx.sell(o.s, -o.delta, o.why);
-    for (const o of orders)
+    for (const o of planned)
       if (o.delta > 0 && !small(o.delta, o.s)) ctx.buy(o.s, o.delta, o.why);
   }
 
@@ -232,6 +242,21 @@ export class MomentumRotationStrategy implements Strategy {
 
   /** Target share of the account per symbol, with the reason (what it would hold now). */
   targets(
+    held?: (symbol: string) => boolean,
+  ): Map<string, { weight: number; why: string }> {
+    const raw = this.rawTargets(held);
+    // bearCut: less in stocks while the market is down over the last bearMonths.
+    return this.p.bearCut > 0 &&
+      marketInBear(this.market, this.p.bearMonths) === true
+      ? cutForBear(
+          raw,
+          this.p.bearCut,
+          this.p.safeLast ? this.symbols.at(-1) : undefined,
+        )
+      : raw;
+  }
+
+  private rawTargets(
     held?: (symbol: string) => boolean,
   ): Map<string, { weight: number; why: string }> {
     // lookbackMix: a third each with a 6, 9 and 12 month window (no single window decides).

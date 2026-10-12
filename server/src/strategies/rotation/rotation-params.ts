@@ -63,6 +63,24 @@ export const ROTATION_PARAMS: ParamSpecs = {
     0,
     '1 = a third each ranked over about 6, 9 and 12 months (instead of one window), so no single window decides the result.',
   ),
+  bearCut: whole(
+    0,
+    0,
+    100,
+    'Momentum crash guard: while SPY is below where it was bearMonths ago, move this % of the stocks part to the safe asset. 0 = off.',
+  ),
+  bearMonths: whole(
+    24,
+    6,
+    36,
+    'The window of the crash guard (bearCut), in months.',
+  ),
+  trim: whole(
+    0,
+    0,
+    2,
+    'A held stock still in the picks that drifted from its weight: 0 = resize it both ways at each re-check; 1 = never sell part of it (fewer taxable sales), top-ups allowed; 2 = leave it as it is.',
+  ),
   maxStretch: whole(
     0,
     0,
