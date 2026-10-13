@@ -27,8 +27,31 @@ interface YahooQuote {
 export const RENAMED: Record<string, string> = {
   FB: 'META',
   ANTM: 'ELV',
-  FISV: 'FI',
+  // Fiserv went FISV → FI (2023) → FISV again (2025): Yahoo keeps all of it under FISV.
+  FI: 'FISV',
   ABC: 'COR',
+  // The same company under a new ticker; Yahoo keeps the whole history under the new one.
+  BK: 'BNY',
+  MMC: 'MRSH',
+  BLL: 'BALL',
+  BHGE: 'BKR',
+  CTL: 'LUMN',
+  FLT: 'CPAY',
+  HRS: 'LHX',
+  JEC: 'J',
+  NLOK: 'GEN',
+  SYMC: 'GEN',
+  PKI: 'RVTY',
+  RE: 'EG',
+  TMK: 'GL',
+  WLTW: 'WTW',
+  ARNC: 'HWM',
+  UTX: 'RTX',
+  DWDP: 'DD',
+  MYL: 'VTRS',
+  HCP: 'DOC',
+  PEAK: 'DOC',
+  SATS: 'ECHO',
 };
 /** Yahoo spells class shares with a dash: BRK.B → BRK-B. */
 const yahooSymbol = (s: string) => (RENAMED[s] ?? s).replace('.', '-');
