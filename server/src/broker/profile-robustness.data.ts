@@ -2,45 +2,45 @@
 import type { ProfileRobustnessFile } from './profile-stats.types.js';
 
 export const PROFILE_ROBUSTNESS: ProfileRobustnessFile = {
-  testedAt: '2026-10-06T08:41:57.374Z',
+  testedAt: '2026-10-13T10:32:34.470Z',
   method:
     'the same 2005–today test rerun with the weekly re-rank on each day of the week, and 8 times without a random 20% of the stocks',
   profiles: {
     aggressive: {
-      usualPct: [15.68, 17.88],
-      worstDropPct: 51.09,
+      usualPct: [15.9, 17.15],
+      worstDropPct: 49.35,
       runs: 13,
       periods: [
         {
           from: 2007,
           to: 2012,
-          pct: 2.34,
+          pct: 2.25,
           spyPct: 2.27,
         },
         {
           from: 2013,
           to: 2019,
-          pct: 16.18,
+          pct: 16.24,
           spyPct: 14.19,
         },
         {
           from: 2020,
           to: 2026,
-          pct: 37.82,
-          spyPct: 15.34,
+          pct: 36.17,
+          spyPct: 15.37,
         },
       ],
-      tVsSpy: 1.93,
+      tVsSpy: 1.84,
     },
     balanced: {
-      usualPct: [12.07, 14.33],
-      worstDropPct: 33.53,
+      usualPct: [12.46, 13.81],
+      worstDropPct: 32.32,
       runs: 9,
       periods: [
         {
           from: 2007,
           to: 2012,
-          pct: 6.15,
+          pct: 5.59,
           spyPct: 2.27,
         },
         {
@@ -52,21 +52,21 @@ export const PROFILE_ROBUSTNESS: ProfileRobustnessFile = {
         {
           from: 2020,
           to: 2026,
-          pct: 26.43,
-          spyPct: 15.34,
+          pct: 24.97,
+          spyPct: 15.37,
         },
       ],
-      tVsSpy: 1.02,
+      tVsSpy: 0.89,
     },
     careful: {
-      usualPct: [10.33, 11.46],
-      worstDropPct: 24.27,
+      usualPct: [10.54, 11.15],
+      worstDropPct: 23.44,
       runs: 9,
       periods: [
         {
           from: 2007,
           to: 2012,
-          pct: 4.44,
+          pct: 4.16,
           spyPct: 2.27,
         },
         {
@@ -78,11 +78,11 @@ export const PROFILE_ROBUSTNESS: ProfileRobustnessFile = {
         {
           from: 2020,
           to: 2026,
-          pct: 19.68,
-          spyPct: 15.34,
+          pct: 18.86,
+          spyPct: 15.37,
         },
       ],
-      tVsSpy: 0.21,
+      tVsSpy: 0.11,
     },
   },
 };

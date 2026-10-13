@@ -2,13 +2,13 @@
 import type { ProfileStatsFile } from './profile-stats.types.js';
 
 export const PROFILE_STATS: ProfileStatsFile = {
-  testedAt: '2026-10-08T20:10:12.477Z',
+  testedAt: '2026-10-13T10:27:44.874Z',
   profiles: {
     aggressive: {
       from: '2007-01-03T00:00:00.000Z',
-      to: '2026-10-05T00:00:00.000Z',
-      totalPct: 2764.53,
-      annualPct: 18.51,
+      to: '2026-10-12T00:00:00.000Z',
+      totalPct: 2551.35,
+      annualPct: 18.03,
       maxDrawdownPct: 45.86,
       worstYear: {
         year: 2008,
@@ -30,11 +30,11 @@ export const PROFILE_STATS: ProfileStatsFile = {
         },
         {
           year: 2009,
-          pct: 11.84,
+          pct: 12.6,
         },
         {
           year: 2010,
-          pct: 19.21,
+          pct: 17.73,
         },
         {
           year: 2011,
@@ -58,7 +58,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
         },
         {
           year: 2016,
-          pct: -1.63,
+          pct: -1.27,
         },
         {
           year: 2017,
@@ -98,27 +98,27 @@ export const PROFILE_STATS: ProfileStatsFile = {
         },
         {
           year: 2026,
-          pct: 100.81,
+          pct: 86.24,
         },
       ],
       pain: {
-        calmar: 0.4,
-        ulcerIndex: 16.77,
+        calmar: 0.39,
+        ulcerIndex: 16.75,
         longestUnderwaterMonths: 63.41,
         vsSpy3y: {
-          trailedPct: 36.14,
-          worstGapPct: -10.7,
+          trailedPct: 35.64,
+          worstGapPct: -10.91,
         },
       },
       spy: {
         from: '2007-01-03T00:00:00.000Z',
-        to: '2026-10-05T00:00:00.000Z',
-        totalPct: 685.64,
-        annualPct: 11,
+        to: '2026-10-12T00:00:00.000Z',
+        totalPct: 688.95,
+        annualPct: 11.01,
         maxDrawdownPct: 55.19,
         worstYear: {
           year: 2008,
-          pct: -36.8,
+          pct: -36.79,
         },
         bestYear: {
           year: 2013,
@@ -132,7 +132,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2008,
-            pct: -36.8,
+            pct: -36.79,
           },
           {
             year: 2009,
@@ -204,7 +204,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2026,
-            pct: 14.51,
+            pct: 15,
           },
         ],
         pain: {
@@ -220,9 +220,9 @@ export const PROFILE_STATS: ProfileStatsFile = {
     },
     balanced: {
       from: '2007-01-03T00:00:00.000Z',
-      to: '2026-10-05T00:00:00.000Z',
-      totalPct: 1481.5,
-      annualPct: 15,
+      to: '2026-10-12T00:00:00.000Z',
+      totalPct: 1322.54,
+      annualPct: 14.37,
       maxDrawdownPct: 32.32,
       worstYear: {
         year: 2022,
@@ -244,15 +244,15 @@ export const PROFILE_STATS: ProfileStatsFile = {
         },
         {
           year: 2009,
-          pct: 18.56,
+          pct: 16.24,
         },
         {
           year: 2010,
-          pct: 3.9,
+          pct: 2.74,
         },
         {
           year: 2011,
-          pct: 0.19,
+          pct: 0.12,
         },
         {
           year: 2012,
@@ -312,27 +312,27 @@ export const PROFILE_STATS: ProfileStatsFile = {
         },
         {
           year: 2026,
-          pct: 75.36,
+          pct: 62.82,
         },
       ],
       pain: {
-        calmar: 0.46,
+        calmar: 0.44,
         ulcerIndex: 12.92,
         longestUnderwaterMonths: 33.94,
         vsSpy3y: {
           trailedPct: 53.47,
-          worstGapPct: -15.89,
+          worstGapPct: -17.04,
         },
       },
       spy: {
         from: '2007-01-03T00:00:00.000Z',
-        to: '2026-10-05T00:00:00.000Z',
-        totalPct: 685.64,
-        annualPct: 11,
+        to: '2026-10-12T00:00:00.000Z',
+        totalPct: 688.95,
+        annualPct: 11.01,
         maxDrawdownPct: 55.19,
         worstYear: {
           year: 2008,
-          pct: -36.8,
+          pct: -36.79,
         },
         bestYear: {
           year: 2013,
@@ -346,7 +346,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2008,
-            pct: -36.8,
+            pct: -36.79,
           },
           {
             year: 2009,
@@ -418,7 +418,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2026,
-            pct: 14.51,
+            pct: 15,
           },
         ],
         pain: {
@@ -434,9 +434,9 @@ export const PROFILE_STATS: ProfileStatsFile = {
     },
     careful: {
       from: '2007-01-03T00:00:00.000Z',
-      to: '2026-10-05T00:00:00.000Z',
-      totalPct: 808.59,
-      annualPct: 11.82,
+      to: '2026-10-12T00:00:00.000Z',
+      totalPct: 756.59,
+      annualPct: 11.47,
       maxDrawdownPct: 23.44,
       worstYear: {
         year: 2022,
@@ -458,15 +458,15 @@ export const PROFILE_STATS: ProfileStatsFile = {
         },
         {
           year: 2009,
-          pct: 20.3,
+          pct: 19.14,
         },
         {
           year: 2010,
-          pct: 1.47,
+          pct: 0.89,
         },
         {
           year: 2011,
-          pct: -3.69,
+          pct: -3.73,
         },
         {
           year: 2012,
@@ -526,27 +526,27 @@ export const PROFILE_STATS: ProfileStatsFile = {
         },
         {
           year: 2026,
-          pct: 43.02,
+          pct: 36.98,
         },
       ],
       pain: {
-        calmar: 0.5,
-        ulcerIndex: 9.37,
+        calmar: 0.49,
+        ulcerIndex: 9.38,
         longestUnderwaterMonths: 32.92,
         vsSpy3y: {
-          trailedPct: 72.28,
-          worstGapPct: -17.47,
+          trailedPct: 71.78,
+          worstGapPct: -18.04,
         },
       },
       spy: {
         from: '2007-01-03T00:00:00.000Z',
-        to: '2026-10-05T00:00:00.000Z',
-        totalPct: 685.64,
-        annualPct: 11,
+        to: '2026-10-12T00:00:00.000Z',
+        totalPct: 688.95,
+        annualPct: 11.01,
         maxDrawdownPct: 55.19,
         worstYear: {
           year: 2008,
-          pct: -36.8,
+          pct: -36.79,
         },
         bestYear: {
           year: 2013,
@@ -560,7 +560,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2008,
-            pct: -36.8,
+            pct: -36.79,
           },
           {
             year: 2009,
@@ -632,7 +632,7 @@ export const PROFILE_STATS: ProfileStatsFile = {
           },
           {
             year: 2026,
-            pct: 14.51,
+            pct: 15,
           },
         ],
         pain: {
