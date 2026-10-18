@@ -58,6 +58,8 @@ export interface DailyResult {
   pct: number;
   /** Today so far, from the live prices (the close isn't in yet). */
   live?: boolean;
+  /** For the live day: the close it is measured from, when that's not the trading day before (a day wasn't recorded). */
+  since?: string;
 }
 
 export interface TrackedTrade {

@@ -9,6 +9,7 @@ import { AlpacaService } from '../alpaca/alpaca.service.js';
 import { BacktestService } from '../backtest/backtest.service.js';
 import type { Env } from '../config/env.js';
 import { OrdersService } from '../orders/orders.service.js';
+import { withDeadlines } from './deps-deadline.js';
 import { cycleFailure } from './cycle-step.js';
 import { runCycle } from './deployment-cycle.js';
 import { type CycleDeps, logEvent } from './deployment-events.js';
@@ -100,7 +101,7 @@ export class DeploymentRunnerService
   async cycle(d: Deployment): Promise<void> {
     if (!this.enabled) return;
     try {
-      await runCycle(d, this.runtime(d), this.deps());
+      await runCycle(d, this.runtime(d), withDeadlines(this.deps()));
     } catch (err) {
       logEvent(d, cycleFailure(err), new Date());
       this.logger.warn(`Deployment ${d.name}: ${(err as Error).message}`);

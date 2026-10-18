@@ -196,7 +196,7 @@ export class DeploymentsService {
     d.newsCheck = newsCheck;
     logEvent(
       d,
-      `News check: ${newsCheck.tone > 0 ? `skip buys on news tone ≤ -${newsCheck.tone}` : 'tone check off'}, AI ${newsCheck.ai ? 'on' : 'off'}, breaking news: ${newsCheck.watch}`,
+      `News check: ${newsCheck.tone > 0 ? `skip buys on news tone ≤ -${newsCheck.tone}` : 'tone check off'}, AI ${newsCheck.ai ? 'on' : 'off'}, breaking news: ${newsCheck.watch}, industry check: ${newsCheck.industry ?? 'trial'}`,
       new Date(),
     );
     await this.store.save(d);

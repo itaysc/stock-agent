@@ -1,6 +1,7 @@
 import { type CycleDeps, logEvent } from './deployment-events.js';
 import type { Deployment, StagedBuy } from './deployment.types.js';
 import { earningsGate, waitsForEarnings } from './earnings-check.js';
+import { industryNotice, industryVeto } from './industry-check.js';
 import { assessNews } from './news-assess.js';
 
 const STAGED_MAX_MS = 4 * 86_400_000;
@@ -58,8 +59,11 @@ export async function releaseStaged(
         new Date(buy.signalAt),
         'buy',
       );
-      if (veto) {
-        logEvent(d, `Skipped buying ${buy.qty} ${buy.symbol}: ${veto}`, now);
+      const why =
+        veto ??
+        (await industryVeto(d, deps, buy.symbol, new Date(buy.signalAt), now));
+      if (why) {
+        logEvent(d, `Skipped buying ${buy.qty} ${buy.symbol}: ${why}`, now);
         continue;
       }
       await send(i, buy);
@@ -94,7 +98,10 @@ export async function watchHeld(
   for (const [i, ledger] of d.ledgers.entries()) {
     for (const p of Object.values(ledger.positions)) {
       const why = await assessNews(check, deps, p.symbol, since, 'hold');
-      if (!why) continue;
+      if (!why) {
+        await industryNotice(d, deps, p.symbol, since, now);
+        continue;
+      }
       const message = `Breaking news on ${p.symbol} (held: ${p.qty}): ${why}${check.watch === 'sell' ? '. Selling it.' : ''}`;
       logEvent(d, message, now);
       await deps.notify(`${d.name}: ${message}`);

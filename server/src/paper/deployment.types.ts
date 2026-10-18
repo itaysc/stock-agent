@@ -48,12 +48,19 @@ export interface NewsCheck {
   ai: boolean;
   /** Severe news about a held symbol: just log and notify, or also sell it. */
   watch: 'off' | 'alert' | 'sell';
+  /**
+   * The industry check (peers' and the industry fund's news, read by the AI
+   * for industry-wide shocks): off; trial = only logs what it would have
+   * skipped (and notifies about holdings); on = skips the buy. Missing = trial.
+   */
+  industry?: 'off' | 'trial' | 'on';
 }
 
 export const DEFAULT_NEWS_CHECK: NewsCheck = {
   tone: 0.3,
   ai: true,
   watch: 'alert',
+  industry: 'trial',
 };
 
 /**
@@ -126,6 +133,8 @@ export interface Deployment {
   newsCheck?: NewsCheck;
   /** Until when held symbols' news was watched. */
   newsCheckedAt?: Date | null;
+  /** The last day each industry's shock was notified (one notice a day per industry). */
+  industryNoticed?: Record<string, string>;
   expectation: Expectation | null;
   /** Latest daily bar fed to the strategies (bars after it are new). */
   lastBarAt: Date | null;

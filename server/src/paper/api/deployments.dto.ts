@@ -39,6 +39,15 @@ export class NewsCheckDto {
   })
   @IsIn(['off', 'alert', 'sell'])
   watch: 'off' | 'alert' | 'sell' = 'alert';
+
+  @ApiPropertyOptional({
+    enum: ['off', 'trial', 'on'],
+    description:
+      "Industry-wide shocks in the peers' news: trial = only log what it would skip; on = skip the buy",
+  })
+  @IsOptional()
+  @IsIn(['off', 'trial', 'on'])
+  industry: 'off' | 'trial' | 'on' = 'trial';
 }
 
 class DeploymentOptionsDto {

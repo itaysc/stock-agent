@@ -17,7 +17,8 @@ import {
   type RobustPart,
 } from './robust-stats.js';
 import { sp500Top } from './sp500-universe.js';
-import { yahooDaily } from './yahoo-history.js';
+import { yahooDaily, yahooSectors } from './yahoo-history.js';
+import { sectors } from '../../strategies/rotation/rotation-sectors.js';
 
 /**
  * How solid the profiles' numbers are (same walk-forward as profiles.cli). Run the parts
@@ -78,6 +79,14 @@ const bars: Record<string, StrategyBar[]> = await yahooDaily(
   cache,
 );
 
+// maxPerSector needs every stock's sector (the broker's 50 are built in; Yahoo's for the rest).
+if (Number(variant.maxPerSector) > 0)
+  sectors.add(
+    await yahooSectors(
+      u.symbols,
+      resolve(process.cwd(), '.cache/yahoo-sectors.json'),
+    ),
+  );
 // Variants that need SEC data: past earnings days, or the reports (value, quality, turnover).
 if (Number(variant.earningsWait) > 0) await useEarningsDays(app, u.symbols);
 if (Number(variant.crowdFilter) === 2 || Number(variant.blend) > 0)

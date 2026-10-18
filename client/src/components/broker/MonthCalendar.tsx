@@ -120,6 +120,7 @@ export function MonthCalendar({
                   }}
                 >
                   {short(d.pct)}
+                  {d.since ? '*' : ''}
                 </Text>
               )}
             </Paper>
@@ -127,7 +128,7 @@ export function MonthCalendar({
           return d ? (
             <Tooltip
               key={date}
-              label={`${date}${d.live ? ' so far (live prices; final after the close)' : ''}: ${d.pnl >= 0 ? '+' : '-'}${money(Math.abs(d.pnl))} (${pct(d.pct)}) · worth ${money(d.equity)}`}
+              label={`${date}${d.live ? ' so far (live prices; final after the close)' : ''}${d.since ? `, measured from the close of ${d.since}: the days between weren't recorded yet` : ''}: ${d.pnl >= 0 ? '+' : '-'}${money(Math.abs(d.pnl))} (${pct(d.pct)}) · worth ${money(d.equity)}`}
               withArrow
             >
               {cell}

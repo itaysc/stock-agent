@@ -32,7 +32,9 @@ import {
 
 /** A plain object (not the DTO class instance), or undefined for the default. */
 const newsCheckOf = (n?: NewsCheckDto) =>
-  n ? { tone: n.tone, ai: n.ai, watch: n.watch } : undefined;
+  n
+    ? { tone: n.tone, ai: n.ai, watch: n.watch, industry: n.industry }
+    : undefined;
 
 const params = (p: Record<string, string | number> = {}) =>
   Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)]));
@@ -149,6 +151,7 @@ export class DeploymentsController {
         tone: dto.tone,
         ai: dto.ai,
         watch: dto.watch,
+        industry: dto.industry,
       }),
       { full: true },
     );

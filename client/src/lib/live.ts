@@ -56,8 +56,24 @@ function withToday(
   const today = nyDay(newest);
   if (today <= last.date) return days;
   const pnl = equity - last.equity;
+  const gap = last.date < weekdayBefore(today);
   return [
     ...days,
-    { date: today, equity, pnl, pct: last.equity ? (pnl / last.equity) * 100 : 0, live: true },
+    {
+      date: today,
+      equity,
+      pnl,
+      pct: last.equity ? (pnl / last.equity) * 100 : 0,
+      live: true,
+      ...(gap ? { since: last.date } : {}),
+    },
   ];
+}
+
+/** The weekday before a YYYY-MM-DD day (Friday for a Monday). */
+export function weekdayBefore(day: string): string {
+  const d = new Date(`${day}T12:00:00Z`);
+  do d.setUTCDate(d.getUTCDate() - 1);
+  while ([0, 6].includes(d.getUTCDay()));
+  return d.toISOString().slice(0, 10);
 }

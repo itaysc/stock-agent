@@ -1,5 +1,5 @@
 import type { InvestmentView } from '../api/broker-types';
-import { applyLive } from './live';
+import { applyLive, weekdayBefore } from './live';
 
 const view = {
   capital: 1000,
@@ -49,8 +49,21 @@ describe('applyLive: today so far in the calendar', () => {
     });
   });
 
+  it('says when a day in between was not recorded', () => {
+    // Oct 8 live, but the last recorded close is Oct 6 (Oct 7 missing).
+    const v = applyLive(withDays, { AAA: { price: 110, at: '2026-10-08T14:30:00Z' } });
+    expect(v.daily.at(-1)).toMatchObject({ date: '2026-10-08', live: true, since: '2026-10-06' });
+  });
+
   it('adds nothing once that day is in (or the live trade is from the last close day)', () => {
     const v = applyLive(withDays, { AAA: { price: 110, at: '2026-10-06T19:59:00Z' } });
     expect(v.daily).toHaveLength(1);
+  });
+});
+
+describe('weekdayBefore', () => {
+  it('skips the weekend', () => {
+    expect(weekdayBefore('2026-10-12')).toBe('2026-10-09');
+    expect(weekdayBefore('2026-10-14')).toBe('2026-10-13');
   });
 });

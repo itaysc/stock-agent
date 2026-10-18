@@ -5,7 +5,7 @@ import type { DailyResult } from '../api/broker-types';
  * and as a share of what they were worth together the day before.
  */
 export function combineDays(lists: DailyResult[][]): DailyResult[] {
-  const byDate = new Map<string, { equity: number; pnl: number; live: boolean }>();
+  const byDate = new Map<string, { equity: number; pnl: number; live: boolean; since?: string }>();
   for (const list of lists)
     for (const d of list) {
       const x = byDate.get(d.date) ?? { equity: 0, pnl: 0, live: false };
@@ -13,11 +13,12 @@ export function combineDays(lists: DailyResult[][]): DailyResult[] {
         equity: x.equity + d.equity,
         pnl: x.pnl + d.pnl,
         live: x.live || !!d.live,
+        since: [x.since, d.since].filter(Boolean).sort()[0],
       });
     }
   return [...byDate]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, { equity, pnl, live }]) => {
+    .map(([date, { equity, pnl, live, since }]) => {
       const before = equity - pnl;
       return {
         date,
@@ -25,6 +26,7 @@ export function combineDays(lists: DailyResult[][]): DailyResult[] {
         pnl,
         pct: before ? (pnl / before) * 100 : 0,
         ...(live ? { live } : {}),
+        ...(since ? { since } : {}),
       };
     });
 }

@@ -35,7 +35,7 @@ export interface CycleDeps {
     symbol: string,
     headlines: Headline[],
     purpose: 'buy' | 'hold',
-    mode: 'company' | 'market',
+    mode: 'company' | 'market' | 'industry',
   ): Promise<{ avoid: boolean; reason: string } | null>;
   /** Official facts: a trading halt now, and 8-K filings since `since`. */
   officialEvents(symbol: string, since: Date): Promise<OfficialEvents>;

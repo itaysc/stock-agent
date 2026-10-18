@@ -12,13 +12,23 @@ export const MARKET_CHECK_SYSTEM_PROMPT = `You screen breaking news for an autom
 
 You do not predict prices and never give investment advice. Respond with JSON only: {"avoid": true|false, "reason": "one short sentence naming the emergency, or why it is fine"}`;
 
-/** The AI's reading of the latest headlines for a symbol (company events, or market-wide emergencies for a fund). */
+export const INDUSTRY_CHECK_SYSTEM_PROMPT = `You screen breaking news for an automated trading system (paper trading) about to buy, or holding, a stock. The headlines are about the stock's INDUSTRY: its peers and its industry fund, not the company itself. Only an industry-wide shock counts: new government rules that hit the whole industry (export bans or controls, tariffs, price caps, a ban on a product), a sudden collapse in demand from its main customers (for example the biggest buyers cutting spending sharply), a major supply cut-off, or an event that changes the industry's outlook for years. Prices falling, sell-offs, "stocks slide", analyst opinions, price targets, one peer's own earnings or problems, rumours and forecasts do NOT count. If unsure, it does not count.
+
+You do not predict prices and never give investment advice. Respond with JSON only: {"avoid": true|false, "reason": "one short sentence naming the shock, or why it is fine"}`;
+
+const PROMPTS = {
+  company: NEWS_CHECK_SYSTEM_PROMPT,
+  market: MARKET_CHECK_SYSTEM_PROMPT,
+  industry: INDUSTRY_CHECK_SYSTEM_PROMPT,
+};
+
+/** The AI's reading of the latest headlines for a symbol (company events, market-wide emergencies for a fund, or industry-wide shocks). */
 export async function aiNewsCheck(
   llm: LlmService,
   symbol: string,
   headlines: Headline[],
   purpose: 'buy' | 'hold',
-  mode: 'company' | 'market' = 'company',
+  mode: 'company' | 'market' | 'industry' = 'company',
 ): Promise<{ avoid: boolean; reason: string } | null> {
   if (!llm.isConfigured() || headlines.length === 0) return null;
   const lines = headlines
@@ -30,10 +40,7 @@ export async function aiNewsCheck(
   try {
     const { data } = await llm.askJson<{ avoid?: unknown; reason?: unknown }>({
       ...NEWS_CHECK_LLM,
-      systemMsg:
-        mode === 'market'
-          ? MARKET_CHECK_SYSTEM_PROMPT
-          : NEWS_CHECK_SYSTEM_PROMPT,
+      systemMsg: PROMPTS[mode],
       prompt: `Symbol: ${symbol}\nPurpose: ${purpose}\nHeadlines (newest first):\n${lines.join('\n')}`,
     });
     return {
