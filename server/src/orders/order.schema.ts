@@ -33,6 +33,10 @@ export class Order {
   @Prop({ type: Boolean, required: true })
   paper: boolean;
 
+  /** The Alpaca account (its account number). */
+  @Prop({ type: String, index: true })
+  accountId?: string;
+
   @Prop({ type: String, required: true, enum: ['app', 'external'] })
   source: OrderSource;
 

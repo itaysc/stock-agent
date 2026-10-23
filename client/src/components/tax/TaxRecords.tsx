@@ -2,7 +2,9 @@ import { Button, Paper, ScrollArea, Stack, Table, Text, Title } from '@mantine/c
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import type { TaxRecord } from '../../api/tax-types';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { money, shekels } from '../../lib/format';
+import { ListRow } from '../shared/ListRow';
 
 const KIND: Record<TaxRecord['kind'], string> = {
   buy: 'Buy',
@@ -17,6 +19,7 @@ const KIND: Record<TaxRecord['kind'], string> = {
 
 /** Every stored activity of the year, as copied from the broker (shown on request). */
 export function TaxRecords({ year, paper }: { year: number; paper: boolean }) {
+  const mobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<TaxRecord[] | null>(null);
   useEffect(() => {
@@ -28,11 +31,29 @@ export function TaxRecords({ year, paper }: { year: number; paper: boolean }) {
       <Stack gap="sm">
         <Title order={5}>All activity</Title>
         {!open ? (
-          <Button size="xs" variant="default" w="fit-content" onClick={() => setOpen(true)}>
+          <Button
+            size={mobile ? 'sm' : 'xs'}
+            variant="default"
+            fullWidth={mobile}
+            w={mobile ? undefined : 'fit-content'}
+            onClick={() => setOpen(true)}
+          >
             Show every buy, sell, fee and transfer
           </Button>
         ) : !rows ? (
           <Text size="sm">Loading…</Text>
+        ) : rows.length && mobile ? (
+          <div>
+            {rows.map((r) => (
+              <ListRow
+                key={r.activityId}
+                title={`${KIND[r.kind]}${r.symbol ? ` · ${r.symbol}` : ''}`}
+                value={money(r.amountUsd)}
+                sub={`${r.day}${r.qty ? ` · ${r.qty.toFixed(4)} × ${money(r.priceUsd ?? 0)}` : ''}`}
+                subValue={`${shekels(r.amountIls)} at ${r.usdIls.toFixed(3)}`}
+              />
+            ))}
+          </div>
         ) : rows.length ? (
           <ScrollArea h={rows.length > 15 ? 420 : undefined}>
             <Table striped fz="xs" style={{ fontVariantNumeric: 'tabular-nums' }}>

@@ -7,6 +7,10 @@ export class IdeaDoc {
   @Prop({ type: String, required: true })
   _id: string;
 
+  /** The Alpaca account (its account number). */
+  @Prop({ type: String, required: true, index: true })
+  accountId: string;
+
   @Prop({ type: String, required: true, index: true })
   status: Idea['status'];
 

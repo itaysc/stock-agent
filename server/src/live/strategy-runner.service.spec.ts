@@ -10,6 +10,8 @@ import type {
   StrategyContext,
 } from '../strategies/strategy.types.js';
 import { StrategyRunnerService } from './strategy-runner.service.js';
+import type { AlpacaAccounts } from '../accounts/alpaca-accounts.service.js';
+import { fakeAccount } from '../accounts/testing.js';
 
 /** Records bars and buys on every bar it sees, to observe what the runner forwards. */
 const recorder = vi.hoisted(() => ({
@@ -79,6 +81,7 @@ function setup(env: Partial<Record<keyof Env, unknown>> = {}, isPaper = true) {
     alpaca as unknown as AlpacaService,
     streams as unknown as AlpacaStreamService,
     orders as unknown as OrdersService,
+    { first: () => fakeAccount('PA1') } as unknown as AlpacaAccounts,
   );
   return { runner, bars$, alpaca, streams, orders };
 }

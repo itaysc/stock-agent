@@ -5,6 +5,7 @@ import {
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AlpacaAccounts } from '../accounts/alpaca-accounts.service.js';
 import { AlpacaService } from '../alpaca/alpaca.service.js';
 import { BacktestService } from '../backtest/backtest.service.js';
 import type { Env } from '../config/env.js';
@@ -33,7 +34,7 @@ const PRE_OPEN_MS = 30 * 60_000;
 /**
  * Runs paper deployments: every PAPER_TRADING_POLL_MINUTES it books fills and
  * feeds newly completed daily bars to each deployment's strategies (see
- * runCycle). Paper accounts only.
+ * runCycle), for every account. Paper accounts only.
  */
 @Injectable()
 export class DeploymentRunnerService
@@ -47,6 +48,7 @@ export class DeploymentRunnerService
   constructor(
     private readonly config: ConfigService<Env, true>,
     private readonly alpaca: AlpacaService,
+    private readonly accounts: AlpacaAccounts,
     private readonly backtests: BacktestService,
     private readonly orders: OrdersService,
     private readonly store: DeploymentStore,
@@ -57,6 +59,7 @@ export class DeploymentRunnerService
     private readonly earnings: EarningsService,
   ) {}
 
+  /** On for the current account (paper only). */
   get enabled(): boolean {
     return (
       this.config.get('PAPER_TRADING_ENABLED', { infer: true }) &&
@@ -66,12 +69,6 @@ export class DeploymentRunnerService
 
   onApplicationBootstrap(): void {
     if (!this.config.get('PAPER_TRADING_ENABLED', { infer: true })) return;
-    if (!this.alpaca.isPaper) {
-      this.logger.error(
-        'Paper deployments are off: this is a LIVE account (paper trading only for now)',
-      );
-      return;
-    }
     const minutes = this.config.get('PAPER_TRADING_POLL_MINUTES', {
       infer: true,
     });
@@ -83,15 +80,19 @@ export class DeploymentRunnerService
     clearInterval(this.timer);
   }
 
-  /** Runs one cycle for every live deployment (one tick at a time). */
+  /** Runs one cycle for every live deployment of every account (one tick at a time). */
   tick(): Promise<void> {
-    this.busy = this.busy.then(async () => {
-      const deployments = [
-        ...(await this.store.live()),
-        ...(await this.store.stoppedWithPending()),
-      ];
-      for (const d of deployments) await this.cycle(d);
-    });
+    this.busy = this.busy.then(() =>
+      this.accounts.forEach('Paper tick', async () => {
+        // A live account: paper trading only for now.
+        if (!this.alpaca.isPaper) return;
+        const deployments = [
+          ...(await this.store.live()),
+          ...(await this.store.stoppedWithPending()),
+        ];
+        for (const d of deployments) await this.cycle(d);
+      }),
+    );
     return this.busy.catch((err: Error) =>
       this.logger.error(`Paper tick failed: ${err.message}`),
     );

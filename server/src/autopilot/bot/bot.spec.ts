@@ -5,6 +5,8 @@ import type { IdeasService } from '../ideas/ideas.service.js';
 import { BotCommands, parseAmount } from './bot-commands.js';
 import type { BrokerCommands } from './broker-commands.js';
 import { TelegramBotService } from './telegram-bot.service.js';
+import type { AlpacaAccounts } from '../../accounts/alpaca-accounts.service.js';
+import { fakeAccount } from '../../accounts/testing.js';
 
 function setup(running: object | null = null) {
   const ideas = {
@@ -118,6 +120,10 @@ describe('TelegramBotService', () => {
       { get: () => true } as never,
       telegram as unknown as TelegramClient,
       commands as unknown as BotCommands,
+      {
+        get: () => undefined,
+        first: () => fakeAccount('PA1'),
+      } as unknown as AlpacaAccounts,
     );
     return { bot, telegram, commands };
   };

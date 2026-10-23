@@ -15,12 +15,17 @@ import { lazy, Suspense, useState } from 'react';
 import { api } from '../../api/client';
 import type { BrokerHolding, BrokerOverview, BrokerPlanned } from '../../api/broker-types';
 import type { HoldingAction } from './HoldingActions';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { HoldingCard } from './HoldingCard';
 import { HoldingRow } from './HoldingRow';
-import { LevelsModal } from './LevelsModal';
+import { LevelsModal } from '../shared/LevelsModal';
+import { SellOneModal } from './SellOneModal';
 import { SellRules } from './SellRules';
 
 // The chart library is big: load it when a chart is opened.
-const StockChart = lazy(() => import('./StockChart').then((m) => ({ default: m.StockChart })));
+const StockChart = lazy(() =>
+  import('../shared/StockChart').then((m) => ({ default: m.StockChart })),
+);
 const shares = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(4));
 
 /** What you're invested in: status, prices, sell levels, a chart, and what you can do with each. */
@@ -39,8 +44,10 @@ export function BrokerHoldings({
   noBuyUntil: Array<{ symbol: string; until: string }>;
   onOverview: (o: BrokerOverview) => void;
 }) {
+  const mobile = useIsMobile();
   const [chart, setChart] = useState<string | null>(null);
   const [editing, setEditing] = useState<BrokerHolding | null>(null);
+  const [selling, setSelling] = useState<BrokerHolding | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const run = async (call: () => Promise<BrokerOverview>, done: string) => {
     try {
@@ -58,24 +65,20 @@ export function BrokerHoldings({
         () => api.brokerLevels(investmentId, h.symbol, { stopPrice: null, takeProfitPrice: null }),
         `${h.symbol}: back to the automatic levels.`,
       );
-    const half = action === 'sell-half';
-    const what = half
-      ? `half of your ${h.symbol} (${shares(h.qty / 2)} shares)`
-      : `all your ${h.symbol} (${shares(h.qty)} shares)`;
-    const later = half ? '' : ' The broker will not buy it again for 30 days.';
+    // Selling it all: choose what takes its place (the next in line, or nothing for now).
+    if (action === 'sell-all') return setSelling(h);
+    const what = `half of your ${h.symbol} (${shares(h.qty / 2)} shares)`;
     if (
       !window.confirm(
-        `Sell ${what} at the market price now (or at the next open if the market is closed)?${later}`,
+        `Sell ${what} at the market price now (or at the next open if the market is closed)?`,
       )
     )
       return;
-    void run(
-      () => api.brokerSell(investmentId, h.symbol, half ? 0.5 : 1),
-      `Sell order sent for ${what}.`,
-    );
+    void run(() => api.brokerSell(investmentId, h.symbol, 0.5), `Sell order sent for ${what}.`);
   };
   return (
-    <Paper p="md" withBorder>
+    // On a phone the cards are the boxes: no frame around them.
+    <Paper p={mobile ? 0 : 'md'} withBorder={!mobile} bg={mobile ? 'transparent' : undefined}>
       <Stack gap="sm">
         <Title order={5}>What you're invested in</Title>
         {message && (
@@ -87,7 +90,13 @@ export function BrokerHoldings({
             {message.text}
           </Alert>
         )}
-        {holdings.length ? (
+        {holdings.length && mobile ? (
+          <Stack gap="sm">
+            {holdings.map((h) => (
+              <HoldingCard key={h.symbol} h={h} onAction={(a) => act(h, a)} />
+            ))}
+          </Stack>
+        ) : holdings.length ? (
           <Table.ScrollContainer minWidth={940}>
             <Table verticalSpacing={6} highlightOnHover>
               <Table.Thead>
@@ -164,12 +173,33 @@ export function BrokerHoldings({
               </Center>
             }
           >
-            <StockChart investmentId={investmentId} symbol={chart} />
+            <StockChart
+              symbol={chart}
+              load={(range, compare) => api.brokerChart(investmentId, chart, range, compare)}
+            />
           </Suspense>
         )}
       </Modal>
+      <SellOneModal
+        investmentId={investmentId}
+        holding={selling}
+        onClose={() => setSelling(null)}
+        onDone={(o, text) => {
+          onOverview(o);
+          setMessage({ ok: true, text });
+        }}
+      />
       <LevelsModal
-        holding={editing}
+        holding={
+          editing && {
+            symbol: editing.symbol,
+            price: editing.price,
+            entryPrice: editing.entryPrice,
+            stopPrice: editing.stopIsYours ? editing.stopPrice : null,
+            takeProfitPrice: editing.takeIsYours ? editing.takeProfitPrice : null,
+            autoStopPrice: editing.autoStopPrice,
+          }
+        }
         onClose={() => setEditing(null)}
         onSave={async (levels) => {
           const h = editing as BrokerHolding;

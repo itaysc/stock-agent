@@ -5,7 +5,12 @@ import {
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { concatMap, type Subscription } from 'rxjs';
+import { concatMap, filter, type Subscription } from 'rxjs';
+import {
+  AccountContext,
+  type ActiveAccount,
+} from '../accounts/account-context.js';
+import { AlpacaAccounts } from '../accounts/alpaca-accounts.service.js';
 import { AlpacaStreamService } from '../alpaca/alpaca-stream.service.js';
 import { AlpacaService } from '../alpaca/alpaca.service.js';
 import type { Env } from '../config/env.js';
@@ -45,12 +50,25 @@ export class StrategyRunnerService
     private readonly alpaca: AlpacaService,
     private readonly streams: AlpacaStreamService,
     private readonly orders: OrdersService,
+    private readonly accounts: AlpacaAccounts,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     const configs = this.config.get('LIVE_STRATEGIES', { infer: true });
     if (configs.length === 0) return;
+    // Live strategies trade the first account.
+    const account = this.accounts.first();
+    if (!account) {
+      this.logger.error('Not starting strategies: no Alpaca account');
+      return;
+    }
+    await AccountContext.run(account, () => this.startAll(configs, account));
+  }
 
+  private async startAll(
+    configs: LiveStrategyConfig[],
+    account: ActiveAccount,
+  ): Promise<void> {
     if (
       !this.alpaca.isPaper &&
       !this.config.get('STRATEGIES_ALLOW_LIVE', { infer: true })
@@ -68,7 +86,7 @@ export class StrategyRunnerService
     }
 
     for (const config of configs) {
-      await this.start(config).catch((err: Error) =>
+      await this.start(config, account).catch((err: Error) =>
         this.logger.error(`Failed to start ${config.strategy}: ${err.message}`),
       );
     }
@@ -88,7 +106,11 @@ export class StrategyRunnerService
     }));
   }
 
-  private async start(config: LiveStrategyConfig): Promise<void> {
+  private async start(
+    config: LiveStrategyConfig,
+    account: ActiveAccount,
+  ): Promise<void> {
+    const inAccount = (fn: () => void) => AccountContext.run(account, fn);
     const minutes = timeframeMinutes(config.timeframe);
     const symbols = config.symbols.map((s) => s.trim().toUpperCase());
     const strategy = createStrategy(config.strategy, symbols, config.params);
@@ -115,16 +137,23 @@ export class StrategyRunnerService
       streamed.map((s) => [s, new BarAggregator(minutes)]),
     );
     const subscriptions = [
-      this.streams.bars(streamed).subscribe((minuteBar) => {
-        for (const bar of aggregators.get(minuteBar.symbol)?.add(minuteBar) ??
-          []) {
-          if (bar.timestamp.getTime() < firstFullBucket) continue;
-          if (market.includes(bar.symbol)) this.onMarketBar(strategy, bar);
-          if (symbols.includes(bar.symbol)) this.onBar(strategy, context, bar);
-        }
-      }),
+      this.streams.bars(streamed).subscribe((minuteBar) =>
+        inAccount(() => {
+          for (const bar of aggregators.get(minuteBar.symbol)?.add(minuteBar) ??
+            []) {
+            if (bar.timestamp.getTime() < firstFullBucket) continue;
+            if (market.includes(bar.symbol)) this.onMarketBar(strategy, bar);
+            if (symbols.includes(bar.symbol))
+              this.onBar(strategy, context, bar);
+          }
+        }),
+      ),
       this.streams.tradeUpdates$
-        .pipe(concatMap((update) => context.onTradeUpdate(update)))
+        .pipe(
+          // Only its own account's orders.
+          filter(() => AccountContext.maybe()?.id === account.id),
+          concatMap((update) => context.onTradeUpdate(update)),
+        )
         .subscribe((fill) => fill && strategy.onFill?.(fill, context)),
     ];
     this.runs.push({ config, strategy, context, subscriptions });

@@ -42,11 +42,10 @@ const envSchema = z
         'must be a mongodb:// or mongodb+srv:// URI',
       ),
 
-    // Alpaca (broker + market data). Paper and live accounts have separate keys.
-    ALPACA_API_KEY: z.string().min(1, 'ALPACA_API_KEY is required'),
-    ALPACA_API_SECRET: z.string().min(1, 'ALPACA_API_SECRET is required'),
-    // true = paper trading (default), false = LIVE trading with real money.
-    ALPACA_PAPER: z.stringbool().default(true),
+    // Alpaca (broker + market data): the accounts are added in the app (Accounts page), their
+    // keys encrypted with this: any random string of 32+ characters (e.g. openssl rand -base64 32).
+    // Set once for the server; empty = no accounts can be added or read.
+    ACCOUNTS_SECRET_KEY: z.string().default(''),
     // Market data feed: 'iex' is free, 'sip' requires a paid data subscription.
     ALPACA_DATA_FEED: z.enum(['iex', 'sip']).default('iex'),
     // Real-time WebSocket streams (order updates + market data). Alpaca allows
@@ -58,6 +57,11 @@ const envSchema = z
   .superRefine((env, ctx) => {
     const issue = (path: string, message: string) =>
       ctx.addIssue({ code: 'custom', path: [path], message });
+    if (env.ACCOUNTS_SECRET_KEY && env.ACCOUNTS_SECRET_KEY.length < 32)
+      issue(
+        'ACCOUNTS_SECRET_KEY',
+        'needs at least 32 random characters (e.g. openssl rand -base64 32)',
+      );
     // The login needs all three, and a long enough secret.
     const login = [env.ADMIN_EMAIL, env.ADMIN_PASSWORD_HASH, env.JWT_SECRET];
     if (login.some(Boolean) && !login.every(Boolean))

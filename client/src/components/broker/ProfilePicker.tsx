@@ -1,5 +1,6 @@
 import { Badge, Group, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
 import type { BrokerProfile, BrokerProfiles } from '../../api/broker-types';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { money } from '../../lib/format';
 import { periodText, usualRange, vsSpy } from '../../lib/robust';
 import { ProfilePain } from './ProfilePain';
@@ -7,7 +8,11 @@ import { ProfilePain } from './ProfilePain';
 const pct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 const usd = (n: number) => `${n < 0 ? '-' : n > 0 ? '+' : ''}${money(Math.abs(n))}`;
 
-/** The risk profiles side by side, with their history in dollars for your amount; click one to choose it. */
+/**
+ * The risk profiles side by side, with their history in dollars for your
+ * amount; click one to choose it. On a phone they stack, and only the chosen
+ * one shows its full history (the others: the key lines).
+ */
 export function ProfilePicker({
   data,
   selected,
@@ -17,6 +22,7 @@ export function ProfilePicker({
   selected: string;
   onSelect: (id: BrokerProfile['id']) => void;
 }) {
+  const mobile = useIsMobile();
   const since = data.profiles[0]?.stats
     ? new Date(data.profiles[0].stats.from).getUTCFullYear()
     : null;
@@ -29,6 +35,7 @@ export function ProfilePicker({
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
         {data.profiles.map((p) => {
           const on = p.id === selected;
+          const full = !mobile || on;
           const s = p.stats;
           const a = p.forAmount;
           return (
@@ -51,9 +58,11 @@ export function ProfilePicker({
                       </Badge>
                     )}
                   </Group>
-                  <Text size="xs" c="dimmed">
-                    {p.summary}
-                  </Text>
+                  {full && (
+                    <Text size="xs" c="dimmed">
+                      {p.summary}
+                    </Text>
+                  )}
                   {s && a && p.robust && a.usualYear && a.worstDropAny !== null ? (
                     <>
                       <Text size="sm">
@@ -67,23 +76,32 @@ export function ProfilePicker({
                       <Text size="sm" c="red">
                         Worst drop: up to {pct(-p.robust.worstDropPct)} ({usd(a.worstDropAny)})
                       </Text>
-                      <Text size="sm" c={s.worstYear.pct < 0 ? 'red' : undefined}>
-                        Worst year: {s.worstYear.year}, {usd(a.worstYear)} ({pct(s.worstYear.pct)})
-                      </Text>
-                      {s.pain && <ProfilePain pain={s.pain} spy={s.spy.pain} />}
-                      <Stack gap={0}>
-                        {p.robust.periods.map((x) => (
-                          <Text key={x.from} size="xs" c={x.pct >= x.spyPct ? 'teal' : 'red'}>
-                            {periodText(x)}
+                      {full ? (
+                        <>
+                          <Text size="sm" c={s.worstYear.pct < 0 ? 'red' : undefined}>
+                            Worst year: {s.worstYear.year}, {usd(a.worstYear)} (
+                            {pct(s.worstYear.pct)})
                           </Text>
-                        ))}
-                      </Stack>
-                      <Text size="xs" c={vsSpy(p.robust).color}>
-                        {vsSpy(p.robust).text}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        Asks you in Telegram if it falls {p.alertPct}% from its peak.
-                      </Text>
+                          {s.pain && <ProfilePain pain={s.pain} spy={s.spy.pain} />}
+                          <Stack gap={0}>
+                            {p.robust.periods.map((x) => (
+                              <Text key={x.from} size="xs" c={x.pct >= x.spyPct ? 'teal' : 'red'}>
+                                {periodText(x)}
+                              </Text>
+                            ))}
+                          </Stack>
+                          <Text size="xs" c={vsSpy(p.robust).color}>
+                            {vsSpy(p.robust).text}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            Asks you in Telegram if it falls {p.alertPct}% from its peak.
+                          </Text>
+                        </>
+                      ) : (
+                        <Text size="xs" c="blue">
+                          Tap to choose it and see its full history
+                        </Text>
+                      )}
                     </>
                   ) : (
                     <Text size="xs" c="dimmed">

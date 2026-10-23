@@ -16,6 +16,7 @@ import {
 import type { NotifierService } from '../notify/notifier.service.js';
 import type { IdeasService } from './ideas/ideas.service.js';
 import { retireReason } from './retirement.js';
+import { inAccount } from '../accounts/testing.js';
 
 const deployment = (over: Partial<Deployment>): Deployment => ({
   id: 'd1',
@@ -138,13 +139,15 @@ function setup(settings: Partial<AutopilotSettings>, live: Deployment[]) {
     id: 'ab12',
     label,
   }));
-  const service = new AutopilotService(
-    store,
-    { create, stop } as unknown as DeploymentsService,
-    { live: async () => live } as unknown as DeploymentStore,
-    { runNow } as unknown as ResearchService,
-    { send } as unknown as NotifierService,
-    { propose } as unknown as IdeasService,
+  const service = inAccount(
+    new AutopilotService(
+      store,
+      { create, stop } as unknown as DeploymentsService,
+      { live: async () => live } as unknown as DeploymentStore,
+      { runNow } as unknown as ResearchService,
+      { send } as unknown as NotifierService,
+      { propose } as unknown as IdeasService,
+    ),
   );
   const done = async () => {
     service.start('manual');

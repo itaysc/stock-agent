@@ -5,6 +5,8 @@ import {
   type MockRoute,
 } from '@alpacahq/alpaca-trade-api/testing';
 import type { ConfigService } from '@nestjs/config';
+import type { AlpacaAccounts } from '../accounts/alpaca-accounts.service.js';
+import { fakeAccount, inAccount } from '../accounts/testing.js';
 import type { Env } from '../config/env.js';
 import { AlpacaService } from './alpaca.service.js';
 
@@ -12,55 +14,14 @@ const config = {
   get: (key: keyof Env) => ({ ALPACA_DATA_FEED: 'iex' })[key as string],
 } as unknown as ConfigService<Env, true>;
 
-const accountRoute: MockRoute = {
-  method: 'GET',
-  path: '/v2/account',
-  body: { id: 'acc-1', status: 'ACTIVE' },
-};
-
 function createService(routes: MockRoute[], paper = true) {
-  return new AlpacaService(
-    createMockAlpaca(routes, { paper, retry: false }),
-    config,
-  );
+  const client = createMockAlpaca(routes, { paper, retry: false });
+  const accounts = { dataClient: () => client } as unknown as AlpacaAccounts;
+  const service = new AlpacaService(accounts, config);
+  return inAccount(service, { ...fakeAccount('PA1', client), paper });
 }
 
 describe('AlpacaService', () => {
-  describe('onModuleInit', () => {
-    it('connects with valid credentials', async () => {
-      const service = createService([accountRoute]);
-      await expect(service.onModuleInit()).resolves.toBeUndefined();
-    });
-
-    it('fails startup when credentials are rejected', async () => {
-      const service = createService(
-        [
-          {
-            path: '/v2/account',
-            status: 401,
-            body: { message: 'unauthorized' },
-          },
-        ],
-        false,
-      );
-      await expect(service.onModuleInit()).rejects.toThrow(
-        /rejected the credentials \(401\) in LIVE mode[\s\S]*ALPACA_PAPER/,
-      );
-    });
-
-    it('does not fail startup on network errors', async () => {
-      const service = createService([
-        {
-          path: '/v2/account',
-          respond: () => {
-            throw new Error('ECONNREFUSED');
-          },
-        },
-      ]);
-      await expect(service.onModuleInit()).resolves.toBeUndefined();
-    });
-  });
-
   it('reports paper vs live mode', () => {
     expect(createService([], true).isPaper).toBe(true);
     expect(createService([], false).isPaper).toBe(false);

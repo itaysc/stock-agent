@@ -1,8 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-export const RISK_STATE_ID = 'global';
-
-/** Single document holding the kill switch, so it survives restarts and is shared across processes. */
+/** One document per account (its account number) holding its kill switch, so it survives restarts and is shared across processes. */
 @Schema({ collection: 'risk_state', timestamps: true })
 export class RiskState {
   @Prop({ type: String })

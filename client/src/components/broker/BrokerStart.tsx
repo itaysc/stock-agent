@@ -3,8 +3,10 @@ import { IconCheck, IconRobot, IconSparkles } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import type { BrokerPlan, BrokerProfiles, BrokerView } from '../../api/broker-types';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { money } from '../../lib/format';
 import { BrokerPlanTable } from './BrokerPlanTable';
+import { StickyAction } from '../shared/StickyAction';
 import { ProfilePicker } from './ProfilePicker';
 import { SellRules } from './SellRules';
 
@@ -18,6 +20,7 @@ export function BrokerStart({
   free: number | null;
   onStart: (capital: number, profile: string) => Promise<void>;
 }) {
+  const mobile = useIsMobile();
   const [capital, setCapital] = useState<number>(1_000);
   const [profiles, setProfiles] = useState<BrokerProfiles | null>(null);
   const [profile, setProfile] = useState<string>('');
@@ -61,9 +64,9 @@ export function BrokerStart({
   };
   const chosen = profiles?.profiles.find((p) => p.id === profile);
   return (
-    <Paper p="lg" withBorder>
+    <Paper p={mobile ? 'md' : 'lg'} withBorder>
       <Stack gap="md">
-        <Group gap="sm">
+        <Group gap="sm" wrap="nowrap">
           <IconRobot size={28} />
           <Title order={3}>Let the broker invest for you</Title>
         </Group>
@@ -80,7 +83,8 @@ export function BrokerStart({
           min={100}
           max={free ?? undefined}
           step={100}
-          w={220}
+          w={{ base: '100%', xs: 220 }}
+          inputMode="numeric"
           value={capital}
           onChange={(v) => setCapital(Number(v) || 0)}
         />
@@ -94,17 +98,34 @@ export function BrokerStart({
             }}
           />
         )}
-        <Group>
-          <Button
-            variant={plan ? 'default' : 'filled'}
-            leftSection={<IconSparkles size={16} />}
-            loading={busy === 'plan'}
-            disabled={capital < 100 || !profile}
-            onClick={() => void suggest()}
-          >
-            {plan ? 'Suggest again' : `Suggest a plan${chosen ? ` (${chosen.name})` : ''}`}
-          </Button>
-        </Group>
+        {/* The main action (sticky on a phone): a plan first; once there is one, approving it. */}
+        {plan ? (
+          <Group>
+            <Button
+              variant={plan ? 'default' : 'filled'}
+              size={mobile ? 'md' : 'sm'}
+              leftSection={<IconSparkles size={16} />}
+              loading={busy === 'plan'}
+              disabled={capital < 100 || !profile}
+              onClick={() => void suggest()}
+            >
+              {plan ? 'Suggest again' : `Suggest a plan${chosen ? ` (${chosen.name})` : ''}`}
+            </Button>
+          </Group>
+        ) : (
+          <StickyAction>
+            <Button
+              variant={plan ? 'default' : 'filled'}
+              size={mobile ? 'md' : 'sm'}
+              leftSection={<IconSparkles size={16} />}
+              loading={busy === 'plan'}
+              disabled={capital < 100 || !profile}
+              onClick={() => void suggest()}
+            >
+              {plan ? 'Suggest again' : `Suggest a plan${chosen ? ` (${chosen.name})` : ''}`}
+            </Button>
+          </StickyAction>
+        )}
         {error && <Alert color="red">{error}</Alert>}
         {plan && chosen && (
           <Stack gap="sm">
@@ -128,9 +149,13 @@ export function BrokerStart({
               with bad news before the open is skipped. If the account falls {chosen.alertPct}% from
               its peak, it asks you in Telegram whether to sell everything.
             </Text>
-            <Group>
+            <Text size="xs" c="dimmed">
+              Paper money only. Pause or stop any time.
+            </Text>
+            <StickyAction>
               <Button
                 color="teal"
+                size={mobile ? 'md' : 'sm'}
                 leftSection={<IconCheck size={16} />}
                 loading={busy === 'start'}
                 onClick={() => {
@@ -138,12 +163,9 @@ export function BrokerStart({
                   void onStart(capital, profile).finally(() => setBusy(null));
                 }}
               >
-                Approve and invest {money(plan.capital)} ({chosen.name})
+                {mobile ? 'Approve' : 'Approve and invest'} {money(plan.capital)} ({chosen.name})
               </Button>
-              <Text size="xs" c="dimmed">
-                Paper money only. Pause or stop any time.
-              </Text>
-            </Group>
+            </StickyAction>
           </Stack>
         )}
       </Stack>

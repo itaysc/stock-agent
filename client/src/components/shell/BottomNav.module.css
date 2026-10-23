@@ -1,0 +1,25 @@
+.bar {
+  display: flex;
+  height: 100%;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 48px;
+  color: var(--mantine-color-dimmed);
+  transition: color 120ms ease;
+
+  &[data-active] {
+    color: var(--mantine-primary-color-filled);
+  }
+
+  &:active {
+    background: var(--mantine-color-default-hover);
+  }
+}

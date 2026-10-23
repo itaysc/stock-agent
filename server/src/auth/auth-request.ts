@@ -47,3 +47,19 @@ export function pagesAuth(auth: AuthService) {
     res.status(401).json({ statusCode: 401, message: 'Log in first' });
   };
 }
+
+/** Logs a browser in: the JWT as an httpOnly cookie. */
+export function setLoginCookie(
+  res: Response,
+  token: string,
+  expiresIn: string,
+  production: boolean,
+): void {
+  res.cookie(AUTH_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: production,
+    maxAge: durationMs(expiresIn),
+    path: '/',
+  });
+}

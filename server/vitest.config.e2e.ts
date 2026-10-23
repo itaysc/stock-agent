@@ -7,11 +7,12 @@ export default defineConfig({
     root: './',
     include: ['**/*.e2e-spec.ts'],
     globalSetup: ['./test/support/mongo-global-setup.ts'],
-    // Takes precedence over .env, so e2e runs never use real Alpaca keys.
+    // One file at a time: they share one database (accounts included).
+    fileParallelism: false,
+    // Takes precedence over .env, so e2e runs never use real settings.
     env: {
-      ALPACA_API_KEY: 'test-key-id',
-      ALPACA_API_SECRET: 'test-secret',
-      ALPACA_PAPER: 'true',
+      // A fixed test key for the accounts added in tests (32 bytes, base64).
+      ACCOUNTS_SECRET_KEY: 'dGVzdC1rZXktdGVzdC1rZXktdGVzdC1rZXktMTIzNDU=',
       ALPACA_STREAMS_ENABLED: 'false',
       PAPER_TRADING_ENABLED: 'false', // the API works; the daily runner doesn't tick
       AUTOPILOT_SCHEDULER_ENABLED: 'false',

@@ -1,5 +1,9 @@
 import { cleanQty } from '../strategies/qty.js';
-import type { Deployment, PendingOrder } from './deployment.types.js';
+import type {
+  Deployment,
+  PendingOrder,
+  SleeveLedger,
+} from './deployment.types.js';
 import { bookFill } from './sleeve-ledger.js';
 
 /** What the broker says about one of our orders (null: not found). */
@@ -29,50 +33,60 @@ export async function reconcile(
   now: Date,
 ): Promise<string[]> {
   const events: string[] = [];
-  for (const ledger of d.ledgers) {
-    const still: PendingOrder[] = [];
-    for (const p of ledger.pending) {
-      const order = await getOrder(p.clientOrderId);
-      if (!order) {
-        if (now.getTime() - new Date(p.submittedAt).getTime() > LOST_AFTER_MS) {
-          events.push(
-            `Gave up on ${p.side} ${p.qty} ${p.symbol}: the broker has no such order`,
-          );
-        } else still.push(p);
-        continue;
-      }
-      const fresh = cleanQty(order.filledQty - p.bookedQty);
-      if (fresh > 0 && order.filledAvgPrice !== null) {
-        const trade = bookFill(ledger, {
-          timestamp: now,
-          symbol: p.symbol,
-          side: p.side,
-          qty: fresh,
-          price: order.filledAvgPrice,
-          reason: p.reason,
-        });
-        p.bookedQty = order.filledQty;
-        const pnl =
-          trade.realizedPnl === undefined
-            ? ''
-            : ` (P&L ${trade.realizedPnl >= 0 ? '+' : ''}$${trade.realizedPnl.toFixed(2)})`;
+  for (const ledger of d.ledgers)
+    events.push(...(await reconcileLedger(ledger, getOrder, now)));
+  return events;
+}
+
+/** The same for one ledger (a sleeve, or your own stocks on the Trade page). */
+export async function reconcileLedger(
+  ledger: SleeveLedger,
+  getOrder: (clientOrderId: string) => Promise<OrderStatus | null>,
+  now: Date,
+): Promise<string[]> {
+  const events: string[] = [];
+  const still: PendingOrder[] = [];
+  for (const p of ledger.pending) {
+    const order = await getOrder(p.clientOrderId);
+    if (!order) {
+      if (now.getTime() - new Date(p.submittedAt).getTime() > LOST_AFTER_MS) {
         events.push(
-          `${p.side === 'buy' ? 'Bought' : 'Sold'} ${fresh} ${p.symbol} at $${order.filledAvgPrice.toFixed(2)}${pnl}`,
+          `Gave up on ${p.side} ${p.qty} ${p.symbol}: the broker has no such order`,
         );
-      }
-      if (DONE.has(order.status)) {
-        // A dollar-amount buy's qty was only an estimate: it is short only when nothing filled.
-        if (p.notional !== undefined ? p.bookedQty === 0 : p.bookedQty < p.qty)
-          events.push(
-            p.notional !== undefined
-              ? `buy $${p.notional.toFixed(2)} of ${p.symbol}: ${order.status}, nothing bought`
-              : `${p.side} ${p.symbol}: ${order.status} after ${p.bookedQty} of ${p.qty}`,
-          );
-      } else {
-        still.push(p);
-      }
+      } else still.push(p);
+      continue;
     }
-    ledger.pending = still;
+    const fresh = cleanQty(order.filledQty - p.bookedQty);
+    if (fresh > 0 && order.filledAvgPrice !== null) {
+      const trade = bookFill(ledger, {
+        timestamp: now,
+        symbol: p.symbol,
+        side: p.side,
+        qty: fresh,
+        price: order.filledAvgPrice,
+        reason: p.reason,
+      });
+      p.bookedQty = order.filledQty;
+      const pnl =
+        trade.realizedPnl === undefined
+          ? ''
+          : ` (P&L ${trade.realizedPnl >= 0 ? '+' : ''}$${trade.realizedPnl.toFixed(2)})`;
+      events.push(
+        `${p.side === 'buy' ? 'Bought' : 'Sold'} ${fresh} ${p.symbol} at $${order.filledAvgPrice.toFixed(2)}${pnl}`,
+      );
+    }
+    if (DONE.has(order.status)) {
+      // A dollar-amount buy's qty was only an estimate: it is short only when nothing filled.
+      if (p.notional !== undefined ? p.bookedQty === 0 : p.bookedQty < p.qty)
+        events.push(
+          p.notional !== undefined
+            ? `buy $${p.notional.toFixed(2)} of ${p.symbol}: ${order.status}, nothing bought`
+            : `${p.side} ${p.symbol}: ${order.status} after ${p.bookedQty} of ${p.qty}`,
+        );
+    } else {
+      still.push(p);
+    }
   }
+  ledger.pending = still;
   return events;
 }

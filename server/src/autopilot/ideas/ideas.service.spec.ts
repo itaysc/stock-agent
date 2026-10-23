@@ -4,6 +4,7 @@ import type { ResearchSession } from '../../research/research.types.js';
 import type { IdeaStore } from './idea-store.js';
 import type { Idea } from './idea.types.js';
 import { IdeasService } from './ideas.service.js';
+import type { AlpacaAccounts } from '../../accounts/alpaca-accounts.service.js';
 
 const session = {
   id: 'r1',
@@ -38,12 +39,14 @@ function setup(create = vi.fn(async () => ({ id: 'd1' }))) {
     get: async (id: string) => ideas.get(id) ?? null,
     pending: async () =>
       [...ideas.values()].filter((i) => i.status === 'pending'),
+    accountOf: async () => null,
   } as unknown as IdeaStore;
   const send = vi.fn(async () => undefined);
   const service = new IdeasService(
     store,
     { create } as unknown as DeploymentsService,
     { send } as unknown as NotifierService,
+    { get: () => undefined } as unknown as AlpacaAccounts,
   );
   return { service, ideas, send, create };
 }

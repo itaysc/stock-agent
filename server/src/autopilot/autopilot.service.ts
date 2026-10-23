@@ -17,6 +17,7 @@ import { researchAndDeploy } from './autopilot-research.js';
 import { researchStep } from './research-step.js';
 import { IdeasService } from './ideas/ideas.service.js';
 import { retireReason } from './retirement.js';
+import { AccountContext } from '../accounts/account-context.js';
 
 /**
  * The autonomous loop: retire its failing paper deployments, research the
@@ -26,7 +27,8 @@ import { retireReason } from './retirement.js';
 @Injectable()
 export class AutopilotService {
   private readonly logger = new Logger(AutopilotService.name);
-  private current: AutopilotRun | null = null;
+  /** The run going on, per account. */
+  private readonly current = new Map<string, AutopilotRun>();
 
   constructor(
     private readonly store: AutopilotStore,
@@ -37,8 +39,9 @@ export class AutopilotService {
     private readonly ideas: IdeasService,
   ) {}
 
+  /** The current account's run going on. */
   get running(): AutopilotRun | null {
-    return this.current;
+    return this.current.get(AccountContext.id()) ?? null;
   }
 
   /**
@@ -49,7 +52,7 @@ export class AutopilotService {
     trigger: AutopilotRun['trigger'],
     targets?: Array<{ label: string; symbols: string[] }>,
   ): AutopilotRun {
-    if (this.current) throw new Error('The autopilot is already running');
+    if (this.running) throw new Error('The autopilot is already running');
     const run: AutopilotRun = {
       id: randomUUID(),
       trigger,
@@ -59,8 +62,9 @@ export class AutopilotService {
       decisions: [],
       error: null,
     };
-    this.current = run;
-    void this.execute(run, targets).finally(() => (this.current = null));
+    const account = AccountContext.id();
+    this.current.set(account, run);
+    void this.execute(run, targets).finally(() => this.current.delete(account));
     return run;
   }
 

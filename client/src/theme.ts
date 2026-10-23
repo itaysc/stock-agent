@@ -1,4 +1,4 @@
-import { createTheme } from '@mantine/core';
+import { createTheme, Modal } from '@mantine/core';
 
 export const theme = createTheme({
   primaryColor: 'indigo',
@@ -9,5 +9,7 @@ export const theme = createTheme({
   headings: { fontWeight: '650' },
   components: {
     Paper: { defaultProps: { withBorder: true, radius: 'md' } },
+    // On a phone every dialog is a bottom sheet (mobile.css).
+    Modal: Modal.extend({ classNames: { inner: 'app-modal-inner', content: 'app-modal-content' } }),
   },
 });

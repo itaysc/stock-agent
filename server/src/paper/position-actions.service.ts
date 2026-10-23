@@ -9,6 +9,7 @@ import { DeploymentStore } from './deployment-store.js';
 import { logEvent } from './deployment-events.js';
 import type { Deployment, ManualLevels } from './deployment.types.js';
 import { holdOff } from './manual-exits.js';
+import { markSoldByYou } from './your-picks.js';
 
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
@@ -58,6 +59,8 @@ export class PositionActionsService {
     // Selling it all: the strategy leaves it alone for a while (it would buy it back otherwise).
     if (fraction === 1) {
       holdOff(d, position.symbol, now);
+      // ...and skips it when it picks, so the next in line can take its place.
+      markSoldByYou(d, position.symbol, now);
       delete d.manual?.[position.symbol];
     }
     d.ledgers[sleeve].staged = (d.ledgers[sleeve].staged ?? []).filter(
@@ -103,6 +106,7 @@ export class PositionActionsService {
   async allow(id: string, symbol: string): Promise<Deployment> {
     const d = await this.deployment(id);
     delete d.noBuyUntil?.[symbol.toUpperCase()];
+    delete d.soldByYou?.[symbol.toUpperCase()];
     await this.store.save(d);
     return d;
   }

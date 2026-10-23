@@ -7,6 +7,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
+import { AccountContext } from '../accounts/account-context.js';
+import { AlpacaAccounts } from '../accounts/alpaca-accounts.service.js';
 import { AlpacaService } from '../alpaca/alpaca.service.js';
 import type { Env } from '../config/env.js';
 import { mapActivity, type RawActivity } from './activity-map.js';
@@ -19,7 +21,8 @@ const OVERLAP_MS = 7 * 24 * HOUR_MS;
 
 /**
  * Copies every account activity from the broker into tax_records, with the
- * Bank of Israel dollar rate of its day: at startup, then every hour.
+ * Bank of Israel dollar rate of its day: at startup, then every hour, for
+ * every account (`sync()` alone: the current account).
  */
 @Injectable()
 export class TaxSyncService
@@ -28,20 +31,35 @@ export class TaxSyncService
   private readonly logger = new Logger(TaxSyncService.name);
   private timer?: ReturnType<typeof setInterval>;
   private busy: Promise<number> = Promise.resolve(0);
-  lastSync: { at: Date; added: number; error?: string } | null = null;
+  private readonly lastSyncs = new Map<
+    string,
+    { at: Date; added: number; error?: string }
+  >();
 
   constructor(
     private readonly config: ConfigService<Env, true>,
     private readonly alpaca: AlpacaService,
+    private readonly accounts: AlpacaAccounts,
     private readonly rates: UsdIlsService,
     @InjectModel(TaxRecordDoc.name)
     private readonly records: Model<TaxRecordDoc>,
   ) {}
 
+  /** Syncing is on (TAX_RECORDS_SYNC_ENABLED). */
+  get enabled(): boolean {
+    return this.config.get('TAX_RECORDS_SYNC_ENABLED', { infer: true });
+  }
+
   onApplicationBootstrap(): void {
-    if (!this.config.get('TAX_RECORDS_SYNC_ENABLED', { infer: true })) return;
-    this.timer = setInterval(() => void this.sync(), HOUR_MS);
-    void this.sync();
+    if (!this.enabled) return;
+    const all = () => void this.accounts.forEach('Tax sync', () => this.sync());
+    this.timer = setInterval(all, HOUR_MS);
+    all();
+  }
+
+  /** The current account's last sync. */
+  get lastSync() {
+    return this.lastSyncs.get(AccountContext.id()) ?? null;
   }
 
   onApplicationShutdown(): void {
@@ -50,15 +68,17 @@ export class TaxSyncService
 
   /** Adds the activities not recorded yet; returns how many (one sync at a time). */
   sync(): Promise<number> {
+    const account = AccountContext.id();
     this.busy = this.busy.then(async () => {
       try {
         const added = await this.syncOnce();
-        this.lastSync = { at: new Date(), added };
-        if (added) this.logger.log(`Tax records: ${added} new activities`);
+        this.lastSyncs.set(account, { at: new Date(), added });
+        if (added)
+          this.logger.log(`Tax records (${account}): ${added} new activities`);
         return added;
       } catch (err) {
         const error = (err as Error).message;
-        this.lastSync = { at: new Date(), added: 0, error };
+        this.lastSyncs.set(account, { at: new Date(), added: 0, error });
         this.logger.warn(`Tax records sync failed: ${error}`);
         return 0;
       }
@@ -67,9 +87,7 @@ export class TaxSyncService
   }
 
   private async syncOnce(): Promise<number> {
-    const account = String(
-      (await this.alpaca.getAccount()).accountNumber ?? 'unknown',
-    );
+    const account = AccountContext.id();
     const latest = await this.records
       .findOne({ account })
       .sort({ at: -1 })

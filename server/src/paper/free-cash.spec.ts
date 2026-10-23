@@ -3,6 +3,7 @@ import type { DeploymentStore } from './deployment-store.js';
 import type { Deployment } from './deployment.types.js';
 import { DeploymentsService } from './deployments.service.js';
 import { emptyLedger } from './sleeve-ledger.js';
+import type { MyStocksStore } from '../trade/my-stocks.store.js';
 
 describe('free cash', () => {
   it('counts invested money once: the account cash minus what deployments hold uninvested', async () => {
@@ -43,5 +44,18 @@ describe('free cash', () => {
       { live: async () => [over] } as unknown as DeploymentStore,
     );
     expect(await service.freeCash()).toBeCloseTo(111.39); // not 114.18
+  });
+
+  it('keeps the dollars of your own pending buys (Trade page) out of the free cash', async () => {
+    const service = new DeploymentsService(
+      {
+        getAccount: async () => ({ cash: '1000' }),
+      } as unknown as AlpacaService,
+      {} as never,
+      {} as never,
+      { live: async () => [] } as unknown as DeploymentStore,
+      { pendingBuyCash: async () => 250 } as unknown as MyStocksStore,
+    );
+    expect(await service.freeCash()).toBe(750);
   });
 });

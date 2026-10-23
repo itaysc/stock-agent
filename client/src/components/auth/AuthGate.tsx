@@ -1,11 +1,16 @@
 import { Center, Loader } from '@mantine/core';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import type { AuthUser } from '../../api/account-types';
 import { api, AUTH_REQUIRED } from '../../api/client';
 import { LoginPage } from './LoginPage';
+import { SignupPage } from './SignupPage';
+
+/** The token of an invite link (/?invite=…), if the page was opened from one. */
+const inviteToken = () => new URLSearchParams(window.location.search).get('invite');
 
 interface Auth {
   /** The logged-in user (null when the server needs no login). */
-  user: { email: string } | null;
+  user: AuthUser | null;
   logout: () => Promise<void>;
 }
 
@@ -15,7 +20,8 @@ export const useAuth = () => useContext(AuthContext);
 /** Shows the login page while the server needs a login and nobody is logged in; the app otherwise. */
 export function AuthGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<'checking' | 'login' | 'in'>('checking');
-  const [user, setUser] = useState<{ email: string } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [invite, setInvite] = useState(inviteToken);
   const check = useCallback(async () => {
     try {
       const me = await api.authMe();
@@ -42,6 +48,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
       <Center h="100vh">
         <Loader />
       </Center>
+    );
+  if (state === 'login' && invite)
+    return (
+      <SignupPage
+        token={invite}
+        onDone={() => {
+          // The link is used up: drop it from the address.
+          window.history.replaceState(null, '', window.location.pathname);
+          setInvite(null);
+          void check();
+        }}
+      />
     );
   if (state === 'login') return <LoginPage onLoggedIn={() => void check()} />;
   return <AuthContext.Provider value={{ user, logout }}>{children}</AuthContext.Provider>;

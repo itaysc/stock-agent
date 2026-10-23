@@ -1,4 +1,6 @@
 import { Badge, Group, Paper, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { ListRow } from '../shared/ListRow';
 import type { InvestmentView } from '../../api/broker-types';
 import { cashShown, money, pct, tone } from '../../lib/format';
 import { StatCard } from '../results/StatCard';
@@ -16,6 +18,7 @@ export function AllInvestments({
   list: InvestmentView[];
   onOpen: (id: string) => void;
 }) {
+  const mobile = useIsMobile();
   const capital = list.reduce((n, v) => n + v.capital, 0);
   const equity = list.reduce((n, v) => n + v.equity, 0);
   const gain = equity - capital;
@@ -43,60 +46,86 @@ export function AllInvestments({
         <Title order={5} mb="xs">
           Your investments
         </Title>
-        <Table.ScrollContainer minWidth={760}>
-          <Table verticalSpacing={8} highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                {HEAD.map((t, i) => (
-                  <Table.Th key={t} ta={i >= 2 && i <= 5 ? 'right' : undefined}>
-                    {t}
-                  </Table.Th>
-                ))}
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {list.map((v) => (
-                <Table.Tr
-                  key={v.deploymentId}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => onOpen(v.deploymentId)}
-                  title="Open this investment"
-                >
-                  <Table.Td>
-                    <Group gap={6} wrap="nowrap">
-                      <Text size="sm" fw={600}>
-                        {v.name}
-                      </Text>
-                      <Badge size="xs" variant="light" color={STATUS[v.status].color}>
-                        {STATUS[v.status].label}
-                      </Badge>
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm">{new Date(v.startedAt).toLocaleDateString()}</Text>
-                  </Table.Td>
-                  <Table.Td ta="right">{money(v.capital)}</Table.Td>
-                  <Table.Td ta="right">{money(v.equity)}</Table.Td>
-                  <Table.Td ta="right">
-                    <Text size="sm" c={tone(v.pnlPct)}>
-                      {pct(v.pnlPct)}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td ta="right">
-                    <Text size="sm" c="dimmed">
-                      {pct(v.spyPct)}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm" c="dimmed">
-                      {v.holdings.map((h) => h.symbol).join(' ') || 'cash'}
-                    </Text>
-                  </Table.Td>
+        {mobile ? (
+          <div>
+            {list.map((v) => (
+              <ListRow
+                key={v.deploymentId}
+                onClick={() => onOpen(v.deploymentId)}
+                title={
+                  <>
+                    {v.name}{' '}
+                    <Badge size="xs" variant="light" color={STATUS[v.status].color}>
+                      {STATUS[v.status].label}
+                    </Badge>
+                  </>
+                }
+                value={money(v.equity)}
+                sub={v.holdings.map((h) => h.symbol).join(' ') || 'cash'}
+                subValue={
+                  <Text span inherit c={tone(v.pnlPct)}>
+                    {pct(v.pnlPct)} (SPY {pct(v.spyPct)})
+                  </Text>
+                }
+              />
+            ))}
+          </div>
+        ) : (
+          <Table.ScrollContainer minWidth={760}>
+            <Table verticalSpacing={8} highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  {HEAD.map((t, i) => (
+                    <Table.Th key={t} ta={i >= 2 && i <= 5 ? 'right' : undefined}>
+                      {t}
+                    </Table.Th>
+                  ))}
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+              </Table.Thead>
+              <Table.Tbody>
+                {list.map((v) => (
+                  <Table.Tr
+                    key={v.deploymentId}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => onOpen(v.deploymentId)}
+                    title="Open this investment"
+                  >
+                    <Table.Td>
+                      <Group gap={6} wrap="nowrap">
+                        <Text size="sm" fw={600}>
+                          {v.name}
+                        </Text>
+                        <Badge size="xs" variant="light" color={STATUS[v.status].color}>
+                          {STATUS[v.status].label}
+                        </Badge>
+                      </Group>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">{new Date(v.startedAt).toLocaleDateString()}</Text>
+                    </Table.Td>
+                    <Table.Td ta="right">{money(v.capital)}</Table.Td>
+                    <Table.Td ta="right">{money(v.equity)}</Table.Td>
+                    <Table.Td ta="right">
+                      <Text size="sm" c={tone(v.pnlPct)}>
+                        {pct(v.pnlPct)}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Text size="sm" c="dimmed">
+                        {pct(v.spyPct)}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">
+                        {v.holdings.map((h) => h.symbol).join(' ') || 'cash'}
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+        )}
       </Paper>
       <MonthCalendar
         days={combineDays(list.map((v) => v.daily ?? []))}

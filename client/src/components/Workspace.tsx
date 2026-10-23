@@ -1,6 +1,7 @@
-import { AppShell, Container, Grid, SegmentedControl, Stack } from '@mantine/core';
+import { Alert, Container, Grid, SegmentedControl, Stack } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { Account } from '../api/account-types';
 import { api } from '../api/client';
 import type { DeployTarget } from '../api/paper-types';
 import type { PlanContext, ResearchSession, TestPlan } from '../api/research-types';
@@ -19,14 +20,19 @@ import {
 } from '../lib/form';
 import { deployTargetFor } from '../lib/deployTarget';
 import { formFromPlan } from '../lib/plan';
-import { Header, type Page } from './Header';
+import { AccountsPage } from './accounts/AccountsPage';
+import type { Page } from './Header';
 import { DeployModal } from './paper/DeployModal';
 import { PaperPage } from './paper/PaperPage';
 import { BrokerPage } from './broker/BrokerPage';
 import { TaxPage } from './tax/TaxPage';
+import { TradePage } from './trade/TradePage';
 import { RecentReports } from './RecentReports';
 import { ResultArea } from './results/ResultArea';
 import { SettingsPanel } from './settings/SettingsPanel';
+import { takeNotice } from '../lib/account';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { AppLayout } from './shell/AppLayout';
 
 export type RunState =
   | { status: 'idle' }
@@ -37,6 +43,7 @@ export type RunState =
   | { status: 'viewing'; report: ReportItem };
 
 export function Workspace({ options }: { options: BacktestOptions }) {
+  const mobile = useIsMobile();
   const form = useForm<FormValues>({ initialValues: defaultValues(options) });
   const [state, setState] = useState<RunState>({ status: 'idle' });
   // The settings of the result on screen (the form may change after the run).
@@ -86,7 +93,20 @@ export function Workspace({ options }: { options: BacktestOptions }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     void run(next);
   };
-  const [page, setPage] = useState<Page>('broker');
+  // Just switched to a new account: what it brought in, shown on the Trade page.
+  const [notice, setNotice] = useState(takeNotice);
+  const [page, setPage] = useState<Page>(notice ? 'trade' : 'broker');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  useEffect(() => {
+    void api.accounts().then(
+      (r) => {
+        setAccounts(r.accounts);
+        // First run: no account yet, so add one first.
+        if (!r.accounts.length) setPage('accounts');
+      },
+      () => undefined,
+    );
+  }, []);
   const [deploying, setDeploying] = useState<DeployTarget | null>(null);
   const [deployedId, setDeployedId] = useState<string | null>(null);
   const deployTarget: DeployTarget | null =
@@ -115,66 +135,74 @@ export function Workspace({ options }: { options: BacktestOptions }) {
           : null;
 
   return (
-    <AppShell header={{ height: 60 }} padding="md">
-      <AppShell.Header>
-        <Header options={options} page={page} onPage={setPage} />
-      </AppShell.Header>
-      <AppShell.Main>
-        <Container size="xl" px={{ base: 0, sm: 'md' }}>
-          {page !== 'broker' && page !== 'tax' && (
-            <SegmentedControl
-              mb="md"
-              size="xs"
-              value={page}
-              onChange={(v) => setPage(v as Page)}
-              data={[
-                { value: 'lab', label: 'Lab: backtests & AI research' },
-                { value: 'paper', label: 'Paper trading & autopilot' },
-              ]}
-            />
-          )}
-          {page === 'broker' ? (
-            <BrokerPage />
-          ) : page === 'tax' ? (
-            <TaxPage />
-          ) : page === 'paper' ? (
-            <PaperPage selectId={deployedId} baskets={options.baskets} />
-          ) : (
-            <Grid gap="lg" align="flex-start">
-              <Grid.Col span={{ base: 12, md: 4 }}>
-                <SettingsPanel form={form} options={options} running={busy} onRun={run} />
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, md: 8 }}>
-                <Stack gap="lg">
-                  <ResultArea
-                    state={state}
-                    onRunPlan={runPlan}
-                    baskets={options.baskets}
-                    onPaperTrade={deployTarget ? () => setDeploying(deployTarget) : undefined}
-                    onCheckRobustness={(symbols) =>
-                      api.robustness(robustnessBody(ranWith ?? form.values, symbols))
-                    }
-                  />
-                  <RecentReports
-                    reports={reports}
-                    activeUrl={activeUrl}
-                    onOpen={(report) => setState({ status: 'viewing', report })}
-                  />
-                </Stack>
-              </Grid.Col>
-            </Grid>
-          )}
-        </Container>
-        <DeployModal
-          target={deploying}
-          onClose={() => setDeploying(null)}
-          onDeployed={(d) => {
-            setDeploying(null);
-            setDeployedId(d.id);
-            setPage('paper');
-          }}
-        />
-      </AppShell.Main>
-    </AppShell>
+    <AppLayout options={options} page={page} onPage={setPage} accounts={accounts}>
+      <Container size="xl" px={{ base: 0, sm: 'md' }}>
+        {notice && (
+          <Alert color="teal" mb="md" withCloseButton onClose={() => setNotice(null)}>
+            {notice}
+          </Alert>
+        )}
+        {(page === 'lab' || page === 'paper') && (
+          <SegmentedControl
+            mb="md"
+            size={mobile ? 'md' : 'xs'}
+            fullWidth={mobile}
+            value={page}
+            onChange={(v) => setPage(v as Page)}
+            data={[
+              { value: 'lab', label: mobile ? 'Lab' : 'Lab: backtests & AI research' },
+              {
+                value: 'paper',
+                label: mobile ? 'Paper & autopilot' : 'Paper trading & autopilot',
+              },
+            ]}
+          />
+        )}
+        {page === 'accounts' ? (
+          <AccountsPage />
+        ) : page === 'broker' ? (
+          <BrokerPage />
+        ) : page === 'trade' ? (
+          <TradePage />
+        ) : page === 'tax' ? (
+          <TaxPage />
+        ) : page === 'paper' ? (
+          <PaperPage selectId={deployedId} baskets={options.baskets} />
+        ) : (
+          <Grid gap="lg" align="flex-start">
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <SettingsPanel form={form} options={options} running={busy} onRun={run} />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 8 }}>
+              <Stack gap="lg">
+                <ResultArea
+                  state={state}
+                  onRunPlan={runPlan}
+                  baskets={options.baskets}
+                  onPaperTrade={deployTarget ? () => setDeploying(deployTarget) : undefined}
+                  onCheckRobustness={(symbols) =>
+                    api.robustness(robustnessBody(ranWith ?? form.values, symbols))
+                  }
+                />
+                <RecentReports
+                  reports={reports}
+                  activeUrl={activeUrl}
+                  onOpen={(report) => setState({ status: 'viewing', report })}
+                />
+              </Stack>
+            </Grid.Col>
+          </Grid>
+        )}
+      </Container>
+      <DeployModal
+        target={deploying}
+        onClose={() => setDeploying(null)}
+        onDeployed={(d) => {
+          setDeploying(null);
+          setDeployedId(d.id);
+          setPage('paper');
+        }}
+      />
+    </AppLayout>
   );
 }

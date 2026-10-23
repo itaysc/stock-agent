@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { AlpacaService } from '../alpaca/alpaca.service.js';
 import { annualizedPct } from '../backtest/walkforward/walkforward-metrics.js';
@@ -19,6 +20,7 @@ import {
   type NewsCheck,
 } from './deployment.types.js';
 import { emptyLedger } from './sleeve-ledger.js';
+import { MyStocksStore } from '../trade/my-stocks.store.js';
 
 export interface CreateDeployment {
   name: string;
@@ -50,6 +52,8 @@ export class DeploymentsService {
     private readonly portfolios: PortfolioService,
     private readonly runner: DeploymentRunnerService,
     private readonly store: DeploymentStore,
+    /** Your own stocks (the Trade page): theirs, not "outside any deployment". */
+    @Optional() private readonly myStocks?: MyStocksStore,
   ) {}
 
   async create(input: CreateDeployment): Promise<Deployment> {
@@ -84,11 +88,13 @@ export class DeploymentsService {
           d.ledgers.reduce((m, l) => m + (l.positions[symbol]?.qty ?? 0), 0),
         0,
       );
+    const mine = (await this.myStocks?.get())?.ledger.positions ?? {};
     const held = (await this.alpaca.getPositions())
       .filter(
         (p) =>
           symbols.includes(p.symbol) &&
-          Number(p.qty) - inLedgers(p.symbol) > 1e-6,
+          Number(p.qty) - inLedgers(p.symbol) - (mine[p.symbol]?.qty ?? 0) >
+            1e-6,
       )
       .map((p) => p.symbol);
     if (held.length) {
@@ -187,8 +193,15 @@ export class DeploymentsService {
       live ?? this.store.live(),
     ]);
     return (
-      Number(account.cash ?? 0) - list.reduce((n, d) => n + heldCash(d), 0)
+      Number(account.cash ?? 0) -
+      list.reduce((n, d) => n + heldCash(d), 0) -
+      (await this.manualPendingCash())
     );
+  }
+
+  /** Dollars your own buys (Trade page) that haven't filled yet will take. */
+  async manualPendingCash(): Promise<number> {
+    return (await this.myStocks?.pendingBuyCash()) ?? 0;
   }
 
   async setNewsCheck(id: string, newsCheck: NewsCheck): Promise<Deployment> {

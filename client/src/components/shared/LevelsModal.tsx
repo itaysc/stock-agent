@@ -1,8 +1,19 @@
 import { Alert, Button, Group, Modal, NumberInput, Stack, Text } from '@mantine/core';
 import { useEffect, useState } from 'react';
-import type { BrokerHolding } from '../../api/broker-types';
+import { ModalActions } from './StickyAction';
 
 const usd = (n: number) => `$${n.toFixed(2)}`;
+
+/** A holding's prices and your current levels (null: none set). */
+export interface LevelsTarget {
+  symbol: string;
+  price: number;
+  entryPrice: number;
+  stopPrice: number | null;
+  takeProfitPrice: number | null;
+  /** The strategy's own stop, when there is one (broker investments). */
+  autoStopPrice?: number | null;
+}
 
 /** Your own stop loss and profit target for one holding, with quick picks. */
 export function LevelsModal({
@@ -10,7 +21,7 @@ export function LevelsModal({
   onClose,
   onSave,
 }: {
-  holding: BrokerHolding | null;
+  holding: LevelsTarget | null;
   onClose: () => void;
   onSave: (levels: { stopPrice: number | null; takeProfitPrice: number | null }) => Promise<void>;
 }) {
@@ -19,8 +30,8 @@ export function LevelsModal({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    setStop(holding?.stopIsYours && holding.stopPrice ? round(holding.stopPrice) : '');
-    setTake(holding?.takeIsYours && holding.takeProfitPrice ? round(holding.takeProfitPrice) : '');
+    setStop(holding?.stopPrice ? round(holding.stopPrice) : '');
+    setTake(holding?.takeProfitPrice ? round(holding.takeProfitPrice) : '');
     setError(null);
   }, [holding]);
   if (!holding) return null;
@@ -49,7 +60,11 @@ export function LevelsModal({
         </Text>
         <NumberInput
           label="Stop loss: sell if it closes below"
-          description={`Automatic stop: ${holding.autoStopPrice ? usd(holding.autoStopPrice) : 'none'} (the higher one counts). Empty = automatic only.`}
+          description={
+            holding.autoStopPrice === undefined
+              ? 'Empty = no stop.'
+              : `Automatic stop: ${holding.autoStopPrice ? usd(holding.autoStopPrice) : 'none'} (the higher one counts). Empty = automatic only.`
+          }
           prefix="$"
           decimalScale={2}
           min={0}
@@ -102,14 +117,14 @@ export function LevelsModal({
           ))}
         </Group>
         {error && <Alert color="red">{error}</Alert>}
-        <Group justify="flex-end">
+        <ModalActions>
           <Button variant="default" onClick={onClose}>
             Cancel
           </Button>
           <Button loading={busy} onClick={() => void save()}>
             Save
           </Button>
-        </Group>
+        </ModalActions>
       </Stack>
     </Modal>
   );

@@ -23,5 +23,6 @@ import { UsdIlsService } from './usd-ils.service.js';
   ],
   controllers: [TaxController],
   providers: [UsdIlsService, TaxSyncService, TaxService],
+  exports: [UsdIlsService, TaxSyncService],
 })
 export class TaxModule {}

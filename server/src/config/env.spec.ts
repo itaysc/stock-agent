@@ -2,8 +2,6 @@ import { validateEnv } from './env.js';
 
 const required = {
   MONGODB_URI: 'mongodb://localhost:27018/stock-invest',
-  ALPACA_API_KEY: 'key-id',
-  ALPACA_API_SECRET: 'secret',
 };
 
 describe('validateEnv', () => {
@@ -21,9 +19,7 @@ describe('validateEnv', () => {
       CORS_ORIGINS: [],
       SWAGGER_ENABLED: true,
       MONGODB_URI: 'mongodb://localhost:27018/stock-invest',
-      ALPACA_API_KEY: 'key-id',
-      ALPACA_API_SECRET: 'secret',
-      ALPACA_PAPER: true,
+      ACCOUNTS_SECRET_KEY: '',
       ALPACA_DATA_FEED: 'iex',
       ALPACA_STREAMS_ENABLED: true,
       RISK_MAX_POSITION_VALUE: 10_000,
@@ -53,12 +49,10 @@ describe('validateEnv', () => {
       PORT: '8080',
       CORS_ORIGINS: 'http://a.com, http://b.com',
       SWAGGER_ENABLED: 'false',
-      ALPACA_PAPER: 'false',
     });
     expect(env.PORT).toBe(8080);
     expect(env.CORS_ORIGINS).toEqual(['http://a.com', 'http://b.com']);
     expect(env.SWAGGER_ENABLED).toBe(false);
-    expect(env.ALPACA_PAPER).toBe(false);
   });
 
   it('throws on invalid values', () => {
@@ -93,10 +87,15 @@ describe('validateEnv', () => {
     ).toThrow(/symbols/);
   });
 
-  it('requires Alpaca credentials', () => {
-    expect(() => validateEnv({ ALPACA_API_KEY: '' })).toThrow(
-      /ALPACA_API_KEY is required[\s\S]*ALPACA_API_SECRET/,
-    );
+  it('wants a long accounts secret key', () => {
+    expect(() =>
+      validateEnv({ ...required, ACCOUNTS_SECRET_KEY: 'short' }),
+    ).toThrow(/ACCOUNTS_SECRET_KEY/);
+    const key = Buffer.alloc(32, 7).toString('base64');
+    expect(
+      validateEnv({ ...required, ACCOUNTS_SECRET_KEY: key })
+        .ACCOUNTS_SECRET_KEY,
+    ).toBe(key);
   });
 
   it('on Railway, refuses to start without production mode and an API token', () => {

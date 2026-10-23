@@ -6,16 +6,11 @@ import {
   type trading,
   type values,
 } from '@alpacahq/alpaca-trade-api';
-import {
-  Inject,
-  Injectable,
-  Logger,
-  OnModuleInit,
-  HttpException,
-} from '@nestjs/common';
+import { Injectable, Logger, HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AccountContext } from '../accounts/account-context.js';
+import { AlpacaAccounts } from '../accounts/alpaca-accounts.service.js';
 import type { Env } from '../config/env.js';
-import { ALPACA_CLIENT } from './alpaca.constants.js';
 
 /**
  * Network/timeout failure (no HTTP response). Checked by name rather than
@@ -54,51 +49,38 @@ export interface GetBarsInput {
 }
 
 /**
- * App-facing wrapper around the Alpaca SDK. Covers what the app uses today;
- * anything else is reachable through `client`.
+ * App-facing wrapper around the Alpaca SDK. Account calls (orders, positions,
+ * activities) go to the current account (AccountContext); market data uses
+ * the current account's client, or the first account's outside any account.
+ * Anything else is reachable through `client`.
  */
 @Injectable()
-export class AlpacaService implements OnModuleInit {
+export class AlpacaService {
   private readonly logger = new Logger(AlpacaService.name);
   private readonly feed: Env['ALPACA_DATA_FEED'];
 
   constructor(
-    @Inject(ALPACA_CLIENT) readonly client: Alpaca,
+    private readonly accounts: AlpacaAccounts,
     config: ConfigService<Env, true>,
   ) {
     this.feed = config.get('ALPACA_DATA_FEED', { infer: true });
   }
 
+  /** The current account's client. */
+  get client(): Alpaca {
+    return AccountContext.current().client;
+  }
+
+  private get data(): Alpaca {
+    return this.accounts.dataClient();
+  }
+
   get isPaper(): boolean {
-    return this.client.paper;
+    return AccountContext.current().paper;
   }
 
   private get mode(): string {
-    return this.isPaper ? 'PAPER' : 'LIVE';
-  }
-
-  /** Verifies credentials at boot; bad keys fail startup instead of the first trade. */
-  async onModuleInit(): Promise<void> {
-    if (!this.isPaper) {
-      this.logger.warn('ALPACA_PAPER=false: LIVE trading with real money');
-    }
-
-    const check = await this.client.trading.validateConnection();
-    if (check.ok) {
-      this.logger.log(
-        `Connected to Alpaca (${this.mode}), account status: ${check.account.status}`,
-      );
-      return;
-    }
-
-    if (check.status === 401 || check.status === 403) {
-      throw new Error(
-        `Alpaca rejected the credentials (${check.status}) in ${this.mode} mode: ${check.message.replace(/\.$/, '')}. ` +
-          'Check ALPACA_API_KEY / ALPACA_API_SECRET, and that ALPACA_PAPER matches the key type ' +
-          '(paper keys only work with ALPACA_PAPER=true, live keys with false).',
-      );
-    }
-    this.logger.warn(`Could not reach Alpaca at startup: ${check.message}`);
+    return `${this.isPaper ? 'PAPER' : 'LIVE'} ${AccountContext.id()}`;
   }
 
   // --- Account ------------------------------------------------------------
@@ -213,7 +195,7 @@ export class AlpacaService implements OnModuleInit {
     symbol: string,
     input: GetBarsInput,
   ): Promise<marketDataShapes.Bar[]> {
-    return this.client.marketData.getStockBarsFor(symbol, {
+    return this.data.marketData.getStockBarsFor(symbol, {
       ...input,
       feed: this.feed,
     });
@@ -231,7 +213,7 @@ export class AlpacaService implements OnModuleInit {
     if (!symbols.length) return {};
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.client.marketData.getStockBars({
+        return await this.data.marketData.getStockBars({
           ...input,
           symbols,
           feed: this.feed,
@@ -256,11 +238,11 @@ export class AlpacaService implements OnModuleInit {
     /** Newest first (default oldest first). */
     newestFirst?: boolean;
   }): Promise<{
-    news: Array<{ headline: string; createdAt: Date }>;
+    news: Array<{ headline: string; summary?: string; createdAt: Date }>;
     nextPageToken: string | null;
   }> {
     const { newestFirst, ...rest } = req;
-    return this.client.marketData.news.news({
+    return this.data.marketData.news.news({
       ...rest,
       limit: 50,
       sort: newestFirst ? 'desc' : 'asc',
@@ -268,7 +250,7 @@ export class AlpacaService implements OnModuleInit {
   }
 
   getLatestPrice(symbol: string): Promise<number | undefined> {
-    return this.client.marketData.getLatestPrice(symbol, { feed: this.feed });
+    return this.data.marketData.getLatestPrice(symbol, { feed: this.feed });
   }
 
   /** Each symbol's latest trade (price and time), in one request. */
@@ -276,7 +258,7 @@ export class AlpacaService implements OnModuleInit {
     symbols: string[],
   ): Promise<Record<string, { price: number; at: Date }>> {
     if (!symbols.length) return {};
-    const r = await this.client.marketData.stocks.stockLatestTrades({
+    const r = await this.data.marketData.stocks.stockLatestTrades({
       symbols: symbols.join(','),
       feed: this.feed,
     });

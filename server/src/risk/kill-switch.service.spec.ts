@@ -2,6 +2,7 @@ import { getModelToken, MongooseModule } from '@nestjs/mongoose';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import type { Model } from 'mongoose';
+import { inAccount } from '../accounts/testing.js';
 import { AlpacaService } from '../alpaca/alpaca.service.js';
 import { KillSwitchService } from './kill-switch.service.js';
 import { RiskState, RiskStateSchema } from './risk-state.schema.js';
@@ -29,7 +30,7 @@ describe('KillSwitchService', () => {
         { provide: AlpacaService, useValue: alpaca },
       ],
     }).compile();
-    killSwitch = moduleRef.get(KillSwitchService);
+    killSwitch = inAccount(moduleRef.get(KillSwitchService));
   });
 
   afterAll(async () => {

@@ -88,6 +88,8 @@ export interface SleeveLedger {
   realizedPnl: number;
   /** Last close per symbol, for valuing positions. */
   lastPrices: Record<string, number>;
+  /** Slots you left empty after selling a stock by hand: they wait in T-bills until you pick a stock. */
+  emptySlots?: number;
 }
 
 /** Your own stop loss / profit target for one holding. */
@@ -149,6 +151,8 @@ export interface Deployment {
   manual?: Record<string, ManualLevels>;
   /** Symbols you sold (or your levels sold): the strategy does not buy them again before this. */
   noBuyUntil?: Record<string, Date>;
+  /** Stocks you sold by hand, until when: the strategy skips them (the next in line moves up). */
+  soldByYou?: Record<string, Date>;
   /** Per held symbol: its next earnings day, and the last report already read (YYYY-MM-DD). */
   earnings?: Record<string, { next?: string; seen?: string }>;
   /** What happened, newest last (fills, orders sent or refused, guard pauses). */

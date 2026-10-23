@@ -9,6 +9,7 @@ import { ALPACA_CLIENT } from '../src/alpaca/alpaca.constants.js';
 import { AppModule } from '../src/app.module.js';
 import { setupApp } from '../src/app.setup.js';
 import { REPORTS_DIR } from '../src/backtest/jobs/report-paths.js';
+import { addTestAccount, forgetAccounts } from './support/test-account.js';
 
 /** 120 daily bars of a wave, so the SMA crossover trades. */
 function barsFor(symbol: string) {
@@ -61,7 +62,9 @@ describe('Backtest API (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication({ bufferLogs: true });
     setupApp(app);
+    await forgetAccounts(app);
     await app.init();
+    await addTestAccount(app);
   });
 
   afterAll(async () => {

@@ -5,10 +5,11 @@ import { api } from '../../api/client';
 import type { BrokerOverview } from '../../api/broker-types';
 import type { PaperAccount } from '../../api/paper-types';
 import { money, pct } from '../../lib/format';
-import { applyLive, type LivePrices } from '../../lib/live';
+import { applyLive } from '../../lib/live';
+import { useLivePrices } from '../../hooks/useLivePrices';
 import { AllInvestments } from './AllInvestments';
 import { BrokerStart } from './BrokerStart';
-import { DataTimes } from './DataTimes';
+import { DataTimes } from '../shared/DataTimes';
 import { FundsLine } from './FundsLine';
 import { InvestmentPanel } from './InvestmentPanel';
 
@@ -26,10 +27,8 @@ export function BrokerPage() {
   const [account, setAccount] = useState<PaperAccount | null>(null);
   const [tab, setTab] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [live, setLive] = useState<LivePrices>({});
   // When the page and the live prices were last loaded (shown in DataTimes).
   const [loadedAt, setLoadedAt] = useState<Date | null>(null);
-  const [liveCheckedAt, setLiveCheckedAt] = useState<Date | null>(null);
   // Bumped by "Refresh now": reloads everything at once and restarts both timers.
   const [round, setRound] = useState(0);
   const load = useCallback(async () => {
@@ -53,23 +52,11 @@ export function BrokerPage() {
   ]
     .sort()
     .join(',');
-  useEffect(() => {
-    if (!held) return;
-    // After "Refresh now" the first fetch skips the server's one-minute cache.
-    let fresh = round > 0;
-    const fetchLive = () =>
-      void api.brokerPrices(held.split(','), fresh).then(
-        (r) => {
-          setLive(r.prices);
-          setLiveCheckedAt(new Date());
-        },
-        () => undefined, // keep showing the last closes
-      );
-    fetchLive();
-    fresh = false;
-    const timer = setInterval(fetchLive, LIVE_MS);
-    return () => clearInterval(timer);
-  }, [held, round]);
+  const {
+    prices: live,
+    checkedAt: liveCheckedAt,
+    nextAt: nextLiveAt,
+  } = useLivePrices(held ? held.split(',') : [], LIVE_MS, round);
   // After a change, the money figures change too.
   const changed = (o: BrokerOverview) => {
     setOverview(o);
@@ -137,7 +124,7 @@ export function BrokerPage() {
         liveCheckedAt={liveCheckedAt}
         pageAt={loadedAt}
         nextPageAt={loadedAt && new Date(loadedAt.getTime() + PAGE_MS)}
-        nextLiveAt={held && liveCheckedAt ? new Date(liveCheckedAt.getTime() + LIVE_MS) : null}
+        nextLiveAt={nextLiveAt}
         onRefresh={() => setRound((r) => r + 1)}
       />
       {list.length === 0 ? (

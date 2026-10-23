@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   Badge,
+  Box,
   Group,
   SegmentedControl,
   Text,
@@ -10,25 +11,31 @@ import {
   useMantineColorScheme,
 } from '@mantine/core';
 import { IconChartLine, IconLogout, IconMoon, IconSparkles, IconSun } from '@tabler/icons-react';
+import type { Account } from '../api/account-types';
+import { AccountSwitcher } from './AccountSwitcher';
 import { useAuth } from './auth/AuthGate';
+import { HeaderFunds } from './HeaderFunds';
+import { MarketClock } from './MarketClock';
 import type { BacktestOptions } from '../api/types';
 
-export type Page = 'broker' | 'tax' | 'lab' | 'paper';
+export type Page = 'broker' | 'trade' | 'tax' | 'lab' | 'paper' | 'accounts';
 
 interface Props {
   options: BacktestOptions;
   page: Page;
   onPage: (page: Page) => void;
+  accounts: Account[];
 }
 
-export function Header({ options, page, onPage }: Props) {
+export function Header({ options, page, onPage, accounts }: Props) {
   const { setColorScheme } = useMantineColorScheme();
   const { user, logout } = useAuth();
   const scheme = useComputedColorScheme('light');
 
   return (
     <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-      <Group gap="sm" wrap="nowrap">
+      {/* On a phone the page tabs and the account menu need the room. */}
+      <Group gap="sm" wrap="nowrap" visibleFrom="xs">
         <ThemeIcon
           size={34}
           radius="md"
@@ -37,26 +44,36 @@ export function Header({ options, page, onPage }: Props) {
         >
           <IconChartLine size={20} />
         </ThemeIcon>
-        <div>
+        <Box visibleFrom="sm">
           <Text fw={700} lh={1.1}>
             Stock Invest
           </Text>
           <Text size="xs" c="dimmed" lh={1.1}>
             your paper broker
           </Text>
-        </div>
+        </Box>
       </Group>
       <SegmentedControl
         size="xs"
-        value={page === 'broker' || page === 'tax' ? page : 'advanced'}
+        value={
+          page === 'broker' || page === 'trade' || page === 'tax'
+            ? page
+            : page === 'accounts'
+              ? ''
+              : 'advanced'
+        }
         onChange={(v) => onPage(v === 'advanced' ? 'lab' : (v as Page))}
         data={[
           { value: 'broker', label: 'Broker' },
+          { value: 'trade', label: 'Trade' },
           { value: 'tax', label: 'Tax' },
           { value: 'advanced', label: 'Advanced' },
         ]}
       />
       <Group gap="xs" wrap="nowrap">
+        <AccountSwitcher accounts={accounts} onManage={() => onPage('accounts')} />
+        <MarketClock />
+        <HeaderFunds />
         <Tooltip label={`Market data feed; history from ${options.dataStart}`}>
           <Badge variant="light" color="gray" visibleFrom="xs">
             {options.dataFeed.toUpperCase()} data

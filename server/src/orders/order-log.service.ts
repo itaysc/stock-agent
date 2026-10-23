@@ -8,6 +8,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { concatMap, type Subscription } from 'rxjs';
+import { AccountContext } from '../accounts/account-context.js';
 import { AlpacaStreamService } from '../alpaca/alpaca-stream.service.js';
 import {
   AlpacaService,
@@ -33,7 +34,8 @@ const isDuplicateKeyError = (err: unknown) =>
   err.code === 11000;
 
 /**
- * Persists every order and every trade update to MongoDB. Stream updates are
+ * Persists every order and every trade update to MongoDB, tagged with the
+ * account (stream updates arrive inside their account). Stream updates are
  * written one at a time, in arrival order, so a later event never loses to an
  * earlier one.
  */
@@ -82,6 +84,7 @@ export class OrderLogService implements OnModuleInit, OnModuleDestroy {
         clientOrderId: input.clientOrderId,
         status,
         error,
+        accountId: AccountContext.id(),
         paper: this.alpaca.isPaper,
         source: 'app',
         symbol: input.symbol ?? '',
@@ -140,6 +143,7 @@ export class OrderLogService implements OnModuleInit, OnModuleDestroy {
 
     await this.events.create({
       clientOrderId,
+      accountId: AccountContext.id(),
       alpacaOrderId: order.id,
       event: update.event,
       status: order.status,
@@ -161,6 +165,7 @@ export class OrderLogService implements OnModuleInit, OnModuleDestroy {
         },
         $setOnInsert: {
           source: 'external',
+          accountId: AccountContext.id(),
           paper: this.alpaca.isPaper,
           symbol: order.symbol ?? '',
           side: order.side,

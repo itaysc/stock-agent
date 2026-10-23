@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
+import { AccountContext } from '../accounts/account-context.js';
 import { AlpacaService } from '../alpaca/alpaca.service.js';
 import { parseTimeframe } from '../strategies/timeframe.js';
 import { TaxRecordDoc } from './tax-record.schema.js';
@@ -27,6 +28,7 @@ export class TaxService {
       _id: { year: string; paper: boolean };
       count: number;
     }>([
+      { $match: { account: AccountContext.id() } },
       {
         $group: {
           _id: { year: { $substrBytes: ['$day', 0, 4] }, paper: '$paper' },
@@ -46,7 +48,11 @@ export class TaxService {
   /** One year's stored activities (oldest first). */
   list(year: number, paper: boolean) {
     return this.records
-      .find({ paper, day: { $gte: `${year}-01-01`, $lte: `${year}-12-31` } })
+      .find({
+        account: AccountContext.id(),
+        paper,
+        day: { $gte: `${year}-01-01`, $lte: `${year}-12-31` },
+      })
       .sort({ at: 1 })
       .lean();
   }
@@ -54,7 +60,11 @@ export class TaxService {
   /** The year's report, with what the holdings left at the end were worth (in dollars and shekels). */
   async report(year: number, paper: boolean) {
     const all = (await this.records
-      .find({ paper, day: { $lte: `${year}-12-31` } })
+      .find({
+        account: AccountContext.id(),
+        paper,
+        day: { $lte: `${year}-12-31` },
+      })
       .sort({ at: 1 })
       .lean()) as unknown as ReportRecord[];
     const r = yearReport(all, year, paper);

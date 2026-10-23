@@ -52,7 +52,7 @@ describe('login (e2e)', () => {
       .expect(200);
     expect(res.body).toMatchObject({
       tokenType: 'Bearer',
-      user: { email: 'me@example.com' },
+      user: { email: 'me@example.com', admin: true },
       expiresIn: '12h',
     });
     expect(res.body.accessToken.split('.')).toHaveLength(3);
@@ -73,7 +73,7 @@ describe('login (e2e)', () => {
       .get('/api/v1/auth/me')
       .set('Cookie', cookie.split(';')[0])
       .expect(200);
-    expect(me.body.user).toEqual({ email: 'me@example.com' });
+    expect(me.body.user).toEqual({ email: 'me@example.com', admin: true });
     // So does the API_TOKEN (scripts); a forged JWT does not.
     await http()
       .get('/api/v1/backtests/options')

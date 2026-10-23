@@ -11,8 +11,8 @@ import {
   useComputedColorScheme,
 } from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
-import { api } from '../../api/client';
 import type { ChartRange, StockChartData } from '../../api/broker-types';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { pct } from '../../lib/format';
 import { drawStockChart, MA_COLORS, type Layer } from './stock-chart-draw';
 
@@ -37,12 +37,32 @@ const LAYERS: Array<{ value: Layer; label: string }> = [
   { value: 'ma50', label: '50-day avg' },
   { value: 'ma200', label: '200-day avg' },
 ];
+/** Layers that only mean something for a stock you hold. */
+const HOLDING_LAYERS = new Set<string>(['bought', 'stop', 'target', 'high']);
 
-/** A stock's price for a range, with its buy price, stop, high and trades, and SPY to compare. */
-export function StockChart({ investmentId, symbol }: { investmentId: string; symbol: string }) {
+/**
+ * A stock's price for a range, with its buy price, stop, high and trades when
+ * there are any, and SPY to compare. `load` fetches the data (an investment's
+ * holding, or any stock on the Trade page).
+ */
+const SCROLL_ROW = { overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 } as const;
+
+export function StockChart({
+  symbol,
+  load,
+  initialRange = 'buy',
+  sinceBuy = true,
+}: {
+  symbol: string;
+  load: (range: ChartRange, compare: boolean) => Promise<StockChartData>;
+  initialRange?: ChartRange;
+  /** Offer the "Since buy" range (a stock you hold). */
+  sinceBuy?: boolean;
+}) {
+  const mobile = useIsMobile();
   const box = useRef<HTMLDivElement>(null);
   const dark = useComputedColorScheme('light') === 'dark';
-  const [range, setRange] = useState<ChartRange>('buy');
+  const [range, setRange] = useState<ChartRange>(initialRange);
   const [compare, setCompare] = useState(false);
   const [layers, setLayers] = useState<string[]>(['bought', 'stop', 'target', 'high', 'trades']);
   const [data, setData] = useState<StockChartData | null>(null);
@@ -51,11 +71,11 @@ export function StockChart({ investmentId, symbol }: { investmentId: string; sym
   useEffect(() => {
     setLoading(true);
     setError(null);
-    api
-      .brokerChart(investmentId, symbol, range, compare)
+    load(range, compare)
       .then(setData, (err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [investmentId, symbol, range, compare]);
+    // `load` is a new function each render: the symbol, range and compare decide what to fetch.
+  }, [symbol, range, compare]);
   useEffect(() => {
     if (!data || !box.current) return;
     return drawStockChart(box.current, data, { dark, compare, layers: layers as Layer[] });
@@ -72,10 +92,12 @@ export function StockChart({ investmentId, symbol }: { investmentId: string; sym
     <Stack gap="xs">
       <Group justify="space-between" wrap="wrap" gap="xs">
         <SegmentedControl
-          size="xs"
+          size={mobile ? 'sm' : 'xs'}
+          fullWidth={mobile}
+          w={mobile ? '100%' : undefined}
           value={range}
           onChange={(v) => setRange(v as ChartRange)}
-          data={RANGES}
+          data={sinceBuy ? RANGES : RANGES.filter((r) => r.value !== 'buy')}
         />
         <Switch
           size="sm"
@@ -86,23 +108,27 @@ export function StockChart({ investmentId, symbol }: { investmentId: string; sym
       </Group>
       {!compare && (
         <Chip.Group multiple value={layers} onChange={setLayers}>
-          <Group gap={6}>
-            {LAYERS.map((l) => {
-              const ma = l.value.startsWith('ma');
-              return (
-                <Chip
-                  key={l.value}
-                  value={l.value}
-                  size="xs"
-                  variant="outline"
-                  color={ma ? MA_COLORS[l.value.slice(2)] : undefined}
-                  // A 200-day average doesn't fit the 5-minute bars of 1D / 5D.
-                  disabled={ma && !!data?.intraday}
-                >
-                  {l.label}
-                </Chip>
-              );
-            })}
+          {/* On a phone: one row that scrolls sideways, so the chart stays in view. */}
+          <Group gap={6} wrap={mobile ? 'nowrap' : 'wrap'} style={mobile ? SCROLL_ROW : undefined}>
+            {LAYERS.filter((l) => data?.entryPrice != null || !HOLDING_LAYERS.has(l.value)).map(
+              (l) => {
+                const ma = l.value.startsWith('ma');
+                return (
+                  <Chip
+                    key={l.value}
+                    value={l.value}
+                    size="xs"
+                    variant="outline"
+                    style={{ flexShrink: 0 }}
+                    color={ma ? MA_COLORS[l.value.slice(2)] : undefined}
+                    // A 200-day average doesn't fit the 5-minute bars of 1D / 5D.
+                    disabled={ma && !!data?.intraday}
+                  >
+                    {l.label}
+                  </Chip>
+                );
+              },
+            )}
           </Group>
         </Chip.Group>
       )}
@@ -123,17 +149,21 @@ export function StockChart({ investmentId, symbol }: { investmentId: string; sym
               SPY {pct(spyChange)}
             </Text>
           )}
-          <Text size="sm">
-            Bought: <b>{usd(data.entryPrice)}</b>
-            {data.boughtAt ? ` on ${new Date(data.boughtAt).toLocaleDateString()}` : ''}
-          </Text>
-          <Text size="sm" c="red">
-            Sells below: <b>{usd(data.stopPrice)}</b>
-          </Text>
+          {data.entryPrice != null && (
+            <Text size="sm">
+              Bought: <b>{usd(data.entryPrice)}</b>
+              {data.boughtAt ? ` on ${new Date(data.boughtAt).toLocaleDateString()}` : ''}
+            </Text>
+          )}
+          {data.stopPrice != null && (
+            <Text size="sm" c="red">
+              Sells below: <b>{usd(data.stopPrice)}</b>
+            </Text>
+          )}
         </Group>
       )}
       <div style={{ position: 'relative' }}>
-        <div ref={box} style={{ height: 340 }} />
+        <div ref={box} style={{ height: mobile ? 280 : 340 }} />
         {loading && (
           <Center pos="absolute" inset={0}>
             <Loader />

@@ -76,7 +76,10 @@ export class DeploymentsController {
       /** What the deployments hold in stocks now. */
       invested: deploymentsEquity - uninvested,
       reserved,
-      free: Number(account.cash ?? 0) - reserved,
+      free:
+        Number(account.cash ?? 0) -
+        reserved -
+        (await this.deployments.manualPendingCash()),
       deploymentsEquity,
       // What the real-time news check can use right now.
       newsSources: {

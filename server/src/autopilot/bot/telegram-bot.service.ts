@@ -7,11 +7,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../config/env.js';
 import {
+  accountOfButton,
   TelegramClient,
   TelegramError,
   type TelegramUpdate,
 } from '../../notify/telegram.client.js';
 import { BotCommands, type Reply } from './bot-commands.js';
+import { AccountContext } from '../../accounts/account-context.js';
+import { AlpacaAccounts } from '../../accounts/alpaca-accounts.service.js';
 
 /** Messages older than this (e.g. sent while the server was down) are ignored. */
 const STALE_S = 10 * 60;
@@ -33,6 +36,7 @@ export class TelegramBotService
     private readonly config: ConfigService<Env, true>,
     private readonly telegram: TelegramClient,
     private readonly commands: BotCommands,
+    private readonly accounts: AlpacaAccounts,
   ) {}
 
   get enabled(): boolean {
@@ -93,7 +97,11 @@ export class TelegramBotService
     try {
       if (u.message?.text && mine(u.message.chat.id)) {
         if (now / 1000 - u.message.date > STALE_S) return;
-        await this.reply(await this.commands.text(u.message.text));
+        // Typed commands: the first account (ideas answer in their own).
+        const text = u.message.text;
+        await this.inAccount(undefined, async () =>
+          this.reply(await this.commands.text(text)),
+        );
       } else if (u.callback_query) {
         const q = u.callback_query;
         if (!mine(q.message?.chat.id)) {
@@ -110,7 +118,10 @@ export class TelegramBotService
               reply_markup: { inline_keyboard: [] },
             })
             .catch(() => undefined);
-        await this.reply(await this.commands.button(q.data ?? ''));
+        const { data, account } = accountOfButton(q.data ?? '');
+        await this.inAccount(account, async () =>
+          this.reply(await this.commands.button(data)),
+        );
       }
     } catch (err) {
       this.logger.error(`Telegram command failed: ${(err as Error).message}`);
@@ -118,6 +129,14 @@ export class TelegramBotService
         `Something went wrong: ${(err as Error).message}`,
       );
     }
+  }
+
+  /** Runs `fn` in the account (a button's), else the first one. */
+  private inAccount(id: string | undefined, fn: () => Promise<void>) {
+    const account =
+      (id ? this.accounts.get(id) : undefined) ?? this.accounts.first();
+    if (!account) return this.telegram.send('No Alpaca account in the app');
+    return AccountContext.run(account, fn);
   }
 
   private reply(r: Reply): Promise<void> {

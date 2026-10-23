@@ -1,10 +1,12 @@
 import { randomBytes } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import type { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { Env } from '../config/env.js';
+import { AuthService } from './auth.service.js';
+import { UsersService } from './users/users.service.js';
 import {
   AUTH_COOKIE,
   type AuthUser,
@@ -15,7 +17,11 @@ import {
 /** Every other request: the JWT from the httpOnly cookie (web app) or a Bearer header (passport-jwt). */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor(config: ConfigService<Env, true>) {
+  constructor(
+    config: ConfigService<Env, true>,
+    private readonly auth: AuthService,
+    private readonly users: UsersService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) =>
@@ -33,7 +39,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  validate(payload: { sub: string }): AuthUser {
-    return { email: payload.sub };
+  /** A removed user's token stops working right away. */
+  async validate(payload: { sub: string }): Promise<AuthUser> {
+    const user = this.auth.userFor(payload.sub);
+    if (!user.admin && !(await this.users.exists(user.email)))
+      throw new UnauthorizedException('This user was removed');
+    return user;
   }
 }

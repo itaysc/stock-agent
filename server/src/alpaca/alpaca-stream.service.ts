@@ -1,4 +1,4 @@
-import { type Alpaca, streaming } from '@alpacahq/alpaca-trade-api';
+import { streaming } from '@alpacahq/alpaca-trade-api';
 import {
   Inject,
   Injectable,
@@ -7,9 +7,14 @@ import {
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { filter, Observable, Subject } from 'rxjs';
+import { filter, Observable, Subject, type Subscription } from 'rxjs';
+import {
+  AccountContext,
+  type ActiveAccount,
+} from '../accounts/account-context.js';
+import { AlpacaAccounts } from '../accounts/alpaca-accounts.service.js';
 import type { Env } from '../config/env.js';
-import { ALPACA_CLIENT, ALPACA_STREAM_OPTIONS } from './alpaca.constants.js';
+import { ALPACA_STREAM_OPTIONS } from './alpaca.constants.js';
 import {
   CHANNEL_METHODS,
   type ChannelEvents,
@@ -23,11 +28,14 @@ import { SymbolRefCounter } from './symbol-ref-counter.js';
 /**
  * Real-time Alpaca streams, exposed as RxJS observables.
  *
- * - `tradeUpdates$`: every order event on the account (new, fill, partial_fill,
- *   canceled, ...). Connected at startup.
+ * - `tradeUpdates$`: every order event on every account (new, fill,
+ *   partial_fill, canceled, ...), each delivered inside its account
+ *   (AccountContext). One socket per account, connected at startup or when
+ *   the account is added.
  * - `bars()` / `quotes()` / `trades()`: live market data for the given symbols.
  *   The market data socket opens on first use. Symbols are reference-counted,
  *   so a symbol stays subscribed until every observer of it unsubscribes.
+ *   One socket, on the first account (Alpaca allows one per account).
  *
  * Both sockets reconnect forever with backoff and re-subscribe automatically.
  */
@@ -39,7 +47,8 @@ export class AlpacaStreamService
   private readonly enabled: boolean;
   private readonly feed: Env['ALPACA_DATA_FEED'];
 
-  private tradingStream?: streaming.TradingStream;
+  private readonly tradingStreams = new Map<string, streaming.TradingStream>();
+  private accountChanges?: Subscription;
   private marketDataStream?: streaming.StockDataStream;
 
   private readonly tradeUpdates = new Subject<streaming.TradeUpdate>();
@@ -59,7 +68,7 @@ export class AlpacaStreamService
   };
 
   constructor(
-    @Inject(ALPACA_CLIENT) private readonly client: Alpaca,
+    private readonly accounts: AlpacaAccounts,
     @Inject(ALPACA_STREAM_OPTIONS) private readonly options: StreamOptions,
     config: ConfigService<Env, true>,
   ) {
@@ -73,25 +82,48 @@ export class AlpacaStreamService
       return;
     }
 
-    const stream = this.client.trading.stream(this.streamOptions());
-    logStreamLifecycle(stream, 'Trading', this.logger);
-    stream.onTradeUpdate((update) => this.tradeUpdates.next(update));
-    stream.subscribeTradeUpdates();
-    stream.connect();
-    this.tradingStream = stream;
+    this.accounts.list().forEach((a) => this.openTrading(a));
+    this.accountChanges = this.accounts.changes$.subscribe((change) =>
+      'added' in change
+        ? this.openTrading(change.added)
+        : this.closeTrading(change.removed),
+    );
   }
 
   onApplicationShutdown(): void {
-    this.tradingStream?.disconnect();
+    this.accountChanges?.unsubscribe();
+    this.tradingStreams.forEach((stream) => stream.disconnect());
     this.marketDataStream?.disconnect();
     this.tradeUpdates.complete();
     Object.values(this.channels).forEach((subject) => subject.complete());
   }
 
+  private openTrading(account: ActiveAccount): void {
+    this.closeTrading(account);
+    const stream = account.client.trading.stream(this.streamOptions());
+    logStreamLifecycle(stream, `Trading ${account.id}`, this.logger);
+    stream.onTradeUpdate((update) =>
+      AccountContext.run(account, () => this.tradeUpdates.next(update)),
+    );
+    stream.subscribeTradeUpdates();
+    stream.connect();
+    this.tradingStreams.set(account.id, stream);
+  }
+
+  private closeTrading(account: ActiveAccount): void {
+    this.tradingStreams.get(account.id)?.disconnect();
+    this.tradingStreams.delete(account.id);
+  }
+
   status(): StreamsStatus {
     if (!this.enabled) return { trading: 'disabled', marketData: 'disabled' };
+    // The worst account's state: any socket not authenticated shows.
+    const states = [...this.tradingStreams.values()].map((s) => s.getState());
     return {
-      trading: this.tradingStream?.getState() ?? 'idle',
+      trading:
+        states.find((s) => s !== streaming.STATE.AUTHENTICATED) ??
+        states[0] ??
+        'idle',
       marketData: this.marketDataStream?.getState() ?? 'idle',
     };
   }
@@ -157,7 +189,8 @@ export class AlpacaStreamService
   private getMarketDataStream(): streaming.StockDataStream {
     if (this.marketDataStream) return this.marketDataStream;
 
-    const stream = this.client.marketData.stockStream({
+    const account = this.accounts.first() ?? AccountContext.current();
+    const stream = account.client.marketData.stockStream({
       ...this.streamOptions(),
       feed: this.feed,
     });

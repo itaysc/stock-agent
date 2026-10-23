@@ -3,7 +3,7 @@ import type { BrokerHolding } from '../../api/broker-types';
 import { money, pct, tone } from '../../lib/format';
 import { when } from '../../lib/when';
 import { type HoldingAction, HoldingActions } from './HoldingActions';
-import { Sparkline } from './Sparkline';
+import { Sparkline } from '../shared/Sparkline';
 
 const usd = (n: number | null) => (n === null ? '—' : `$${n.toFixed(2)}`);
 const shares = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(4));

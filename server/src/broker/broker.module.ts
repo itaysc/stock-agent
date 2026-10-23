@@ -5,6 +5,8 @@ import { BacktestModule } from '../backtest/backtest.module.js';
 import { NotifyModule } from '../notify/notify.module.js';
 import { PaperModule } from '../paper/paper.module.js';
 import { BrokerController } from './api/broker.controller.js';
+import { BrokerSlotsController } from './api/broker-slots.controller.js';
+import { BrokerSlotsService } from './broker-slots.service.js';
 import { BrokerSchedulerService } from './broker-scheduler.service.js';
 import {
   BrokerStateDoc,
@@ -26,13 +28,14 @@ import { LivePricesService } from './live-prices.service.js';
       { name: BrokerStateDoc.name, schema: BrokerStateSchema },
     ]),
   ],
-  controllers: [BrokerController],
+  controllers: [BrokerController, BrokerSlotsController],
   providers: [
     BrokerStore,
     BrokerService,
     BrokerNoticesService,
     BrokerSchedulerService,
     LivePricesService,
+    BrokerSlotsService,
   ],
   exports: [BrokerService, BrokerNoticesService],
 })

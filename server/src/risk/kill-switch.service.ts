@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
+import { AccountContext } from '../accounts/account-context.js';
 import { AlpacaService } from '../alpaca/alpaca.service.js';
-import { RISK_STATE_ID, RiskState } from './risk-state.schema.js';
+import { RiskState } from './risk-state.schema.js';
 
 export interface KillSwitchState {
   engaged: boolean;
@@ -11,7 +12,7 @@ export interface KillSwitchState {
 }
 
 /**
- * Emergency stop. While engaged, every new order is rejected. Engaging it also
+ * Emergency stop, one per account (the current one). While engaged, every new order is rejected. Engaging it also
  * cancels all open orders, and optionally closes every position. Stored in
  * MongoDB, so it survives restarts and a CLI can flip it for a running server.
  */
@@ -26,7 +27,7 @@ export class KillSwitchService {
 
   async state(): Promise<KillSwitchState> {
     const doc = await this.model
-      .findById(RISK_STATE_ID)
+      .findById(AccountContext.id())
       .lean<RiskState & { updatedAt?: Date }>();
     return {
       engaged: doc?.killSwitchEngaged ?? false,
@@ -37,7 +38,7 @@ export class KillSwitchService {
 
   async engage(reason: string, options: { flatten?: boolean } = {}) {
     await this.save(true, reason);
-    this.logger.warn(`KILL SWITCH ENGAGED: ${reason}`);
+    this.logger.warn(`KILL SWITCH ENGAGED (${AccountContext.id()}): ${reason}`);
     const canceled = await this.alpaca.cancelAllOrders();
     const closed = options.flatten ? await this.alpaca.closeAllPositions() : [];
     return { canceledOrders: canceled.length, closedPositions: closed.length };
@@ -45,12 +46,14 @@ export class KillSwitchService {
 
   async release(): Promise<void> {
     await this.save(false, undefined);
-    this.logger.warn('Kill switch released: trading allowed again');
+    this.logger.warn(
+      `Kill switch released (${AccountContext.id()}): trading allowed again`,
+    );
   }
 
   private async save(engaged: boolean, reason: string | undefined) {
     await this.model.updateOne(
-      { _id: RISK_STATE_ID },
+      { _id: AccountContext.id() },
       { $set: { killSwitchEngaged: engaged, killSwitchReason: reason } },
       { upsert: true },
     );

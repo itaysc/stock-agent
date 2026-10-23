@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
+import { AccountContext } from '../accounts/account-context.js';
 import { stripUndefined } from '../backtest/runs/run-fingerprint.js';
 import type { BrokerState } from './broker.types.js';
 import { DEFAULT_PARAMS } from './universe.js';
@@ -15,7 +16,8 @@ export class BrokerStateDoc {
 }
 export const BrokerStateSchema = SchemaFactory.createForClass(BrokerStateDoc);
 
-const ID = 'broker';
+/** One broker per account: `broker:<account number>`. */
+const id = () => `broker:${AccountContext.id()}`;
 const INITIAL: BrokerState = {
   deploymentId: null,
   params: DEFAULT_PARAMS,
@@ -32,13 +34,13 @@ export class BrokerStore {
   ) {}
 
   async get(): Promise<BrokerState> {
-    const doc = await this.model.findById(ID).lean();
+    const doc = await this.model.findById(id()).lean();
     return { ...INITIAL, ...doc?.state };
   }
 
   async save(state: BrokerState): Promise<void> {
     await this.model.updateOne(
-      { _id: ID },
+      { _id: id() },
       { $set: { state: stripUndefined(state) } },
       { upsert: true },
     );

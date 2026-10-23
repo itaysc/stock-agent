@@ -1,4 +1,5 @@
 import { Badge, Button, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { IconPlayerPause, IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react';
 import { api } from '../../api/client';
 import type { BrokerOverview, InvestmentView } from '../../api/broker-types';
@@ -6,6 +7,7 @@ import { cashShown, money, pct, tone } from '../../lib/format';
 import { StatCard } from '../results/StatCard';
 import { BrokerActivity } from './BrokerActivity';
 import { BrokerHoldings } from './BrokerHoldings';
+import { EmptySlotNudge } from './EmptySlotNudge';
 import { BrokerHow } from './BrokerHow';
 import { LiveVsBacktest } from './LiveVsBacktest';
 import { MonthCalendar } from './MonthCalendar';
@@ -26,6 +28,7 @@ export function InvestmentPanel({
   onOverview: (o: BrokerOverview) => void;
   onError: (message: string) => void;
 }) {
+  const mobile = useIsMobile();
   const act = async (action: 'pause' | 'resume' | 'stop') => {
     try {
       onOverview(await api.brokerInvestment(view.deploymentId, action));
@@ -38,7 +41,7 @@ export function InvestmentPanel({
       <Group justify="space-between" align="flex-end">
         <div>
           <Group gap="xs">
-            <Title order={2}>{view.name}</Title>
+            <Title order={mobile ? 3 : 2}>{view.name}</Title>
             <Badge variant="light" color={STATUS[view.status].color}>
               {STATUS[view.status].label}
             </Badge>
@@ -48,7 +51,7 @@ export function InvestmentPanel({
             {view.statusReason ? ` · ${view.statusReason}` : ''}
           </Text>
         </div>
-        <Group gap="xs">
+        <Group gap="xs" grow={mobile} w={mobile ? '100%' : undefined}>
           {view.status === 'active' ? (
             <Button
               variant="default"
@@ -101,6 +104,12 @@ export function InvestmentPanel({
         />
         <StatCard label="Cash" {...cashShown(view.cash, view.holdings.length)} />
       </SimpleGrid>
+      <EmptySlotNudge
+        investmentId={view.deploymentId}
+        emptySlots={view.emptySlots ?? 0}
+        topN={Number(view.params.topN ?? 5) || 5}
+        onOverview={onOverview}
+      />
       <BrokerHoldings
         investmentId={view.deploymentId}
         holdings={view.holdings}

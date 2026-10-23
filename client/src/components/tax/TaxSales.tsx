@@ -1,6 +1,8 @@
 import { Paper, ScrollArea, Stack, Table, Text, Title } from '@mantine/core';
 import type { TaxHolding, TaxSale } from '../../api/tax-types';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { money, shekels } from '../../lib/format';
+import { ListRow } from '../shared/ListRow';
 
 const color = (n: number) => (n >= 0 ? 'teal' : 'red');
 
@@ -14,11 +16,25 @@ export function TaxSales({
   holdings: TaxHolding[];
   valuedOn: string;
 }) {
+  const mobile = useIsMobile();
   return (
     <Paper p="md" withBorder>
       <Stack gap="sm">
         <Title order={5}>Sales</Title>
-        {sales.length ? (
+        {sales.length && mobile ? (
+          <div>
+            {sales.map((s, i) => (
+              <ListRow
+                key={i}
+                title={`${s.symbol} · ${s.qty.toFixed(4)} shares`}
+                value={shekels(s.realGainIls)}
+                valueColor={color(s.realGainIls)}
+                sub={`Bought ${s.boughtOn.join(', ') || '?'} · sold ${s.soldOn}`}
+                subValue={`${money(s.gainUsd)} · ${money(s.costUsd)} → ${money(s.proceedsUsd)}`}
+              />
+            ))}
+          </div>
+        ) : sales.length ? (
           <ScrollArea>
             <Table striped fz="xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
               <Table.Thead>
@@ -67,7 +83,19 @@ export function TaxSales({
           </Text>
         )}
         <Title order={6}>Still held on {valuedOn}</Title>
-        {holdings.length ? (
+        {holdings.length && mobile ? (
+          <div>
+            {holdings.map((h) => (
+              <ListRow
+                key={h.symbol}
+                title={`${h.symbol} · ${h.qty.toFixed(4)} shares`}
+                value={h.valueIls === null ? '?' : shekels(h.valueIls)}
+                sub={`Cost ${money(h.costUsd)} (${shekels(h.costIls)})`}
+                subValue={h.valueUsd === null ? '?' : `worth ${money(h.valueUsd)}`}
+              />
+            ))}
+          </div>
+        ) : holdings.length ? (
           <ScrollArea>
             <Table fz="xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
               <Table.Thead>

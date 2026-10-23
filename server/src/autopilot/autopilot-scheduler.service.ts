@@ -11,6 +11,7 @@ import { nextRunAt, runSummary } from './autopilot-helpers.js';
 import { AutopilotStore } from './autopilot-store.js';
 import { AutopilotService } from './autopilot.service.js';
 import { NotifierService } from '../notify/notifier.service.js';
+import { AlpacaAccounts } from '../accounts/alpaca-accounts.service.js';
 
 const HOUR_MS = 3_600_000;
 
@@ -30,6 +31,7 @@ export class AutopilotSchedulerService
     private readonly store: AutopilotStore,
     private readonly autopilot: AutopilotService,
     private readonly notifier: NotifierService,
+    private readonly accounts: AlpacaAccounts,
   ) {}
 
   get enabled(): boolean {
@@ -38,7 +40,10 @@ export class AutopilotSchedulerService
 
   onApplicationBootstrap(): void {
     if (!this.enabled) return;
-    this.timer = setInterval(() => void this.tick(), HOUR_MS);
+    this.timer = setInterval(
+      () => void this.accounts.forEach('Autopilot check', () => this.tick()),
+      HOUR_MS,
+    );
   }
 
   onApplicationShutdown(): void {

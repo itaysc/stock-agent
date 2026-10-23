@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import type { AutopilotRun, AutopilotSettings } from './autopilot.types.js';
 
-/** The autopilot's settings: a single document with _id "settings". */
+/** The autopilot's settings: one document per account, _id "settings:<account number>". */
 @Schema({ collection: 'autopilot_settings', timestamps: true })
 export class AutopilotSettingsDoc {
   @Prop({ type: String, required: true })
@@ -16,6 +16,10 @@ export class AutopilotSettingsDoc {
 export class AutopilotRunDoc {
   @Prop({ type: String, required: true })
   _id: string;
+
+  /** The Alpaca account (its account number). */
+  @Prop({ type: String, required: true, index: true })
+  accountId: string;
 
   @Prop({ type: Object, required: true })
   run: AutopilotRun;

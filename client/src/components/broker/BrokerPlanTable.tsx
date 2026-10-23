@@ -1,12 +1,37 @@
 import { Table, Text } from '@mantine/core';
 import type { BrokerPlan } from '../../api/broker-types';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { money } from '../../lib/format';
+import { ListRow } from '../shared/ListRow';
 
 const price = (n: number | null) => (n === null ? '—' : `$${n.toFixed(2)}`);
 const shares = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(4));
 
 /** The suggested spread of the money: what, how much, and why. */
 export function BrokerPlanTable({ plan }: { plan: BrokerPlan }) {
+  const mobile = useIsMobile();
+  if (mobile)
+    return (
+      <div>
+        {plan.rows.map((r) => (
+          <ListRow
+            key={r.symbol}
+            title={`${r.symbol} · ${r.weightPct.toFixed(0)}%`}
+            value={money(r.amount)}
+            sub={r.why}
+            subValue={
+              <>
+                {shares(r.qty)} × {price(r.price)}
+                <br />
+                <Text span c="red" inherit>
+                  stop {price(r.stopPrice)}
+                </Text>
+              </>
+            }
+          />
+        ))}
+      </div>
+    );
   return (
     <Table.ScrollContainer minWidth={640}>
       <Table verticalSpacing={6}>

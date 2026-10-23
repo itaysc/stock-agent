@@ -120,6 +120,8 @@ export type BrokerView =
       planned: BrokerPlanned[];
       /** Stocks you sold: it does not buy them again before these dates. */
       noBuyUntil: Array<{ symbol: string; until: string }>;
+      /** Places you left empty after selling a stock (waiting in T-bills for your pick). */
+      emptySlots?: number;
       activity: BrokerActivity[];
     } & BrokerBase);
 
@@ -236,3 +238,11 @@ export type InvestmentView = Exclude<BrokerView, { status: 'off' }>;
 export type BrokerOverview = Extract<BrokerView, { status: 'off' }> & {
   investments: InvestmentView[];
 };
+
+/** A stock that could take a free place: its rank among the 50 and its 12-month rise. */
+export interface NextInLine {
+  symbol: string;
+  rank: number;
+  momentumPct: number;
+  price: number;
+}

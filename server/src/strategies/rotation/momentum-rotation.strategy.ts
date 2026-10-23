@@ -9,6 +9,7 @@ import {
 } from './rotation-tranches.js';
 import { holdingExits } from './rotation-exits.js';
 import { applyTrim } from './rotation-trim.js';
+import { leaveSlotsEmpty, NO_STEER, type Steer } from './rotation-slots.js';
 import { bearWindow, cutForBear, marketInBear } from './rotation-bear.js';
 import { RotationGuard } from './rotation-guard.js';
 import { pointInTime } from './rotation-universe.js';
@@ -46,6 +47,8 @@ export class MomentumRotationStrategy implements Strategy {
   private readonly tranches: Tranches;
   /** The latest close it saw (for a point-in-time universe in the lab). */
   private now = new Date(0);
+  /** Set by the live runner each cycle: stocks you sold by hand and slots you left empty. */
+  steer: Steer = NO_STEER;
 
   constructor(
     readonly symbols: string[],
@@ -217,7 +220,9 @@ export class MomentumRotationStrategy implements Strategy {
       (s) =>
         s === safe ||
         ((this.closes.get(s)?.length ?? 0) >= this.warmupBars &&
-          pointInTime.allowed(s, this.now)),
+          pointInTime.allowed(s, this.now) &&
+          // A stock you sold by hand isn't picked while it waits: the next in line moves up.
+          !this.steer.skip(s)),
     );
   }
 
@@ -245,15 +250,17 @@ export class MomentumRotationStrategy implements Strategy {
     held?: (symbol: string) => boolean,
   ): Map<string, { weight: number; why: string }> {
     const raw = this.rawTargets(held);
+    const safe = this.p.safeLast ? this.symbols.at(-1) : undefined;
     // bearCut: less in stocks while the market is down over the last bearMonths.
-    return this.p.bearCut > 0 &&
+    const cut =
+      this.p.bearCut > 0 &&
       marketInBear(this.market, this.p.bearMonths) === true
-      ? cutForBear(
-          raw,
-          this.p.bearCut,
-          this.p.safeLast ? this.symbols.at(-1) : undefined,
-        )
-      : raw;
+        ? cutForBear(raw, this.p.bearCut, safe)
+        : raw;
+    // Your empty slots stay empty (in T-bills) until you pick a stock for them.
+    return held && this.steer.emptySlots > 0
+      ? leaveSlotsEmpty(cut, this.ranking(), held, this.steer.emptySlots, safe)
+      : cut;
   }
 
   private rawTargets(

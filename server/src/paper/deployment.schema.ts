@@ -7,6 +7,10 @@ export class DeploymentRun {
   @Prop({ type: String, required: true })
   _id: string;
 
+  /** The Alpaca account it trades (its account number). */
+  @Prop({ type: String, required: true })
+  accountId: string;
+
   @Prop({ type: String, required: true, index: true })
   status: DeploymentStatus;
 
@@ -25,3 +29,4 @@ export class DeploymentRun {
 }
 
 export const DeploymentRunSchema = SchemaFactory.createForClass(DeploymentRun);
+DeploymentRunSchema.index({ accountId: 1, status: 1 });

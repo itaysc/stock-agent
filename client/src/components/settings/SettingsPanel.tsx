@@ -22,6 +22,7 @@ import { PortfolioFields } from './PortfolioFields';
 import { ResearchFields } from './ResearchFields';
 import { StrategyFields } from './StrategyFields';
 import { WalkForwardFields } from './WalkForwardFields';
+import { StickyAction } from '../shared/StickyAction';
 
 interface Props {
   form: UseFormReturnType<FormValues>;
@@ -42,7 +43,7 @@ export function SettingsPanel({ form, options, running, onRun }: Props) {
 
   return (
     <Paper p="lg" pos={{ md: 'sticky' }} top={76}>
-      <form onSubmit={form.onSubmit(onRun)}>
+      <form id="run-settings" onSubmit={form.onSubmit(onRun)}>
         <Stack gap="md">
           <Title order={4}>Run settings</Title>
           <ModeSwitch form={form} options={options} />
@@ -117,16 +118,20 @@ export function SettingsPanel({ form, options, running, onRun }: Props) {
               {...form.getInputProps('fresh', { type: 'checkbox' })}
             />
           )}
-          <Button
-            type="submit"
-            size="md"
-            fullWidth
-            loading={running}
-            disabled={blocked}
-            leftSection={<IconPlayerPlayFilled size={16} />}
-          >
-            {label}
-          </Button>
+          {/* A sticky bar on a phone (outside the form there, so it names the form). */}
+          <StickyAction block>
+            <Button
+              type="submit"
+              form="run-settings"
+              size="md"
+              fullWidth
+              loading={running}
+              disabled={blocked}
+              leftSection={<IconPlayerPlayFilled size={16} />}
+            >
+              {label}
+            </Button>
+          </StickyAction>
         </Stack>
       </form>
     </Paper>

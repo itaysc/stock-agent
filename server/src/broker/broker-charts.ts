@@ -57,6 +57,8 @@ export async function stockChart(
   symbol: string,
   range: ChartRange = 'buy',
   compare = false,
+  /** Without an investment: when you bought it (the Trade page), for the "since buy" range. */
+  boughtAt: Date | null = null,
 ) {
   // The part (sleeve) that trades this symbol.
   const sleeve = d
@@ -70,7 +72,7 @@ export async function stockChart(
     : 0;
   const l = d?.ledgers[sleeve];
   const position = l?.positions[symbol];
-  const opened = l ? openedAt(l.trades, symbol) : null;
+  const opened = l ? openedAt(l.trades, symbol) : boughtAt;
   const start = new Date((opened ?? new Date()).getTime() - 90 * DAY_MS);
   const bars = (await daily(backtests, [symbol], start))[symbol] ?? [];
   const auto =

@@ -3,7 +3,8 @@ import { getModelToken, MongooseModule } from '@nestjs/mongoose';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import type { Model } from 'mongoose';
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
+import { asAccount, inAccount } from '../../src/accounts/testing.js';
 import { AlpacaStreamService } from '../../src/alpaca/alpaca-stream.service.js';
 import { AlpacaService } from '../../src/alpaca/alpaca.service.js';
 import {
@@ -37,7 +38,12 @@ export async function createOrdersTestbed() {
       { provide: RiskService, useValue: risk },
       {
         provide: AlpacaStreamService,
-        useValue: { tradeUpdates$: tradeUpdates.asObservable() },
+        // Each update arrives inside its account, as the real streams deliver them.
+        useValue: {
+          tradeUpdates$: new Observable<streaming.TradeUpdate>((sub) =>
+            tradeUpdates.subscribe((u) => asAccount('PA1', () => sub.next(u))),
+          ),
+        },
       },
     ],
   }).compile();
@@ -54,7 +60,7 @@ export async function createOrdersTestbed() {
     tradeUpdates,
     orders,
     events,
-    ordersService: moduleRef.get(OrdersService),
+    ordersService: inAccount(moduleRef.get(OrdersService)),
     findOrder: (clientOrderId: string) =>
       orders.findOne({ clientOrderId }).lean(),
     reset: async () => {

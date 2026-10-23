@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../config/env.js';
+import { AccountContext } from '../accounts/account-context.js';
 
 /** Telegram allows 4,096 characters per message. */
 const TELEGRAM_MAX = 4_000;
@@ -54,7 +55,10 @@ export class TelegramClient {
       ...(buttons.length && {
         reply_markup: {
           inline_keyboard: [
-            buttons.map((b) => ({ text: b.text, callback_data: b.data })),
+            buttons.map((b) => ({
+              text: b.text,
+              callback_data: withAccount(b.data),
+            })),
           ],
         },
       }),
@@ -109,4 +113,22 @@ export class TelegramError extends Error {
   ) {
     super(message);
   }
+}
+
+/**
+ * A button sent from inside an account remembers it ("sell:id~PA123"), so the
+ * press is answered in that account (see accountOfButton).
+ */
+function withAccount(data: string): string {
+  const account = AccountContext.maybe()?.id;
+  return account ? `${data}~${account}` : data;
+}
+
+/** A pressed button's data and the account it was sent from, if any. */
+export function accountOfButton(data: string): {
+  data: string;
+  account?: string;
+} {
+  const [plain, account] = data.split('~');
+  return { data: plain, account };
 }

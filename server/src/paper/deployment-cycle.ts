@@ -19,6 +19,7 @@ import { step } from './cycle-step.js';
 import { drawdownAlert } from './drawdown-alert.js';
 import { watchEarnings } from './earnings-check.js';
 import { dropHeldOffBuys, manualExits } from './manual-exits.js';
+import { steerStrategies } from './your-picks.js';
 import { releaseStaged, watchHeld } from './news-check.js';
 import { ledgerEquity } from './sleeve-ledger.js';
 
@@ -107,6 +108,8 @@ export async function runCycle(
       .map((b) => b.timestamp.getTime()),
   );
   const last = d.lastBarAt ? new Date(d.lastBarAt).getTime() : null;
+  // What you did by hand (sold a stock, left its slot empty) steers today's picks.
+  steerStrategies(d, runtime, now);
 
   if (!runtime.warmed) {
     // Replay history without orders. A new deployment then acts on the latest

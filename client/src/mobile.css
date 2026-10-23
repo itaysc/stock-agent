@@ -1,0 +1,33 @@
+/* Phone layout rules that apply app-wide (see also components/shell). */
+
+body {
+  /* No grey flash on every tap (iOS/Android). */
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 47.99em) {
+  /* iOS zooms into any field under 16px when it gets focus. */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Dialogs open as bottom sheets: full width, rounded top, above the home bar. */
+  .app-modal-inner {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+  .app-modal-content {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 16px 16px 0 0 !important;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Tables that stay tables (the Lab) scroll sideways inside their box, never the page. */
+  .mantine-Table-table {
+    font-size: 13px;
+  }
+}

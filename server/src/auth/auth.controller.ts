@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   HttpCode,
+  Param,
   Post,
   Req,
   Res,
@@ -16,7 +18,9 @@ import type { Request, Response } from 'express';
 import type { Env } from '../config/env.js';
 import { AUTH_COOKIE, type AuthUser, Public } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
-import { durationMs, tokenFrom } from './auth-request.js';
+import { SignUpDto } from './users/users.dto.js';
+import { UsersService } from './users/users.service.js';
+import { setLoginCookie, tokenFrom } from './auth-request.js';
 
 export class LoginDto {
   @ApiProperty({ example: 'you@example.com' })
@@ -35,6 +39,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly config: ConfigService<Env, true>,
+    private readonly users: UsersService,
   ) {}
 
   @Public()
@@ -50,16 +55,49 @@ export class AuthController {
     @Req() req: Request & { user: AuthUser },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const accessToken = this.auth.sign(req.user);
+    return this.logIn(req.user, res);
+  }
+
+  @Public()
+  @Get('invites/:token')
+  @ApiOperation({ summary: 'Whether a sign-up link still works' })
+  async invite(@Param('token') token: string) {
+    await this.users.checkInvite(token);
+    return { ok: true };
+  }
+
+  @Public()
+  @Post('signup')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Sign up with an invite link (once), and log in',
+  })
+  async signUp(
+    @Body() dto: SignUpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    if (!this.auth.loginEnabled)
+      throw new BadRequestException('The login is not set up on this server');
+    const email = await this.users.signUp(
+      dto.token,
+      dto.email,
+      dto.password,
+      this.auth.adminEmail,
+    );
+    return this.logIn(this.auth.userFor(email), res);
+  }
+
+  /** Signs the JWT and sets the cookie (also right after signing up). */
+  logIn(user: AuthUser, res: Response) {
+    const accessToken = this.auth.sign(user);
     const expiresIn = this.config.get('JWT_EXPIRES_IN', { infer: true });
-    res.cookie(AUTH_COOKIE, accessToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: this.config.get('NODE_ENV', { infer: true }) === 'production',
-      maxAge: durationMs(expiresIn),
-      path: '/',
-    });
-    return { accessToken, tokenType: 'Bearer', expiresIn, user: req.user };
+    setLoginCookie(
+      res,
+      accessToken,
+      expiresIn,
+      this.config.get('NODE_ENV', { infer: true }) === 'production',
+    );
+    return { accessToken, tokenType: 'Bearer', expiresIn, user };
   }
 
   @Public()

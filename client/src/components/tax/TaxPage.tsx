@@ -17,6 +17,8 @@ import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import type { TaxReport, TaxYears } from '../../api/tax-types';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { currentAccountId } from '../../lib/account';
 import { shekels, timeAgo } from '../../lib/format';
 import { TaxRecords } from './TaxRecords';
 import { TaxSales } from './TaxSales';
@@ -37,6 +39,7 @@ const stat = (label: string, value: string, hint: string, color?: string) => (
 
 /** Every buy and sell with its shekel value, and the year's tax picture for the yearly report. */
 export function TaxPage() {
+  const mobile = useIsMobile();
   const thisYear = new Date().getFullYear();
   const [year, setYear] = useState(thisYear);
   const [paper, setPaper] = useState(true);
@@ -73,23 +76,29 @@ export function TaxPage() {
     <Stack gap="md">
       <Group justify="space-between" wrap="wrap">
         <div>
-          <Title order={3}>Tax records</Title>
+          {/* On a phone the top bar names the page. */}
+          <Title order={3} visibleFrom="sm">
+            Tax records
+          </Title>
           <Text size="sm" c="dimmed">
             Every buy and sell, copied from the broker with the Bank of Israel dollar rate of its
             day.
           </Text>
         </div>
-        <Group gap="xs">
+        <Group gap="xs" w={mobile ? '100%' : undefined}>
           <Select
-            size="xs"
-            w={100}
+            size={mobile ? 'sm' : 'xs'}
+            w={mobile ? undefined : 100}
+            style={mobile ? { flex: 1 } : undefined}
             value={String(year)}
             onChange={(v) => v && setYear(Number(v))}
             data={yearList.map(String)}
             allowDeselect={false}
           />
           <SegmentedControl
-            size="xs"
+            size={mobile ? 'md' : 'xs'}
+            // On a phone: a row of its own, under the year and the sync button.
+            style={mobile ? { flex: '1 1 100%', order: 3 } : undefined}
             value={paper ? 'paper' : 'real'}
             onChange={(v) => setPaper(v === 'paper')}
             data={[
@@ -98,7 +107,8 @@ export function TaxPage() {
             ]}
           />
           <Button
-            size="xs"
+            size={mobile ? 'sm' : 'xs'}
+            style={mobile ? { flex: 1 } : undefined}
             variant="default"
             leftSection={<IconRefresh size={14} />}
             loading={syncing}
@@ -155,7 +165,7 @@ export function TaxPage() {
           </Paper>
           <Group>
             <Anchor
-              href={`/api/v1/tax/sales.csv?year=${year}&paper=${paper}`}
+              href={`/api/v1/tax/sales.csv?year=${year}&paper=${paper}&account=${currentAccountId() ?? ''}`}
               download={`sales-${year}${paper ? '-paper' : ''}.csv`}
               size="sm"
             >

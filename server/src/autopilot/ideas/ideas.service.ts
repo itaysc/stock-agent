@@ -1,5 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { AccountContext } from '../../accounts/account-context.js';
+import { AlpacaAccounts } from '../../accounts/alpaca-accounts.service.js';
 import { NotifierService } from '../../notify/notifier.service.js';
 import { DeploymentsService } from '../../paper/deployments.service.js';
 import { sleeveFromResearch } from '../../paper/research-sleeve.js';
@@ -24,7 +26,18 @@ export class IdeasService {
     private readonly store: IdeaStore,
     private readonly deployments: DeploymentsService,
     private readonly notifier: NotifierService,
+    private readonly accounts: AlpacaAccounts,
   ) {}
+
+  /**
+   * Runs `fn` in the idea's own account: ideas are answered by id (Telegram,
+   * the Lab), whichever account the answer comes from.
+   */
+  private async inIdeaAccount<T>(id: string, fn: () => Promise<T>) {
+    const owner = await this.store.accountOf(id);
+    const account = owner ? this.accounts.get(owner) : undefined;
+    return account ? AccountContext.run(account, fn) : fn();
+  }
 
   /** Saves and sends an idea (replacing an older pending one on the same symbols). */
   async propose(
@@ -84,7 +97,7 @@ export class IdeasService {
 
   /** An idea you can still answer, or why not (for the bot's amount question). */
   async answerable(id: string, now = new Date()): Promise<Idea | string> {
-    return this.open(id.toLowerCase(), now);
+    return this.inIdeaAccount(id, () => this.open(id.toLowerCase(), now));
   }
 
   recent(): Promise<Idea[]> {
@@ -97,7 +110,7 @@ export class IdeasService {
     if (this.busy.has(key)) return `Already investing in idea ${key}…`;
     this.busy.add(key);
     try {
-      return await this.deploy(key, amount, now);
+      return await this.inIdeaAccount(key, () => this.deploy(key, amount, now));
     } finally {
       this.busy.delete(key);
     }
@@ -134,7 +147,11 @@ export class IdeasService {
   }
 
   /** Your no. Returns a reply. */
-  async skip(id: string, now = new Date()): Promise<string> {
+  skip(id: string, now = new Date()): Promise<string> {
+    return this.inIdeaAccount(id, () => this.skipNow(id, now));
+  }
+
+  private async skipNow(id: string, now: Date): Promise<string> {
     const idea = await this.open(id, now);
     if (typeof idea === 'string') return idea;
     await this.store.save({

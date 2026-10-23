@@ -1,3 +1,4 @@
+import { emptySlots } from '../paper/your-picks.js';
 import { deploymentEquity } from '../paper/deployment-cycle.js';
 import type { Deployment, LedgerTrade } from '../paper/deployment.types.js';
 import type { StrategyBar } from '../strategies/strategy.types.js';
@@ -141,6 +142,8 @@ export function brokerView(
     expectation: d.expectation,
     holdings,
     planned,
+    /** Places you left empty after selling a stock (waiting in T-bills for your pick). */
+    emptySlots: emptySlots(d),
     /** Stocks you sold: it does not buy them again before these dates. */
     noBuyUntil: Object.entries(d.noBuyUntil ?? {})
       .filter(([, until]) => new Date(until) > new Date())

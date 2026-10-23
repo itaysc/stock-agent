@@ -794,14 +794,18 @@ order log as market day orders. Details:
 
 ## Alpaca
 
-Set `ALPACA_API_KEY` / `ALPACA_API_SECRET` in `.env` (the "Key" and "Secret" from https://app.alpaca.markets → API Keys).
-The endpoint is derived from `ALPACA_PAPER`, so it is not configured separately.
+Alpaca accounts are added in the app (Accounts page), not in `.env`: each user adds their own
+paper key ("Key" and "Secret" from https://app.alpaca.markets → API Keys). The server checks it with
+Alpaca, then stores it encrypted (AES-256-GCM) in MongoDB with `ACCOUNTS_SECRET_KEY`: any random
+string of 32+ characters, set once for the server (`openssl rand -base64 32`). Keep it: without it
+the saved keys can't be read.
 
-- `ALPACA_PAPER=true` (default) trades on the paper account; `false` trades with **real money**.
-  Paper and live accounts have different keys, so the keys must match this flag.
+- Each account is known by its Alpaca account number, so a new key for the same account keeps its data.
+- Every record (investments, orders, broker state, Trade page, tax records, autopilot) belongs to one
+  account; API requests run in the account the app sends (`X-Account-Id`), background jobs once per account.
+- Users join with one-time invite links from the admin (`ADMIN_EMAIL`); each sees only their own
+  accounts, the admin sees all.
 - `ALPACA_DATA_FEED=iex` (free) or `sip` (paid data subscription).
-
-On startup the server verifies the keys against Alpaca and refuses to boot if they are rejected.
 
 Use `AlpacaService` (import `AlpacaModule`) for account, positions, orders and market data.
 Every order needs a unique, stable `clientOrderId`: order requests are never retried, and on a
@@ -916,7 +920,8 @@ Same setup as foozool-initiatives: a Dockerfile build from `server/`, with a hea
      and/or `API_TOKEN`: the server refuses to start on Railway without production mode and some
      authentication (the API can trade and sell: it must not be open).
    - `MONGODB_URI=${{MongoDB.MONGO_URL}}/stock-invest?authSource=admin`
-   - `ALPACA_API_KEY`, `ALPACA_API_SECRET`, `ALPACA_PAPER=true`, `ALPACA_STREAMS_ENABLED=false`
+   - `ACCOUNTS_SECRET_KEY` (32+ random characters, set once; the Alpaca keys are added in the app),
+     `ALPACA_STREAMS_ENABLED=false`
    - `PAPER_TRADING_ENABLED=true`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and the optional keys
      (`OPENAI_API_KEY`, `SEC_USER_AGENT`, `ALPHAVANTAGE_API_KEY`). Don't set `PORT` or `HOST`.
 5. Deploy; Railway waits for `GET /health` to pass. Call the API with

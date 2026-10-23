@@ -1,6 +1,9 @@
 import { Alpaca, type streaming } from '@alpacahq/alpaca-trade-api';
 import { decode, encode } from '@msgpack/msgpack';
 import type { ConfigService } from '@nestjs/config';
+import { EMPTY } from 'rxjs';
+import type { AlpacaAccounts } from '../../src/accounts/alpaca-accounts.service.js';
+import { fakeAccount } from '../../src/accounts/testing.js';
 import { AlpacaStreamService } from '../../src/alpaca/alpaca-stream.service.js';
 import type { Env } from '../../src/config/env.js';
 
@@ -59,8 +62,15 @@ export function setup({ enabled = true, paper = true } = {}) {
       ],
   } as unknown as ConfigService<Env, true>;
 
+  const client = new Alpaca({ keyId: 'key', secret: 'secret', paper });
+  const account = { ...fakeAccount('PA1', client), paper };
+  const accounts = {
+    list: () => [account],
+    first: () => account,
+    changes$: EMPTY,
+  } as unknown as AlpacaAccounts;
   const service = new AlpacaStreamService(
-    new Alpaca({ keyId: 'key', secret: 'secret', paper }),
+    accounts,
     {
       pingIntervalMs: 0,
       wsFactory: (url, codec) => {

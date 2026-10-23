@@ -1,7 +1,7 @@
 import { type CycleDeps, logEvent } from './deployment-events.js';
 import { placeOne } from './deployment-orders.js';
 import type { Runtime } from './deployment-runtime.js';
-import type { Deployment } from './deployment.types.js';
+import type { Deployment, ManualLevels } from './deployment.types.js';
 
 const DAY_MS = 86_400_000;
 /** After you sell a stock (or your levels do), the strategy leaves it alone this long. */
@@ -14,6 +14,20 @@ export function holdOff(d: Deployment, symbol: string, now: Date): void {
   (d.noBuyUntil ??= {})[symbol] = new Date(
     now.getTime() + NO_BUY_DAYS * DAY_MS,
   );
+}
+
+/** Which of your levels a close crossed (the reason to sell), or null. */
+export function levelHit(
+  levels: ManualLevels | undefined,
+  close: number,
+): string | null {
+  const stop = levels?.stopPrice ?? null;
+  const take = levels?.takeProfitPrice ?? null;
+  if (stop !== null && close <= stop)
+    return `your stop loss (${usd(stop)}): closed at ${usd(close)}`;
+  if (take !== null && close >= take)
+    return `your profit target (${usd(take)}): closed at ${usd(close)}`;
+  return null;
 }
 
 /** Whether the strategy may buy `symbol` now. */
@@ -38,14 +52,7 @@ export async function manualExits(
       const levels = d.manual?.[p.symbol];
       const close = ledger.lastPrices[p.symbol];
       if (!levels || close === undefined) continue;
-      const stop = levels.stopPrice ?? null;
-      const take = levels.takeProfitPrice ?? null;
-      const why =
-        stop !== null && close <= stop
-          ? `your stop loss (${usd(stop)}): closed at ${usd(close)}`
-          : take !== null && close >= take
-            ? `your profit target (${usd(take)}): closed at ${usd(close)}`
-            : null;
+      const why = levelHit(levels, close);
       if (!why || ledger.pending.some((o) => o.symbol === p.symbol)) continue;
       const context = runtime.sleeves[i]?.context;
       if (context)

@@ -10,6 +10,10 @@ export class OrderEvent {
   @Prop({ type: String, required: true })
   clientOrderId: string;
 
+  /** The Alpaca account (its account number). */
+  @Prop({ type: String, index: true })
+  accountId?: string;
+
   @Prop({ type: String })
   alpacaOrderId?: string;
 

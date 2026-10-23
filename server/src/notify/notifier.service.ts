@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AccountContext } from '../accounts/account-context.js';
 import type { Env } from '../config/env.js';
 import { type Button, TelegramClient } from './telegram.client.js';
 
@@ -8,7 +9,8 @@ import { type Button, TelegramClient } from './telegram.client.js';
  * holdings) to every channel that's set up: a Telegram bot
  * (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID) and/or a webhook
  * (NOTIFY_WEBHOOK_URL, e.g. Slack). Never throws: a failed notification is
- * only logged.
+ * only logged. The channels are the admin's: news about other users'
+ * accounts isn't sent.
  */
 @Injectable()
 export class NotifierService {
@@ -33,6 +35,12 @@ export class NotifierService {
 
   /** Buttons only show in Telegram (the webhook gets the text). */
   async send(text: string, buttons: Button[] = []): Promise<void> {
+    const account = AccountContext.maybe();
+    const admin = this.config
+      .get('ADMIN_EMAIL', { infer: true })
+      .trim()
+      .toLowerCase();
+    if (account && account.owner !== admin) return;
     await Promise.all([
       this.telegram.send(text, buttons),
       this.sendWebhook(text),

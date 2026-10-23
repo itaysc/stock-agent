@@ -2,6 +2,7 @@ import { Button, Group, Text } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { tradingDay, when } from '../../lib/when';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 /** "0:42": the time left until `at` (0:00 once it has passed). */
 const left = (at: Date, now: number) => {
@@ -30,6 +31,7 @@ export function DataTimes({
   nextLiveAt: Date | null;
   onRefresh: () => void;
 }) {
+  const mobile = useIsMobile();
   // Ticks every second for the countdowns.
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -54,9 +56,9 @@ export function DataTimes({
         {next.length > 0 && ` · next update: ${next.join(', ')}`}
       </Text>
       <Button
-        size="compact-xs"
+        size={mobile ? 'compact-md' : 'compact-xs'}
         variant="subtle"
-        leftSection={<IconRefresh size={12} />}
+        leftSection={<IconRefresh size={mobile ? 16 : 12} />}
         onClick={onRefresh}
       >
         Refresh now

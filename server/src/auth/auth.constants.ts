@@ -6,7 +6,10 @@ export const JWT_AUDIENCE = 'stock-invest-app';
 export const AUTH_COOKIE = 'accessToken';
 
 export interface AuthUser {
+  /** Lowercase. */
   email: string;
+  /** The ADMIN_EMAIL login: sees every user's accounts and invites new users. */
+  admin: boolean;
 }
 
 const PUBLIC = 'isPublic';

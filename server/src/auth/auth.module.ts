@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
 import type { Env } from '../config/env.js';
 import { ApiAuthGuard } from './api-auth.guard.js';
@@ -11,11 +12,23 @@ import { JWT_AUDIENCE, JWT_ISSUER } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
 import { JwtStrategy } from './jwt.strategy.js';
 import { LocalStrategy } from './local.strategy.js';
+import {
+  InviteDoc,
+  InviteSchema,
+  UserDoc,
+  UserSchema,
+} from './users/user.schema.js';
+import { UsersController } from './users/users.controller.js';
+import { UsersService } from './users/users.service.js';
 
-/** The login (passport-local → a JWT) and the guard on every route (passport-jwt, or the API_TOKEN). */
+/** The logins (passport-local → a JWT), invited users, and the guard on every route (passport-jwt, or the API_TOKEN). */
 @Module({
   imports: [
     PassportModule,
+    MongooseModule.forFeature([
+      { name: UserDoc.name, schema: UserSchema },
+      { name: InviteDoc.name, schema: InviteSchema },
+    ]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
@@ -39,9 +52,10 @@ import { LocalStrategy } from './local.strategy.js';
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, UsersController],
   providers: [
     AuthService,
+    UsersService,
     LocalStrategy,
     JwtStrategy,
     { provide: APP_GUARD, useClass: ApiAuthGuard },

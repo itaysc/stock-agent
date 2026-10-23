@@ -4,7 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import type { Env } from '../config/env.js';
+import type { Request } from 'express';
 import type { AuthUser } from './auth.constants.js';
+import { UsersService } from './users/users.service.js';
 
 const MAX_FAILURES = 5;
 const LOCK_MS = 15 * 60_000;
@@ -15,7 +17,10 @@ const same = (a: string, b: string) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 
-/** The one login (ADMIN_EMAIL + ADMIN_PASSWORD_HASH), its JWTs, and the API_TOKEN for scripts. */
+/**
+ * The logins: the admin (ADMIN_EMAIL + ADMIN_PASSWORD_HASH) and the users who
+ * joined with an invite; their JWTs; and the API_TOKEN for scripts (as admin).
+ */
 @Injectable()
 export class AuthService {
   /** Failed logins per IP: blocked for a while after MAX_FAILURES. */
@@ -27,7 +32,32 @@ export class AuthService {
   constructor(
     private readonly config: ConfigService<Env, true>,
     private readonly jwt: JwtService,
+    private readonly users: UsersService,
   ) {}
+
+  /** The admin's email, lowercase ('' without a login). */
+  get adminEmail(): string {
+    return this.config.get('ADMIN_EMAIL', { infer: true }).trim().toLowerCase();
+  }
+
+  /** A user by email (admin or not). */
+  userFor(email: string): AuthUser {
+    const e = email.trim().toLowerCase();
+    return { email: e, admin: same(e, this.adminEmail) };
+  }
+
+  /**
+   * Who makes a request: the logged-in user, else the admin (the API_TOKEN,
+   * or a server with no login, where everything is open).
+   */
+  requester(req: Request): AuthUser {
+    return (
+      (req.user as AuthUser | undefined) ?? {
+        email: this.adminEmail,
+        admin: true,
+      }
+    );
+  }
 
   /** The login is set up (else only API_TOKEN, or nothing locally). */
   get loginEnabled(): boolean {
@@ -55,23 +85,24 @@ export class AuthService {
       : 0;
   }
 
-  /** Your email and password, checked against the bcrypt hash. */
+  /** An email and password, checked against the admin's or the user's bcrypt hash. */
   async validate(
     email: string,
     password: string,
     ip: string,
   ): Promise<AuthUser | null> {
-    const admin = this.config.get('ADMIN_EMAIL', { infer: true });
-    const hash = this.config.get('ADMIN_PASSWORD_HASH', { infer: true });
+    const user = this.userFor(email);
+    const hash = user.admin
+      ? this.config.get('ADMIN_PASSWORD_HASH', { infer: true })
+      : await this.users.passwordHash(user.email);
     // Always compare a hash, so a wrong email takes as long as a wrong password.
-    const ok =
-      (await bcrypt.compare(
-        password,
-        hash || '$2b$10$invalidinvalidinvalidinvalidinvalidinvalidinvali',
-      )) && same(email.trim().toLowerCase(), admin.trim().toLowerCase());
-    if (ok) {
+    const ok = await bcrypt.compare(
+      password,
+      hash || '$2b$10$invalidinvalidinvalidinvalidinvalidinvalidinvali',
+    );
+    if (ok && hash) {
       this.failures.delete(ip);
-      return { email: admin };
+      return user;
     }
     const f = this.failures.get(ip);
     const now = Date.now();
@@ -92,7 +123,7 @@ export class AuthService {
   verify(token: string | undefined): AuthUser | null {
     if (!token || !this.loginEnabled) return null;
     try {
-      return { email: this.jwt.verify<{ sub: string }>(token).sub };
+      return this.userFor(this.jwt.verify<{ sub: string }>(token).sub);
     } catch {
       return null;
     }

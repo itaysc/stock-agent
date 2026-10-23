@@ -46,7 +46,7 @@ describe('AlpacaStreamService', () => {
       });
     });
 
-    it('uses the live endpoint when ALPACA_PAPER=false', () => {
+    it('uses the live endpoint for a live account', () => {
       const { service, sockets } = setup({ paper: false });
       service.onApplicationBootstrap();
       expect(sockets[0].url).toBe('wss://api.alpaca.markets/stream');
