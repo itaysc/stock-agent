@@ -50,7 +50,7 @@ export function SignupPage({ token, onDone }: { token: string; onDone: () => voi
       <Paper withBorder p="xl" w={400} maw="100%">
         <Stack gap="md">
           <Stack gap={4} align="center">
-            <Title order={3}>Join Stock Invest</Title>
+            <Title order={3}>Join Bullwether</Title>
             <Text size="sm" c="dimmed" ta="center">
               You were invited. Pick your login, then add your own Alpaca paper account.
             </Text>

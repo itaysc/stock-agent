@@ -23,7 +23,7 @@ export class NotifyController {
         'No notification channel is set up: add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID (or NOTIFY_WEBHOOK_URL) to server/.env',
       );
     }
-    await this.notifier.send('✅ Test from stock-invest: notifications work.');
+    await this.notifier.send('✅ Test from Bullwether: notifications work.');
     return { sentTo: this.notifier.channels() };
   }
 }

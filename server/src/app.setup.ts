@@ -86,7 +86,7 @@ export function setupApp(app: INestApplication): void {
     const document = SwaggerModule.createDocument(
       app,
       new DocumentBuilder()
-        .setTitle('Stock Invest API')
+        .setTitle('Bullwether API')
         .setDescription('Algo trading server')
         .setVersion('1')
         .build(),

@@ -1,4 +1,4 @@
-# Stock Invest — Server
+# Bullwether — Server
 
 NestJS 12 (ESM) server for the algo trading platform.
 
@@ -630,7 +630,7 @@ result) or the API. The Lab's **Paper trading** page shows every deployment.
        financial statements no longer reliable) blocks the buy, or alerts on / sells a holding.
        Notable filings (5.02 officers leaving, 2.06 write-downs, 2.05 restructuring, 4.01 auditor
        change) go to the AI with the headlines. EDGAR needs `SEC_USER_AGENT` (the SEC asks for a
-       contact, e.g. `"stock-invest you@example.com"`); without it the filings check is off.
+       contact, e.g. `"bullwether you@example.com"`); without it the filings check is off.
     2. **Headlines** from Alpaca, which come from one provider, **Benzinga**: the tone check (single
        stocks only) and the AI.
     3. **ETFs** (`src/info/etf-profiles.ts`: index, sector, bond, gold, international funds): the

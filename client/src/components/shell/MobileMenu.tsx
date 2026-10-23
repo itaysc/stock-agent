@@ -83,7 +83,7 @@ export function MobileMenu({
             </ThemeIcon>
             <div>
               <Text fw={700} lh={1.1}>
-                Stock Invest
+                Bullwether
               </Text>
               <Text size="xs" c="dimmed" lh={1.2}>
                 {user?.email ?? 'your paper broker'}

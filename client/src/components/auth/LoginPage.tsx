@@ -48,7 +48,7 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
               >
                 <IconChartLine size={26} />
               </ThemeIcon>
-              <Title order={3}>Stock Invest</Title>
+              <Title order={3}>Bullwether</Title>
               <Text size="sm" c="dimmed">
                 Log in to your paper broker
               </Text>

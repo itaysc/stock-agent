@@ -1,5 +1,5 @@
 {
-  "name": "stock-invest",
+  "name": "bullwether",
   "private": true,
   "description": "Algo trading platform: NestJS server + React client",
   "engines": {

@@ -46,7 +46,7 @@ export function Header({ options, page, onPage, accounts }: Props) {
         </ThemeIcon>
         <Box visibleFrom="sm">
           <Text fw={700} lh={1.1}>
-            Stock Invest
+            Bullwether
           </Text>
           <Text size="xs" c="dimmed" lh={1.1}>
             your paper broker

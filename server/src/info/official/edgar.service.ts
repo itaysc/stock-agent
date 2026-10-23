@@ -31,7 +31,7 @@ interface Submissions {
 /**
  * Companies' official 8-K filings (material events) from SEC EDGAR. The SEC
  * asks every client to send a User-Agent with a contact, so this is off until
- * SEC_USER_AGENT is set (e.g. "stock-invest you@example.com").
+ * SEC_USER_AGENT is set (e.g. "bullwether you@example.com").
  */
 @Injectable()
 export class EdgarService {

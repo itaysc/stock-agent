@@ -1,6 +1,6 @@
 {
-  "name": "Stock Invest",
-  "short_name": "Stock Invest",
+  "name": "Bullwether",
+  "short_name": "Bullwether",
   "description": "Your paper broker",
   "start_url": "/",
   "display": "standalone",

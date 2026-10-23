@@ -54,7 +54,7 @@ export const tradingEnv = {
   TAX_RECORDS_SYNC_ENABLED: z.stringbool().default(true),
   // Optional: earnings dates and surprises (free key at alphavantage.co) for the earnings blocks.
   ALPHAVANTAGE_API_KEY: z.string().default(''),
-  // SEC EDGAR asks for a contact in the User-Agent, e.g. "stock-invest you@example.com". Empty = filings check off.
+  // SEC EDGAR asks for a contact in the User-Agent, e.g. "bullwether you@example.com". Empty = filings check off.
   SEC_USER_AGENT: z.string().default(''),
   // Optional: Telegram notifications through your own bot (both needed; see the README).
   TELEGRAM_BOT_TOKEN: z.string().default(''),

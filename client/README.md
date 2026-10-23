@@ -1,4 +1,4 @@
-# Stock Invest — Client (Backtest Lab)
+# Bullwether — Client (Backtest Lab)
 
 React UI for running backtests, parameter sweeps, walk-forward tests and the AI research agent, and viewing their reports.
 Vite + React 19 + TypeScript, [Mantine](https://mantine.dev) components.

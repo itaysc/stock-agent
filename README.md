@@ -1,4 +1,4 @@
-# Stock Invest
+# Bullwether
 
 Algorithmic trading platform on [Alpaca](https://alpaca.markets): strategies, backtesting,
 risk checks, live (paper) trading, and a web UI for research.

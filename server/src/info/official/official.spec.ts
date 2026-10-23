@@ -72,7 +72,7 @@ describe('EdgarService', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     const on = new EdgarService({
-      get: () => 'stock-invest test@example.com',
+      get: () => 'bullwether test@example.com',
     } as never);
     const filings = await on.eightKs('AAPL', new Date('2026-09-01'));
     expect(filings).toEqual([
@@ -87,7 +87,7 @@ describe('EdgarService', () => {
       'https://data.sec.gov/submissions/CIK0000320193.json',
     );
     expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toMatchObject({
-      'User-Agent': 'stock-invest test@example.com',
+      'User-Agent': 'bullwether test@example.com',
     });
     expect(await on.eightKs('SPY', new Date(0))).toEqual([]); // funds aren't in the company list
   });

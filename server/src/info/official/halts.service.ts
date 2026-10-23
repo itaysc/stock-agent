@@ -67,7 +67,7 @@ export class HaltsService {
     if (this.cache && Date.now() - this.cache.at < CACHE_MS)
       return this.cache.halts;
     const res = await fetch(FEED, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (stock-invest)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (bullwether)' },
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
