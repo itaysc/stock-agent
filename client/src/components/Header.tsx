@@ -10,7 +10,15 @@ import {
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
-import { IconChartLine, IconLogout, IconMoon, IconSparkles, IconSun } from '@tabler/icons-react';
+import {
+  IconChartLine,
+  IconDownload,
+  IconLogout,
+  IconMoon,
+  IconSparkles,
+  IconSun,
+} from '@tabler/icons-react';
+import { useInstall } from '../pwa/useInstall';
 import type { Account } from '../api/account-types';
 import { AccountSwitcher } from './AccountSwitcher';
 import { useAuth } from './auth/AuthGate';
@@ -28,6 +36,7 @@ interface Props {
 }
 
 export function Header({ options, page, onPage, accounts }: Props) {
+  const install = useInstall();
   const { setColorScheme } = useMantineColorScheme();
   const { user, logout } = useAuth();
   const scheme = useComputedColorScheme('light');
@@ -91,6 +100,18 @@ export function Header({ options, page, onPage, accounts }: Props) {
             AI {options.aiEnabled ? 'on' : 'off'}
           </Badge>
         </Tooltip>
+        {install.canPrompt && !install.installed && (
+          <Tooltip label="Install Bullwether as an app">
+            <ActionIcon
+              variant="default"
+              size="lg"
+              aria-label="Install the app"
+              onClick={() => void install.install()}
+            >
+              <IconDownload size={18} />
+            </ActionIcon>
+          </Tooltip>
+        )}
         {user && (
           <Tooltip label={`Log out ${user.email}`}>
             <ActionIcon

@@ -30,14 +30,24 @@ export function App() {
       <Center h="100vh" p="md">
         <Stack align="center" gap="xs">
           <Loader />
-          {waiting && (
+          {waiting && !navigator.onLine ? (
             <>
-              <Text fw={600}>Waiting for the server…</Text>
+              <Text fw={600}>You&apos;re offline</Text>
               <Text size="sm" c="dimmed" ta="center" maw={360}>
-                It usually takes a few seconds to start. If it isn&apos;t running, start it with{' '}
-                <code>npm run dev</code> in the project root.
+                Prices and trades need the internet. It reconnects by itself when you&apos;re back
+                online.
               </Text>
             </>
+          ) : (
+            waiting && (
+              <>
+                <Text fw={600}>Waiting for the server…</Text>
+                <Text size="sm" c="dimmed" ta="center" maw={360}>
+                  It usually takes a few seconds to start. If it isn&apos;t running, start it with{' '}
+                  <code>npm run dev</code> in the project root.
+                </Text>
+              </>
+            )
           )}
         </Stack>
       </Center>

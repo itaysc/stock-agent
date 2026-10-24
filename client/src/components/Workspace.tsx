@@ -42,6 +42,16 @@ export type RunState =
   | { status: 'research'; session: ResearchSession }
   | { status: 'viewing'; report: ReportItem };
 
+const PAGES: Page[] = ['broker', 'trade', 'tax', 'lab', 'paper', 'accounts'];
+
+/** The page a home-screen shortcut asks for (/?page=trade), once: then the address is clean again. */
+function startPage(): Page | null {
+  const asked = new URLSearchParams(window.location.search).get('page') as Page | null;
+  if (!asked) return null;
+  window.history.replaceState(null, '', window.location.pathname);
+  return PAGES.includes(asked) ? asked : null;
+}
+
 export function Workspace({ options }: { options: BacktestOptions }) {
   const mobile = useIsMobile();
   const form = useForm<FormValues>({ initialValues: defaultValues(options) });
@@ -95,7 +105,7 @@ export function Workspace({ options }: { options: BacktestOptions }) {
   };
   // Just switched to a new account: what it brought in, shown on the Trade page.
   const [notice, setNotice] = useState(takeNotice);
-  const [page, setPage] = useState<Page>(notice ? 'trade' : 'broker');
+  const [page, setPage] = useState<Page>(() => startPage() ?? (notice ? 'trade' : 'broker'));
   const [accounts, setAccounts] = useState<Account[]>([]);
   useEffect(() => {
     void api.accounts().then(

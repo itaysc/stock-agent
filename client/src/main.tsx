@@ -6,7 +6,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { AuthGate } from './components/auth/AuthGate';
+import { registerPwa } from './pwa/pwa';
+import { UpdateNotice } from './pwa/UpdateNotice';
 import { theme } from './theme';
+
+registerPwa();
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
@@ -14,6 +18,7 @@ createRoot(document.getElementById('root') as HTMLElement).render(
       <AuthGate>
         <App />
       </AuthGate>
+      <UpdateNotice />
     </MantineProvider>
   </StrictMode>,
 );

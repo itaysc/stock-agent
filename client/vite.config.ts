@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react';
 import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
+import { serviceWorker } from './pwa/sw-plugin.ts';
 
 /**
  * On build, Netlify's _redirects file: /api and /reports go to the server
@@ -39,13 +40,15 @@ export default defineConfig(({ mode }) => {
     ...(token && { headers: { Authorization: `Bearer ${token}` } }),
   };
   return {
-    plugins: [react(), netlifyRedirects(apiUrl)],
+    plugins: [react(), netlifyRedirects(apiUrl), serviceWorker()],
     // Don't wipe the terminal: `npm run dev` at the repo root shares it with the server.
     clearScreen: false,
     server: {
       port: 5173,
       proxy: { '/api': target, '/reports': target },
     },
+    // `vite preview` (the built app, with its service worker) talks to the same server.
+    preview: { proxy: { '/api': target, '/reports': target } },
     test: { globals: true, include: ['src/**/*.test.ts'] },
   };
 });

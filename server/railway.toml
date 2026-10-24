@@ -15,7 +15,8 @@ restartPolicyType = "on_failure"
 # ADMIN_EMAIL, ADMIN_PASSWORD_HASH (npm run hash-password), JWT_SECRET (openssl rand -hex 32): the login
 # API_TOKEN=<openssl rand -hex 32> (for scripts; the login and/or this one is required)
 # MONGODB_URI=${{MongoDB.MONGO_URL}}/stock-invest?authSource=admin
-# ACCOUNTS_SECRET_KEY=<openssl rand -base64 32>  (set once; Alpaca keys are added in the app, encrypted with it)
+# ACCOUNTS_SECRET_KEY            (required to add accounts: 32+ random characters. Run `openssl rand -base64 32`
+#                                 in a terminal and paste its OUTPUT as the value. Set once; never change it.)
 # ALPACA_STREAMS_ENABLED=false   (the broker doesn't need them; Alpaca allows one stream per account)
 # PAPER_TRADING_ENABLED=true     (the runner + broker trade from here)
 # TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID  (only one server may read the bot: turn it off locally)

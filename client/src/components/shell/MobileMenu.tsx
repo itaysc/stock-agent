@@ -12,11 +12,13 @@ import {
   useMantineColorScheme,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
+import { useState } from 'react';
 import {
   IconArrowsExchange,
   IconBriefcase,
   IconChartLine,
   IconCheck,
+  IconDeviceMobileDown,
   IconUserCircle,
   IconFlask,
   IconLogout,
@@ -27,6 +29,8 @@ import {
 import type { Account } from '../../api/account-types';
 import type { BacktestOptions } from '../../api/types';
 import { currentAccountId, switchAccount } from '../../lib/account';
+import { InstallSteps } from '../../pwa/InstallSteps';
+import { useInstall } from '../../pwa/useInstall';
 import { useAuth } from '../auth/AuthGate';
 import type { Page } from '../Header';
 
@@ -52,6 +56,8 @@ export function MobileMenu({
 }) {
   const viewing = accounts.find((a) => a.id === currentAccountId()) ?? accounts[0];
   const [opened, { toggle, close }] = useDisclosure(false);
+  const [steps, setSteps] = useState(false);
+  const install = useInstall();
   const { setColorScheme } = useMantineColorScheme();
   const dark = useComputedColorScheme('light') === 'dark';
   const { user, logout } = useAuth();
@@ -143,6 +149,19 @@ export function MobileMenu({
             onClick={() => go('accounts')}
             styles={{ root: { borderRadius: 8, minHeight: 52 } }}
           />
+          {!install.installed && (install.canPrompt || install.ios) && (
+            <NavLink
+              label="Install the app"
+              description="On your home screen, full screen"
+              leftSection={<IconDeviceMobileDown size={22} stroke={1.6} />}
+              onClick={() => {
+                close();
+                if (install.canPrompt) void install.install();
+                else setSteps(true);
+              }}
+              styles={{ root: { borderRadius: 8, minHeight: 52 } }}
+            />
+          )}
           <Group justify="space-between" px="sm" py="sm">
             <Text size="sm">Dark mode</Text>
             <Switch
@@ -173,6 +192,7 @@ export function MobileMenu({
           )}
         </Stack>
       </Drawer>
+      <InstallSteps opened={steps} onClose={() => setSteps(false)} />
     </>
   );
 }
