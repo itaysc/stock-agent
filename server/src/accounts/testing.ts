@@ -10,6 +10,7 @@ export const fakeAccount = (
   name: id,
   paper: true,
   owner: '',
+  auth: 'key',
   keyHint: '0000',
   client: client as Alpaca,
 });

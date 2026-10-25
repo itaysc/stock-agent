@@ -46,6 +46,14 @@ const envSchema = z
     // keys encrypted with this: any random string of 32+ characters (e.g. openssl rand -base64 32).
     // Set once for the server; empty = no accounts can be added or read.
     ACCOUNTS_SECRET_KEY: z.string().default(''),
+    // "Log in with Alpaca" (OAuth): the app registered in Alpaca's dashboard, and this site's address
+    // (its redirect URI, registered there too, is PUBLIC_URL/api/v1/auth/alpaca/callback). Empty = off.
+    ALPACA_OAUTH_CLIENT_ID: z.string().default(''),
+    ALPACA_OAUTH_CLIENT_SECRET: z.string().default(''),
+    PUBLIC_URL: z
+      .string()
+      .default('')
+      .transform((v) => v.trim().replace(/\/+$/, '')),
     // Market data feed: 'iex' is free, 'sip' requires a paid data subscription.
     ALPACA_DATA_FEED: z.enum(['iex', 'sip']).default('iex'),
     // Real-time WebSocket streams (order updates + market data). Alpaca allows
@@ -57,6 +65,19 @@ const envSchema = z
   .superRefine((env, ctx) => {
     const issue = (path: string, message: string) =>
       ctx.addIssue({ code: 'custom', path: [path], message });
+    if (!env.ALPACA_OAUTH_CLIENT_ID !== !env.ALPACA_OAUTH_CLIENT_SECRET)
+      issue(
+        'ALPACA_OAUTH_CLIENT_ID',
+        'ALPACA_OAUTH_CLIENT_ID and ALPACA_OAUTH_CLIENT_SECRET go together',
+      );
+    if (
+      env.ALPACA_OAUTH_CLIENT_ID &&
+      !/^https?:\/\/[^/]+$/.test(env.PUBLIC_URL)
+    )
+      issue(
+        'PUBLIC_URL',
+        "is needed for Log in with Alpaca: this site's address, e.g. https://bullwether.app",
+      );
     if (env.ACCOUNTS_SECRET_KEY && env.ACCOUNTS_SECRET_KEY.length < 32)
       issue(
         'ACCOUNTS_SECRET_KEY',

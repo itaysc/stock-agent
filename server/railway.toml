@@ -17,6 +17,8 @@ restartPolicyType = "on_failure"
 # MONGODB_URI=${{MongoDB.MONGO_URL}}/stock-invest?authSource=admin
 # ACCOUNTS_SECRET_KEY            (required to add accounts: 32+ random characters. Run `openssl rand -base64 32`
 #                                 in a terminal and paste its OUTPUT as the value. Set once; never change it.)
+# ALPACA_OAUTH_CLIENT_ID / ALPACA_OAUTH_CLIENT_SECRET / PUBLIC_URL  (Log in with Alpaca, optional:
+#                                 PUBLIC_URL = the site's address; register PUBLIC_URL/api/v1/auth/alpaca/callback in Alpaca)
 # ALPACA_STREAMS_ENABLED=false   (the broker doesn't need them; Alpaca allows one stream per account)
 # PAPER_TRADING_ENABLED=true     (the runner + broker trade from here)
 # TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID  (only one server may read the bot: turn it off locally)

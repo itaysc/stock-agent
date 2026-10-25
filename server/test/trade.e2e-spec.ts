@@ -3,9 +3,9 @@ import {
   type MockRequest,
 } from '@alpacahq/alpaca-trade-api/testing';
 import type { INestApplication } from '@nestjs/common';
-import { getModelToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
-import type { Model } from 'mongoose';
+import type { Connection, Model } from 'mongoose';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AccountContext } from '../src/accounts/account-context.js';
@@ -171,6 +171,11 @@ describe('Trade API (e2e)', () => {
     await addTestAccount(app);
     await app
       .get<Model<MyStocksDoc>>(getModelToken(MyStocksDoc.name))
+      .deleteMany({});
+    // Rates other test files saved would win over this file's mocked 3.5.
+    await app
+      .get<Connection>(getConnectionToken())
+      .collection('usd_ils_rates')
       .deleteMany({});
   });
 

@@ -10,6 +10,8 @@ export interface ActiveAccount {
   paper: boolean;
   /** The user's email (lowercase) who added it. */
   owner: string;
+  /** key: an API key and secret; oauth: connected with Log in with Alpaca (no streams). */
+  auth: 'key' | 'oauth';
   /** The key's last 4 characters, to tell keys apart (the key itself is never shown). */
   keyHint: string;
   client: Alpaca;

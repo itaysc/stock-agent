@@ -805,6 +805,15 @@ the saved keys can't be read.
   account; API requests run in the account the app sends (`X-Account-Id`), background jobs once per account.
 - Users join with one-time invite links from the admin (`ADMIN_EMAIL`); each sees only their own
   accounts, the admin sees all.
+- **Log in with Alpaca** (OAuth2, paper accounts): anyone with an Alpaca account signs up from the
+  login page (Alpaca doesn't share an email, so one step asks for it) and logs in the same way after.
+  Accounts can also be added with **Connect with Alpaca** instead of a key. Set
+  `ALPACA_OAUTH_CLIENT_ID`, `ALPACA_OAUTH_CLIENT_SECRET` (an OAuth app registered in Alpaca's dashboard)
+  and `PUBLIC_URL` (the site's address; register `PUBLIC_URL/api/v1/auth/alpaca/callback` as the app's
+  redirect URI). The token is stored encrypted like keys; OAuth accounts have no WebSocket streams
+  (fills are found by checking orders).
+- Every login (password or Alpaca) syncs the user's accounts with Alpaca in the background (stocks
+  bought or sold outside the app, open orders, new fills, tax records).
 - `ALPACA_DATA_FEED=iex` (free) or `sip` (paid data subscription).
 
 Use `AlpacaService` (import `AlpacaModule`) for account, positions, orders and market data.

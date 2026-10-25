@@ -31,6 +31,7 @@ import { RecentReports } from './RecentReports';
 import { ResultArea } from './results/ResultArea';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { takeNotice } from '../lib/account';
+import { launch } from '../lib/launch';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppLayout } from './shell/AppLayout';
 
@@ -41,16 +42,6 @@ export type RunState =
   | { status: 'done'; result: RunResponse }
   | { status: 'research'; session: ResearchSession }
   | { status: 'viewing'; report: ReportItem };
-
-const PAGES: Page[] = ['broker', 'trade', 'tax', 'lab', 'paper', 'accounts'];
-
-/** The page a home-screen shortcut asks for (/?page=trade), once: then the address is clean again. */
-function startPage(): Page | null {
-  const asked = new URLSearchParams(window.location.search).get('page') as Page | null;
-  if (!asked) return null;
-  window.history.replaceState(null, '', window.location.pathname);
-  return PAGES.includes(asked) ? asked : null;
-}
 
 export function Workspace({ options }: { options: BacktestOptions }) {
   const mobile = useIsMobile();
@@ -103,9 +94,11 @@ export function Workspace({ options }: { options: BacktestOptions }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     void run(next);
   };
-  // Just switched to a new account: what it brought in, shown on the Trade page.
-  const [notice, setNotice] = useState(takeNotice);
-  const [page, setPage] = useState<Page>(() => startPage() ?? (notice ? 'trade' : 'broker'));
+  // Just switched to a new account: what it brought in, shown on the Trade page. Or a message
+  // from the address (back from Alpaca), and the page it asks for (also home-screen shortcuts).
+  const [notice, setNotice] = useState(() => takeNotice() ?? launch.notice);
+  const [failure, setFailure] = useState(launch.alpacaError);
+  const [page, setPage] = useState<Page>(() => launch.page ?? (notice ? 'trade' : 'broker'));
   const [accounts, setAccounts] = useState<Account[]>([]);
   useEffect(() => {
     void api.accounts().then(
@@ -147,6 +140,11 @@ export function Workspace({ options }: { options: BacktestOptions }) {
   return (
     <AppLayout options={options} page={page} onPage={setPage} accounts={accounts}>
       <Container size="xl" px={{ base: 0, sm: 'md' }}>
+        {failure && (
+          <Alert color="red" mb="md" withCloseButton onClose={() => setFailure(null)}>
+            {failure}
+          </Alert>
+        )}
         {notice && (
           <Alert color="teal" mb="md" withCloseButton onClose={() => setNotice(null)}>
             {notice}

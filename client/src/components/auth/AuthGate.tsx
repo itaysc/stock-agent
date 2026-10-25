@@ -1,7 +1,9 @@
 import { Center, Loader } from '@mantine/core';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import type { AuthUser } from '../../api/account-types';
+import { alpacaAuthApi } from '../../api/alpaca-auth-api';
 import { api, AUTH_REQUIRED } from '../../api/client';
+import { AlpacaEmailStep } from './AlpacaEmailStep';
 import { LoginPage } from './LoginPage';
 import { SignupPage } from './SignupPage';
 
@@ -22,10 +24,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<'checking' | 'login' | 'in'>('checking');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [invite, setInvite] = useState(inviteToken);
+  const [alpaca, setAlpaca] = useState<{ enabled: boolean; pending: string | null }>({
+    enabled: false,
+    pending: null,
+  });
   const check = useCallback(async () => {
     try {
-      const me = await api.authMe();
+      const [me, status] = await Promise.all([
+        api.authMe(),
+        alpacaAuthApi.status().catch(() => ({ enabled: false, pending: null })),
+      ]);
       setUser(me.user);
+      setAlpaca(status);
       setState(me.loginRequired && !me.user ? 'login' : 'in');
     } catch {
       setState('in'); // an older server without the login, or unreachable: the app shows its own error
@@ -61,6 +71,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
         }}
       />
     );
-  if (state === 'login') return <LoginPage onLoggedIn={() => void check()} />;
+  // Signed up with Alpaca: their email first.
+  if (state === 'login' && alpaca.pending)
+    return <AlpacaEmailStep account={alpaca.pending} onDone={() => void check()} />;
+  if (state === 'login')
+    return <LoginPage onLoggedIn={() => void check()} alpaca={alpaca.enabled} />;
   return <AuthContext.Provider value={{ user, logout }}>{children}</AuthContext.Provider>;
 }

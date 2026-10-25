@@ -2,6 +2,7 @@ import {
   Alert,
   Button,
   Center,
+  Divider,
   Paper,
   PasswordInput,
   Stack,
@@ -13,12 +14,22 @@ import {
 import { IconChartLine, IconLock } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { api } from '../../api/client';
+import { launch } from '../../lib/launch';
+import { AlpacaButton } from './AlpacaButton';
 
 /** Email and password; the server answers with a JWT in an httpOnly cookie. */
-export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
+export function LoginPage({
+  onLoggedIn,
+  alpaca,
+}: {
+  onLoggedIn: () => void;
+  /** Log in with Alpaca is set up on the server. */
+  alpaca: boolean;
+}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  // Coming back from Alpaca with a problem: say what it was.
+  const [error, setError] = useState<string | null>(launch.alpacaError);
   const [busy, setBusy] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -53,6 +64,15 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
                 Log in to your paper broker
               </Text>
             </Stack>
+            {alpaca && (
+              <>
+                <AlpacaButton mode="login" label="Log in with Alpaca" />
+                <Text size="xs" c="dimmed" ta="center" mt={-8}>
+                  New here? It creates your user from your Alpaca paper account.
+                </Text>
+                <Divider label="or with your email" labelPosition="center" />
+              </>
+            )}
             <TextInput
               label="Email"
               type="email"

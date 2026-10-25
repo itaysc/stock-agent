@@ -22,6 +22,8 @@ export interface AccountView {
   name: string;
   paper: boolean;
   keyHint: string;
+  /** key: added with an API key; oauth: connected with Log in with Alpaca. */
+  auth: 'key' | 'oauth';
   /** Who added it (shown to the admin only). */
   owner?: string;
 }
@@ -31,6 +33,7 @@ const view = (a: ActiveAccount, user: AuthUser): AccountView => ({
   name: a.name,
   paper: a.paper,
   keyHint: a.keyHint,
+  auth: a.auth,
   ...(user.admin ? { owner: a.owner } : {}),
 });
 
@@ -74,7 +77,7 @@ export class AccountsService {
       );
     const keyId = input.keyId.trim();
     const secret = input.secret.trim();
-    const client = this.accounts.newClient(keyId, secret, true);
+    const client = this.accounts.newClient({ keyId, secret }, true);
     const check = await client.trading.validateConnection();
     if (!check.ok) {
       if (check.status === 401 || check.status === 403)
@@ -98,6 +101,7 @@ export class AccountsService {
       name: input.name.trim() || id,
       paper: true,
       owner: user.email,
+      auth: 'key',
       keyHint: keyId.slice(-4),
       client,
     };
@@ -106,6 +110,7 @@ export class AccountsService {
       name: account.name,
       paper: true,
       owner: user.email,
+      auth: 'key',
       keyId: box.seal(keyId),
       secret: box.seal(secret),
       keyHint: account.keyHint,

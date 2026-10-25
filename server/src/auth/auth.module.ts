@@ -60,6 +60,6 @@ import { UsersService } from './users/users.service.js';
     JwtStrategy,
     { provide: APP_GUARD, useClass: ApiAuthGuard },
   ],
-  exports: [AuthService],
+  exports: [AuthService, UsersService],
 })
 export class AuthModule {}

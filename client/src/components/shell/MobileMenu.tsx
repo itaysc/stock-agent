@@ -113,7 +113,7 @@ export function MobileMenu({
                     {a.name}
                   </Text>
                 }
-                description={`${a.name !== a.id ? `${a.id} · ` : ''}${a.paper ? 'paper' : 'live'} · key …${a.keyHint}`}
+                description={`${a.name !== a.id ? `${a.id} · ` : ''}${a.paper ? 'paper' : 'live'}${a.auth === 'oauth' ? '' : ` · key …${a.keyHint}`}`}
                 leftSection={<IconUserCircle size={22} stroke={1.6} />}
                 rightSection={
                   on ? <IconCheck size={18} color="var(--mantine-color-teal-6)" /> : undefined

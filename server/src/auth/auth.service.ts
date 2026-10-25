@@ -4,8 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import type { Env } from '../config/env.js';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
+import { Subject } from 'rxjs';
 import type { AuthUser } from './auth.constants.js';
+import { setLoginCookie } from './auth-request.js';
 import { UsersService } from './users/users.service.js';
 
 const MAX_FAILURES = 5;
@@ -23,6 +25,10 @@ const same = (a: string, b: string) => {
  */
 @Injectable()
 export class AuthService {
+  private readonly loggedIn = new Subject<AuthUser>();
+  /** Every login (password, Alpaca, sign-up): e.g. to sync the user's accounts. */
+  readonly loggedIn$ = this.loggedIn.asObservable();
+
   /** Failed logins per IP: blocked for a while after MAX_FAILURES. */
   private readonly failures = new Map<
     string,
@@ -113,6 +119,20 @@ export class AuthService {
         : { count: 1, until: now + LOCK_MS },
     );
     return null;
+  }
+
+  /** Logs a browser in (the JWT as an httpOnly cookie) and announces the login. */
+  issueLogin(user: AuthUser, res: Response) {
+    const accessToken = this.sign(user);
+    const expiresIn = this.config.get('JWT_EXPIRES_IN', { infer: true });
+    setLoginCookie(
+      res,
+      accessToken,
+      expiresIn,
+      this.config.get('NODE_ENV', { infer: true }) === 'production',
+    );
+    this.loggedIn.next(user);
+    return { accessToken, tokenType: 'Bearer', expiresIn, user };
   }
 
   sign(user: AuthUser): string {

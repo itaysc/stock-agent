@@ -122,7 +122,13 @@ describe('Users and invites (e2e)', () => {
       .expect(200);
     const mine = await danaAgent.get('/api/v1/accounts').expect(200);
     expect(mine.body.accounts).toEqual([
-      { id: 'PA3', name: 'Mine', paper: true, keyHint: '0001' },
+      {
+        id: 'PA3',
+        name: 'Mine',
+        paper: true,
+        keyHint: '0001',
+        auth: 'key',
+      },
     ]);
     await danaAgent.delete('/api/v1/accounts/PA1').expect(404);
 

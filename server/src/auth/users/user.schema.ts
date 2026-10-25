@@ -7,8 +7,9 @@ export class UserDoc {
   @Prop({ type: String, required: true })
   _id!: string;
 
-  @Prop({ required: true })
-  passwordHash!: string;
+  /** None for a user who signed up with Alpaca (they log in with Alpaca). */
+  @Prop({ type: String })
+  passwordHash?: string;
 
   createdAt?: Date;
 }

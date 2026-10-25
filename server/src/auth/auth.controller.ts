@@ -20,7 +20,7 @@ import { AUTH_COOKIE, type AuthUser, Public } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
 import { SignUpDto } from './users/users.dto.js';
 import { UsersService } from './users/users.service.js';
-import { setLoginCookie, tokenFrom } from './auth-request.js';
+import { tokenFrom } from './auth-request.js';
 
 export class LoginDto {
   @ApiProperty({ example: 'you@example.com' })
@@ -89,15 +89,7 @@ export class AuthController {
 
   /** Signs the JWT and sets the cookie (also right after signing up). */
   logIn(user: AuthUser, res: Response) {
-    const accessToken = this.auth.sign(user);
-    const expiresIn = this.config.get('JWT_EXPIRES_IN', { infer: true });
-    setLoginCookie(
-      res,
-      accessToken,
-      expiresIn,
-      this.config.get('NODE_ENV', { infer: true }) === 'production',
-    );
-    return { accessToken, tokenType: 'Bearer', expiresIn, user };
+    return this.auth.issueLogin(user, res);
   }
 
   @Public()

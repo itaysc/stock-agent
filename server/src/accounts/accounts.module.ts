@@ -12,8 +12,15 @@ import {
   AlpacaAccountSchema,
 } from './alpaca-account.schema.js';
 import { AccountsController } from './api/accounts.controller.js';
+import { LoginSyncService } from './login-sync.service.js';
+import { AlpacaOAuthController } from './oauth/alpaca-oauth.controller.js';
+import { AlpacaOAuthService } from './oauth/alpaca-oauth.service.js';
+import {
+  AlpacaSignupDoc,
+  AlpacaSignupSchema,
+} from './oauth/alpaca-signup.schema.js';
 
-/** The Accounts API, and the account every API request runs in. */
+/** The Accounts API, Log in / Connect with Alpaca, and the account every API request runs in. */
 @Module({
   imports: [
     AlpacaModule,
@@ -22,11 +29,14 @@ import { AccountsController } from './api/accounts.controller.js';
     TradeModule,
     MongooseModule.forFeature([
       { name: AlpacaAccountDoc.name, schema: AlpacaAccountSchema },
+      { name: AlpacaSignupDoc.name, schema: AlpacaSignupSchema },
     ]),
   ],
-  controllers: [AccountsController],
+  controllers: [AccountsController, AlpacaOAuthController],
   providers: [
     AccountsService,
+    AlpacaOAuthService,
+    LoginSyncService,
     { provide: APP_INTERCEPTOR, useClass: AccountInterceptor },
   ],
 })

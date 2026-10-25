@@ -20,6 +20,9 @@ describe('validateEnv', () => {
       SWAGGER_ENABLED: true,
       MONGODB_URI: 'mongodb://localhost:27018/stock-invest',
       ACCOUNTS_SECRET_KEY: '',
+      ALPACA_OAUTH_CLIENT_ID: '',
+      ALPACA_OAUTH_CLIENT_SECRET: '',
+      PUBLIC_URL: '',
       ALPACA_DATA_FEED: 'iex',
       ALPACA_STREAMS_ENABLED: true,
       RISK_MAX_POSITION_VALUE: 10_000,
@@ -113,5 +116,21 @@ describe('validateEnv', () => {
         API_TOKEN: 'x'.repeat(32),
       }).API_TOKEN,
     ).toHaveLength(32);
+  });
+
+  it('wants the site address with Log in with Alpaca', () => {
+    const oauth = {
+      ...required,
+      ALPACA_OAUTH_CLIENT_ID: 'id',
+      ALPACA_OAUTH_CLIENT_SECRET: 'secret',
+    };
+    expect(() => validateEnv(oauth)).toThrow(/PUBLIC_URL/);
+    expect(
+      validateEnv({ ...oauth, PUBLIC_URL: 'https://bullwether.app/' })
+        .PUBLIC_URL,
+    ).toBe('https://bullwether.app');
+    expect(() =>
+      validateEnv({ ...required, ALPACA_OAUTH_CLIENT_ID: 'id' }),
+    ).toThrow(/go together/);
   });
 });

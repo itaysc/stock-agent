@@ -20,11 +20,16 @@ import { AccountContext, type ActiveAccount } from './account-context.js';
 import { AlpacaAccountDoc } from './alpaca-account.schema.js';
 import { SecretBox } from './secret-box.js';
 
+/** Test hook: builds a client from the key id (or, for an OAuth account, the access token). */
 export type AlpacaClientFactory = (
-  keyId: string,
+  keyIdOrToken: string,
   secret: string,
   paper: boolean,
 ) => Alpaca;
+
+/** How to sign in to Alpaca: an API key and secret, or an OAuth access token. */
+export type AlpacaCredentials =
+  { keyId: string; secret: string } | { accessToken: string };
 
 export type AccountChange =
   { added: ActiveAccount } | { removed: ActiveAccount };
@@ -63,9 +68,15 @@ export class AlpacaAccounts implements OnModuleInit, OnApplicationShutdown {
         continue;
       }
       try {
+        const box = this.box;
+        const auth = doc.auth ?? 'key';
         const client = this.newClient(
-          this.box.open(doc.keyId),
-          this.box.open(doc.secret),
+          auth === 'oauth'
+            ? { accessToken: box.open(doc.token ?? '') }
+            : {
+                keyId: box.open(doc.keyId ?? ''),
+                secret: box.open(doc.secret ?? ''),
+              },
           doc.paper,
         );
         this.put({
@@ -73,6 +84,7 @@ export class AlpacaAccounts implements OnModuleInit, OnApplicationShutdown {
           name: doc.name,
           paper: doc.paper,
           owner: doc.owner,
+          auth,
           keyHint: doc.keyHint,
           client,
         });
@@ -112,12 +124,16 @@ export class AlpacaAccounts implements OnModuleInit, OnApplicationShutdown {
       .client;
   }
 
-  newClient(keyId: string, secret: string, paper: boolean): Alpaca {
+  newClient(creds: AlpacaCredentials, paper: boolean): Alpaca {
+    const test =
+      'accessToken' in creds
+        ? this.testFactory?.(creds.accessToken, '', paper)
+        : this.testFactory?.(creds.keyId, creds.secret, paper);
     return (
-      this.testFactory?.(keyId, secret, paper) ??
+      test ??
       this.testClient ??
       // Alpaca's data API is sometimes slow: wait up to a minute (the library's default is 30 s).
-      new Alpaca({ keyId, secret, paper, timeoutMs: 60_000 })
+      new Alpaca({ ...creds, paper, timeoutMs: 60_000 })
     );
   }
 

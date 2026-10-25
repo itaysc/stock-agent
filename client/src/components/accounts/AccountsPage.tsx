@@ -22,6 +22,8 @@ import { DeleteModal, RenameModal } from './AccountModals';
 import { useAuth } from '../auth/AuthGate';
 import { AddAccountForm } from './AddAccountForm';
 import { UsersPanel } from './UsersPanel';
+import { alpacaAuthApi } from '../../api/alpaca-auth-api';
+import { AlpacaButton } from '../auth/AlpacaButton';
 
 /** Your Alpaca accounts: which one the app shows, and adding, renaming or deleting them. */
 export function AccountsPage() {
@@ -30,6 +32,13 @@ export function AccountsPage() {
   const [renaming, setRenaming] = useState<Account | null>(null);
   const [deleting, setDeleting] = useState<Account | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [alpacaLogin, setAlpacaLogin] = useState(false);
+  useEffect(() => {
+    void alpacaAuthApi.status().then(
+      (s) => setAlpacaLogin(s.enabled),
+      () => undefined,
+    );
+  }, []);
   const { user } = useAuth();
   const viewing = currentAccountId() ?? list?.accounts[0]?.id;
 
@@ -73,7 +82,7 @@ export function AccountsPage() {
                   </Badge>
                 </Group>
                 <Text size="xs" c="dimmed">
-                  {a.id} · key …{a.keyHint}
+                  {a.id} · {a.auth === 'oauth' ? 'connected with Alpaca' : `key …${a.keyHint}`}
                   {user?.admin && a.owner && a.owner !== user.email && ` · ${a.owner}'s`}
                 </Text>
               </div>
@@ -112,6 +121,14 @@ export function AccountsPage() {
           <Title order={5} mb="sm">
             Add a paper account
           </Title>
+          {alpacaLogin && (
+            <Stack gap={6} mb="md">
+              <AlpacaButton mode="connect" label="Connect with Alpaca" />
+              <Text size="xs" c="dimmed" ta="center">
+                Sign in to Alpaca and approve: no key to copy. Or paste a key below.
+              </Text>
+            </Stack>
+          )}
           <AddAccountForm
             canAdd={list.canAdd}
             onAdded={(a) => {

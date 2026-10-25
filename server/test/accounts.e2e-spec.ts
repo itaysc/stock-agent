@@ -91,6 +91,7 @@ describe('Accounts API (e2e)', () => {
       name: 'Second',
       paper: true,
       keyHint: 'D123',
+      auth: 'key',
       owner: '',
       // An empty account: nothing to bring into the Trade page.
       synced: { added: [], removed: [], orders: 0, skipped: [] },

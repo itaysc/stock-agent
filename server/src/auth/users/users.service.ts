@@ -31,6 +31,11 @@ export class UsersService {
     return (await this.users.findById(email).lean())?.passwordHash ?? null;
   }
 
+  /** A user who signed up with Alpaca: no password, they log in with Alpaca. */
+  async createWithoutPassword(email: string): Promise<void> {
+    await this.users.create({ _id: email });
+  }
+
   async exists(email: string): Promise<boolean> {
     return (await this.users.countDocuments({ _id: email })) > 0;
   }

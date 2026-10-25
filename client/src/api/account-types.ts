@@ -8,6 +8,8 @@ export interface Account {
   paper: boolean;
   /** The key's last 4 characters. */
   keyHint: string;
+  /** key: added with an API key; oauth: connected with Log in with Alpaca. */
+  auth: 'key' | 'oauth';
   /** Who added it (only the admin sees this). */
   owner?: string;
 }

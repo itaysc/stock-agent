@@ -36,7 +36,10 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
         HttpStatus.TOO_MANY_REQUESTS,
       );
     const user = await this.auth.validate(email, password, ip);
-    if (!user) throw new UnauthorizedException('Wrong email or password');
+    if (!user)
+      throw new UnauthorizedException(
+        'Wrong email or password (signed up with Alpaca? Use Log in with Alpaca)',
+      );
     return user;
   }
 }
