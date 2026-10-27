@@ -11,6 +11,13 @@ export class UserDoc {
   @Prop({ type: String })
   passwordHash?: string;
 
+  /** The Terms of Use version accepted at sign-up, and when (TERMS_VERSION). */
+  @Prop({ type: String })
+  termsVersion?: string;
+
+  @Prop({ type: Date })
+  termsAcceptedAt?: Date;
+
   createdAt?: Date;
 }
 export const UserSchema = SchemaFactory.createForClass(UserDoc);

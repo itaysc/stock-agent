@@ -87,17 +87,44 @@ describe('Users and invites (e2e)', () => {
     await http().get('/api/v1/auth/invites/not-a-real-token-123').expect(404);
     await http()
       .post('/api/v1/auth/signup')
-      .send({ token, email: 'dana@example.com', password: 'short' })
+      .send({
+        token,
+        email: 'dana@example.com',
+        password: 'short',
+        acceptTerms: true,
+      })
       .expect(400);
+    // The terms must be accepted.
+    const refused = await http()
+      .post('/api/v1/auth/signup')
+      .send({ token, email: 'dana@example.com', password: 'dana-password-1' })
+      .expect(400);
+    expect(JSON.stringify(refused.body)).toMatch(/accept the Terms of Use/);
     danaAgent = agent();
     const res = await danaAgent
       .post('/api/v1/auth/signup')
-      .send({ token, email: 'Dana@Example.com', password: 'dana-password-1' })
+      .send({
+        token,
+        email: 'Dana@Example.com',
+        password: 'dana-password-1',
+        acceptTerms: true,
+      })
       .expect(200);
     expect(res.body.user).toEqual({ email: 'dana@example.com', admin: false });
+    // When they accepted which terms is kept with the user.
+    const saved = await db
+      .collection('users')
+      .findOne({ _id: 'dana@example.com' as never });
+    expect(saved).toMatchObject({ termsVersion: '2026-10-27' });
+    expect(saved?.termsAcceptedAt).toBeInstanceOf(Date);
     await http()
       .post('/api/v1/auth/signup')
-      .send({ token, email: 'eve@example.com', password: 'eve-password-1' })
+      .send({
+        token,
+        email: 'eve@example.com',
+        password: 'eve-password-1',
+        acceptTerms: true,
+      })
       .expect(410);
     await http()
       .post('/api/v1/auth/login')

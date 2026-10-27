@@ -16,6 +16,7 @@ import { type FormEvent, useState } from 'react';
 import { api } from '../../api/client';
 import { launch } from '../../lib/launch';
 import { AlpacaButton } from './AlpacaButton';
+import { LegalLinks } from '../../legal/LegalLinks';
 
 /** Email and password; the server answers with a JWT in an httpOnly cookie. */
 export function LoginPage({
@@ -96,6 +97,7 @@ export function LoginPage({
             <Button type="submit" loading={busy} fullWidth>
               Log in
             </Button>
+            <LegalLinks note="Not investment advice" />
           </Stack>
         </form>
       </Paper>

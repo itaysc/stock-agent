@@ -3,7 +3,6 @@ import {
   Badge,
   Box,
   Group,
-  SegmentedControl,
   Text,
   ThemeIcon,
   Tooltip,
@@ -30,12 +29,12 @@ export type Page = 'broker' | 'trade' | 'tax' | 'lab' | 'paper' | 'accounts';
 
 interface Props {
   options: BacktestOptions;
-  page: Page;
   onPage: (page: Page) => void;
   accounts: Account[];
 }
 
-export function Header({ options, page, onPage, accounts }: Props) {
+/** The computer's top bar: the app, the account, the market clock, the money, and settings (the pages are in the sidebar). */
+export function Header({ options, onPage, accounts }: Props) {
   const install = useInstall();
   const { setColorScheme } = useMantineColorScheme();
   const { user, logout } = useAuth();
@@ -43,8 +42,7 @@ export function Header({ options, page, onPage, accounts }: Props) {
 
   return (
     <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-      {/* On a phone the page tabs and the account menu need the room. */}
-      <Group gap="sm" wrap="nowrap" visibleFrom="xs">
+      <Group gap="sm" wrap="nowrap">
         <ThemeIcon
           size={34}
           radius="md"
@@ -53,7 +51,7 @@ export function Header({ options, page, onPage, accounts }: Props) {
         >
           <IconChartLine size={20} />
         </ThemeIcon>
-        <Box visibleFrom="sm">
+        <Box>
           <Text fw={700} lh={1.1}>
             Bullwether
           </Text>
@@ -62,23 +60,6 @@ export function Header({ options, page, onPage, accounts }: Props) {
           </Text>
         </Box>
       </Group>
-      <SegmentedControl
-        size="xs"
-        value={
-          page === 'broker' || page === 'trade' || page === 'tax'
-            ? page
-            : page === 'accounts'
-              ? ''
-              : 'advanced'
-        }
-        onChange={(v) => onPage(v === 'advanced' ? 'lab' : (v as Page))}
-        data={[
-          { value: 'broker', label: 'Broker' },
-          { value: 'trade', label: 'Trade' },
-          { value: 'tax', label: 'Tax' },
-          { value: 'advanced', label: 'Advanced' },
-        ]}
-      />
       <Group gap="xs" wrap="nowrap">
         <AccountSwitcher accounts={accounts} onManage={() => onPage('accounts')} />
         <MarketClock />

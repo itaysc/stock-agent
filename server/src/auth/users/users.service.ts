@@ -9,7 +9,14 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import bcrypt from 'bcryptjs';
 import type { Model } from 'mongoose';
+import { TERMS_VERSION } from '../auth.constants.js';
 import { InviteDoc, UserDoc } from './user.schema.js';
+
+/** Recorded with each new user: they accepted these terms, now. */
+const accepted = () => ({
+  termsVersion: TERMS_VERSION,
+  termsAcceptedAt: new Date(),
+});
 
 const INVITE_DAYS = 7;
 const DAY_MS = 86_400_000;
@@ -33,7 +40,7 @@ export class UsersService {
 
   /** A user who signed up with Alpaca: no password, they log in with Alpaca. */
   async createWithoutPassword(email: string): Promise<void> {
-    await this.users.create({ _id: email });
+    await this.users.create({ _id: email, ...accepted() });
   }
 
   async exists(email: string): Promise<boolean> {
@@ -111,6 +118,7 @@ export class UsersService {
     await this.users.create({
       _id: id,
       passwordHash: await bcrypt.hash(password, 10),
+      ...accepted(),
     });
     return id;
   }

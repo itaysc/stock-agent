@@ -12,6 +12,7 @@ import {
 } from '@mantine/core';
 import { type FormEvent, useEffect, useState } from 'react';
 import { usersApi } from '../../api/users-api';
+import { AcceptTerms } from '../../legal/AcceptTerms';
 
 const MIN_PASSWORD = 10;
 
@@ -21,6 +22,7 @@ export function SignupPage({ token, onDone }: { token: string; onDone: () => voi
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [again, setAgain] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -36,7 +38,7 @@ export function SignupPage({ token, onDone }: { token: string; onDone: () => voi
     setBusy(true);
     setError(null);
     try {
-      await usersApi.signUp({ token, email, password });
+      await usersApi.signUp({ token, email, password, acceptTerms: agreed });
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -86,8 +88,9 @@ export function SignupPage({ token, onDone }: { token: string; onDone: () => voi
                   value={again}
                   onChange={(e) => setAgain(e.currentTarget.value)}
                 />
+                <AcceptTerms checked={agreed} onChange={setAgreed} />
                 {error && <Alert color="red">{error}</Alert>}
-                <Button type="submit" loading={busy} fullWidth>
+                <Button type="submit" loading={busy} fullWidth disabled={!agreed}>
                   Create my login
                 </Button>
               </Stack>

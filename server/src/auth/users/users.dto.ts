@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  Equals,
+  IsEmail,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { MIN_PASSWORD } from './users.service.js';
 
 export class SignUpDto {
@@ -18,6 +24,15 @@ export class SignUpDto {
   @MinLength(MIN_PASSWORD)
   @MaxLength(200)
   password: string;
+
+  @ApiProperty({
+    description:
+      'Accepts the Terms of Use and the Privacy Policy (must be true)',
+  })
+  @Equals(true, {
+    message: 'Please accept the Terms of Use and the Privacy Policy',
+  })
+  acceptTerms: boolean;
 }
 
 export class InviteDto {

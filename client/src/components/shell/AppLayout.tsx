@@ -6,6 +6,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { Header, type Page } from '../Header';
 import { BottomNav } from './BottomNav';
 import { MobileHeader } from './MobileHeader';
+import { Sidebar } from './Sidebar';
 
 // On a phone the bars leave room for the notch and the home bar (safe areas).
 const SAFE_TOP = {
@@ -19,7 +20,10 @@ const SAFE_MAIN = {
   paddingBottom: 'calc(64px + env(safe-area-inset-bottom) + 24px + var(--sticky-cta, 0px))',
 };
 
-/** The app's frame: the top bar on a computer; on a phone a compact top bar and a tab bar at the bottom. */
+/**
+ * The app's frame. On a computer: the top bar, and the pages in a sidebar on
+ * the left. On a phone: a compact top bar and a tab bar at the bottom.
+ */
 export function AppLayout({
   options,
   page,
@@ -38,15 +42,21 @@ export function AppLayout({
     <AppShell
       header={{ height: mobile ? 56 : 60 }}
       footer={mobile ? { height: 64 } : undefined}
+      navbar={mobile ? undefined : { width: 250, breakpoint: 'sm' }}
       padding="md"
     >
       <AppShell.Header style={mobile ? SAFE_TOP : undefined}>
         {mobile ? (
           <MobileHeader options={options} page={page} onPage={onPage} accounts={accounts} />
         ) : (
-          <Header options={options} page={page} onPage={onPage} accounts={accounts} />
+          <Header options={options} onPage={onPage} accounts={accounts} />
         )}
       </AppShell.Header>
+      {!mobile && (
+        <AppShell.Navbar>
+          <Sidebar page={page} onPage={onPage} />
+        </AppShell.Navbar>
+      )}
       {mobile && (
         <AppShell.Footer style={SAFE_BOTTOM}>
           <BottomNav page={page} onPage={onPage} />

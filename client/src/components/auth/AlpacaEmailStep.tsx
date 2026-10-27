@@ -1,10 +1,12 @@
 import { Alert, Button, Center, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { alpacaAuthApi } from '../../api/alpaca-auth-api';
+import { AcceptTerms } from '../../legal/AcceptTerms';
 
 /** After signing up with Alpaca: the one more step, the user's email (Alpaca doesn't share it). */
 export function AlpacaEmailStep({ account, onDone }: { account: string; onDone: () => void }) {
   const [email, setEmail] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submit = async (e: FormEvent) => {
@@ -12,7 +14,7 @@ export function AlpacaEmailStep({ account, onDone }: { account: string; onDone: 
     setBusy(true);
     setError(null);
     try {
-      await alpacaAuthApi.complete(email);
+      await alpacaAuthApi.complete(email, agreed);
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -39,8 +41,9 @@ export function AlpacaEmailStep({ account, onDone }: { account: string; onDone: 
               value={email}
               onChange={(e) => setEmail(e.currentTarget.value)}
             />
+            <AcceptTerms checked={agreed} onChange={setAgreed} />
             {error && <Alert color="red">{error}</Alert>}
-            <Button type="submit" size="md" loading={busy} fullWidth>
+            <Button type="submit" size="md" loading={busy} fullWidth disabled={!agreed}>
               Continue
             </Button>
             <Text size="xs" c="dimmed" ta="center">

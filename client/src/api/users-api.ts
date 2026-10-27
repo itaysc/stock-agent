@@ -5,7 +5,7 @@ import { request } from './client';
 export const usersApi = {
   checkInvite: (token: string) =>
     request<{ ok: true }>(`/api/v1/auth/invites/${encodeURIComponent(token)}`),
-  signUp: (body: { token: string; email: string; password: string }) =>
+  signUp: (body: { token: string; email: string; password: string; acceptTerms: boolean }) =>
     request<{ user: AuthUser }>('/api/v1/auth/signup', {
       method: 'POST',
       body: JSON.stringify(body),

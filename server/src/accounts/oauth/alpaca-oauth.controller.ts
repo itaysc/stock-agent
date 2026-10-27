@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
-import { IsEmail } from 'class-validator';
+import { Equals, IsEmail } from 'class-validator';
 import type { CookieOptions, Request, Response } from 'express';
 import { Public } from '../../auth/auth.constants.js';
 import { tokenFrom } from '../../auth/auth-request.js';
@@ -23,6 +23,15 @@ export class AlpacaSignupDto {
   @ApiProperty({ example: 'you@example.com' })
   @IsEmail()
   email: string;
+
+  @ApiProperty({
+    description:
+      'Accepts the Terms of Use and the Privacy Policy (must be true)',
+  })
+  @Equals(true, {
+    message: 'Please accept the Terms of Use and the Privacy Policy',
+  })
+  acceptTerms: boolean;
 }
 
 /** The trip to Alpaca and back: a random state, and which flow it is. */
