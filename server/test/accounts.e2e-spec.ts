@@ -69,7 +69,8 @@ describe('Accounts API (e2e)', () => {
 
   it('starts with no account: everything waits for one', async () => {
     const res = await http().get('/api/v1/accounts').expect(200);
-    expect(res.body).toEqual({ canAdd: true, accounts: [] });
+    // No login in this test: the admin, who may paste a key.
+    expect(res.body).toEqual({ canAdd: true, keyAllowed: true, accounts: [] });
     await http().get('/api/v1/trade/my-stocks').expect(409);
     await http()
       .post('/api/v1/accounts')

@@ -5,6 +5,7 @@ import { BacktestApiModule } from './backtest/api/backtest-api.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AutopilotModule } from './autopilot/autopilot.module.js';
 import { BrokerModule } from './broker/broker.module.js';
+import { ConsentModule } from './consent/consent.module.js';
 import { AppConfigModule } from './config/config.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
@@ -33,6 +34,7 @@ import { TradeModule } from './trade/trade.module.js';
     AutopilotModule,
     BrokerModule,
     TaxModule,
+    ConsentModule,
     TradeModule,
   ],
 })

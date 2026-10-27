@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Burger,
   Divider,
   Drawer,
@@ -14,33 +15,22 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { useState } from 'react';
 import {
-  IconArrowsExchange,
-  IconBriefcase,
   IconChartLine,
   IconCheck,
   IconDeviceMobileDown,
   IconUserCircle,
-  IconFlask,
   IconLogout,
-  IconReceiptTax,
-  IconRobot,
   IconUsers,
 } from '@tabler/icons-react';
 import type { Account } from '../../api/account-types';
 import type { BacktestOptions } from '../../api/types';
+import { openCookieSettings } from '../../consent/cookie-consent';
 import { currentAccountId, switchAccount } from '../../lib/account';
 import { InstallSteps } from '../../pwa/InstallSteps';
 import { useInstall } from '../../pwa/useInstall';
 import { useAuth } from '../auth/AuthGate';
 import type { Page } from '../Header';
-
-const PAGES: Array<{ page: Page; label: string; hint: string; icon: typeof IconBriefcase }> = [
-  { page: 'broker', label: 'Broker', hint: 'It invests for you', icon: IconBriefcase },
-  { page: 'trade', label: 'Trade', hint: 'Your own buys and sells', icon: IconArrowsExchange },
-  { page: 'tax', label: 'Tax', hint: 'Records for the yearly report', icon: IconReceiptTax },
-  { page: 'lab', label: 'Lab', hint: 'Backtests and AI research', icon: IconFlask },
-  { page: 'paper', label: 'Paper & autopilot', hint: 'Test runs and the agent', icon: IconRobot },
-];
+import { NAV_PAGES } from './pages';
 
 /** The phone's menu: a hamburger that slides in a drawer with the account, every page and the settings. */
 export function MobileMenu({
@@ -129,7 +119,7 @@ export function MobileMenu({
             </Text>
           )}
           <Divider my="xs" />
-          {PAGES.map(({ page: p, label, hint, icon: Icon }) => (
+          {NAV_PAGES.map(({ page: p, label, hint, icon: Icon }) => (
             <NavLink
               key={p}
               active={page === p}
@@ -175,6 +165,28 @@ export function MobileMenu({
             {options.dataFeed.toUpperCase()} market data · AI summaries{' '}
             {options.aiEnabled ? 'on' : 'off'}
           </Text>
+          <Group gap="md" justify="center" px="sm" pt={4} style={{ rowGap: 6 }}>
+            <Anchor href="/terms" target="_blank" size="sm">
+              Terms of Use
+            </Anchor>
+            <Anchor href="/policy" target="_blank" size="sm">
+              Privacy Policy
+            </Anchor>
+            <Anchor href="/accessibility" target="_blank" size="sm">
+              Accessibility
+            </Anchor>
+            <Anchor
+              component="button"
+              type="button"
+              size="sm"
+              onClick={() => {
+                close();
+                openCookieSettings();
+              }}
+            >
+              Cookie preferences
+            </Anchor>
+          </Group>
           {user && (
             <>
               <Divider my="xs" />

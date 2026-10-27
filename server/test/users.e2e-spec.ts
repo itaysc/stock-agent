@@ -87,17 +87,44 @@ describe('Users and invites (e2e)', () => {
     await http().get('/api/v1/auth/invites/not-a-real-token-123').expect(404);
     await http()
       .post('/api/v1/auth/signup')
-      .send({ token, email: 'dana@example.com', password: 'short' })
+      .send({
+        token,
+        email: 'dana@example.com',
+        password: 'short',
+        acceptTerms: true,
+      })
       .expect(400);
+    // The terms must be accepted.
+    const refused = await http()
+      .post('/api/v1/auth/signup')
+      .send({ token, email: 'dana@example.com', password: 'dana-password-1' })
+      .expect(400);
+    expect(JSON.stringify(refused.body)).toMatch(/accept the Terms of Use/);
     danaAgent = agent();
     const res = await danaAgent
       .post('/api/v1/auth/signup')
-      .send({ token, email: 'Dana@Example.com', password: 'dana-password-1' })
+      .send({
+        token,
+        email: 'Dana@Example.com',
+        password: 'dana-password-1',
+        acceptTerms: true,
+      })
       .expect(200);
     expect(res.body.user).toEqual({ email: 'dana@example.com', admin: false });
+    // When they accepted which terms is kept with the user.
+    const saved = await db
+      .collection('users')
+      .findOne({ _id: 'dana@example.com' as never });
+    expect(saved).toMatchObject({ termsVersion: '2026-10-27' });
+    expect(saved?.termsAcceptedAt).toBeInstanceOf(Date);
     await http()
       .post('/api/v1/auth/signup')
-      .send({ token, email: 'eve@example.com', password: 'eve-password-1' })
+      .send({
+        token,
+        email: 'eve@example.com',
+        password: 'eve-password-1',
+        acceptTerms: true,
+      })
       .expect(410);
     await http()
       .post('/api/v1/auth/login')
@@ -116,19 +143,25 @@ describe('Users and invites (e2e)', () => {
       .expect(409);
     await danaAgent.get('/api/v1/users').expect(403);
 
-    await danaAgent
+    // A user can't paste a key: they connect with Alpaca (OAuth).
+    const refused = await danaAgent
       .post('/api/v1/accounts')
       .send({ name: 'Mine', keyId: 'PKDANA00001', secret: 'dana-secret' })
-      .expect(200);
+      .expect(403);
+    expect(refused.body.message).toMatch(/Connect with Alpaca/);
+    expect(
+      (await danaAgent.get('/api/v1/accounts').expect(200)).body,
+    ).toMatchObject({
+      keyAllowed: false,
+    });
+    const { AlpacaOAuthService } =
+      await import('../src/accounts/oauth/alpaca-oauth.service.js');
+    await app
+      .get(AlpacaOAuthService)
+      .connect({ email: 'dana@example.com', admin: false }, 'PKDANA00001');
     const mine = await danaAgent.get('/api/v1/accounts').expect(200);
-    expect(mine.body.accounts).toEqual([
-      {
-        id: 'PA3',
-        name: 'Mine',
-        paper: true,
-        keyHint: '0001',
-        auth: 'key',
-      },
+    expect(mine.body.accounts).toMatchObject([
+      { id: 'PA3', paper: true, auth: 'oauth' },
     ]);
     await danaAgent.delete('/api/v1/accounts/PA1').expect(404);
 

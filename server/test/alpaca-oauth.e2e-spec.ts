@@ -143,7 +143,7 @@ describe('Log in with Alpaca (e2e)', () => {
       client_id: 'client-123',
       redirect_uri: 'https://bullwether.test/api/v1/auth/alpaca/callback',
       env: 'paper',
-      scope: 'account:write trading data',
+      scope: 'trading data',
     });
     expect(res.headers['set-cookie']?.[0]).toMatch(
       /^alpaca_oauth=login\.[\w-]+;.*HttpOnly/,
@@ -166,7 +166,7 @@ describe('Log in with Alpaca (e2e)', () => {
     expect(status.body.pending).toBe('PA5');
     const done = await dana
       .post('/api/v1/auth/alpaca/complete')
-      .send({ email: 'Dana@Example.com' })
+      .send({ email: 'Dana@Example.com', acceptTerms: true })
       .expect(200);
     expect(done.body.user).toEqual({ email: 'dana@example.com', admin: false });
     const list = await dana.get('/api/v1/accounts').expect(200);
@@ -222,11 +222,11 @@ describe('Log in with Alpaca (e2e)', () => {
     await signIn(other, 'code-third');
     await other
       .post('/api/v1/auth/alpaca/complete')
-      .send({ email: 'dana@example.com' })
+      .send({ email: 'dana@example.com', acceptTerms: true })
       .expect(409);
     await other
       .post('/api/v1/auth/alpaca/complete')
-      .send({ email: 'admin@example.com' })
+      .send({ email: 'admin@example.com', acceptTerms: true })
       .expect(409);
   });
 });

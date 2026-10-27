@@ -812,7 +812,14 @@ the saved keys can't be read.
   and `PUBLIC_URL` (the site's address; register `PUBLIC_URL/api/v1/auth/alpaca/callback` as the app's
   redirect URI). The token is stored encrypted like keys; OAuth accounts have no WebSocket streams
   (fills are found by checking orders).
-- Every login (password or Alpaca) syncs the user's accounts with Alpaca in the background (stocks
+- **Continue with Google** (OAuth2 / OpenID Connect, `openid email profile` only): logs in the user
+  with that Google account, or with the email Google verified (linking Google to the user; the
+  admin's email logs in as the admin), or signs up a new user after they accept the terms. The user
+  record keeps `google: { googleId, email, name, picture, connectedAt, lastLoginAt }`; Google's tokens
+  are used once and never stored. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (a Web
+  application OAuth client in Google Cloud Console) and `PUBLIC_URL`; register
+  `PUBLIC_URL/api/v1/auth/google/callback` as an authorized redirect URI.
+- Every login (password, Alpaca or Google) syncs the user's accounts with Alpaca in the background (stocks
   bought or sold outside the app, open orders, new fills, tax records).
 - `ALPACA_DATA_FEED=iex` (free) or `sip` (paid data subscription).
 

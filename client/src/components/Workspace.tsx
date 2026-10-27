@@ -1,4 +1,4 @@
-import { Alert, Container, Grid, SegmentedControl, Stack } from '@mantine/core';
+import { Alert, Box, Container, Grid, SegmentedControl, Stack } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useCallback, useEffect, useState } from 'react';
 import type { Account } from '../api/account-types';
@@ -32,6 +32,7 @@ import { ResultArea } from './results/ResultArea';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { takeNotice } from '../lib/account';
 import { launch } from '../lib/launch';
+import { LegalLinks } from '../legal/LegalLinks';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppLayout } from './shell/AppLayout';
 
@@ -150,7 +151,8 @@ export function Workspace({ options }: { options: BacktestOptions }) {
             {notice}
           </Alert>
         )}
-        {(page === 'lab' || page === 'paper') && (
+        {/* On a phone the Advanced tab holds both (a computer's sidebar lists them). */}
+        {mobile && (page === 'lab' || page === 'paper') && (
           <SegmentedControl
             mb="md"
             size={mobile ? 'md' : 'xs'}
@@ -201,6 +203,9 @@ export function Workspace({ options }: { options: BacktestOptions }) {
             </Grid.Col>
           </Grid>
         )}
+        <Box mt="xl" pb="md">
+          <LegalLinks note="Bullwether is a software tool, not investment advice" />
+        </Box>
       </Container>
       <DeployModal
         target={deploying}

@@ -68,7 +68,11 @@ export function AccountsPage() {
           </Alert>
         )}
         {!list.accounts.length && (
-          <Alert color="blue">No account yet: add your Alpaca paper key to start.</Alert>
+          <Alert color="blue">
+            {list.keyAllowed
+              ? 'No account yet: add your Alpaca paper key to start.'
+              : 'No account yet: connect your Alpaca paper account to start.'}
+          </Alert>
         )}
         {list.accounts.map((a) => (
           <Paper key={a.id} p="md" withBorder>
@@ -119,32 +123,42 @@ export function AccountsPage() {
       <Stack gap="lg">
         <Paper p="md" withBorder>
           <Title order={5} mb="sm">
-            Add a paper account
+            {list.keyAllowed ? 'Add a paper account' : 'Connect your Alpaca account'}
           </Title>
           {alpacaLogin && (
             <Stack gap={6} mb="md">
               <AlpacaButton mode="connect" label="Connect with Alpaca" />
               <Text size="xs" c="dimmed" ta="center">
-                Sign in to Alpaca and approve: no key to copy. Or paste a key below.
+                Sign in to Alpaca and approve: your keys never leave Alpaca, and you can revoke
+                access there at any time.
+                {list.keyAllowed && ' Or paste a key below (admin only).'}
               </Text>
             </Stack>
           )}
-          <AddAccountForm
-            canAdd={list.canAdd}
-            onAdded={(a) => {
-              const note = `Added "${a.name}". ${
-                a.synced
-                  ? syncSummary(a.synced)
-                  : 'Its stocks could not be read yet: press Sync Data on the Trade page.'
-              }`;
-              // The first account: show it right away.
-              if (!list.accounts.length) switchAccount(a.id, note);
-              else {
-                setNotice(note);
-                void load();
-              }
-            }}
-          />
+          {!list.keyAllowed && !alpacaLogin && (
+            <Text size="sm" c="dimmed">
+              Connecting an Alpaca account opens soon: you will sign in to Alpaca and approve, with
+              no API keys to copy.
+            </Text>
+          )}
+          {list.keyAllowed && (
+            <AddAccountForm
+              canAdd={list.canAdd}
+              onAdded={(a) => {
+                const note = `Added "${a.name}". ${
+                  a.synced
+                    ? syncSummary(a.synced)
+                    : 'Its stocks could not be read yet: press Sync Data on the Trade page.'
+                }`;
+                // The first account: show it right away.
+                if (!list.accounts.length) switchAccount(a.id, note);
+                else {
+                  setNotice(note);
+                  void load();
+                }
+              }}
+            />
+          )}
         </Paper>
         {user?.admin && <UsersPanel />}
       </Stack>

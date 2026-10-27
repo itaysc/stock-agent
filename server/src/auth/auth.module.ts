@@ -10,6 +10,12 @@ import { ApiAuthGuard } from './api-auth.guard.js';
 import { AuthController } from './auth.controller.js';
 import { JWT_AUDIENCE, JWT_ISSUER } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
+import { GoogleOAuthController } from './google/google-oauth.controller.js';
+import { GoogleOAuthService } from './google/google-oauth.service.js';
+import {
+  GoogleSignupDoc,
+  GoogleSignupSchema,
+} from './google/google-signup.schema.js';
 import { JwtStrategy } from './jwt.strategy.js';
 import { LocalStrategy } from './local.strategy.js';
 import {
@@ -21,13 +27,14 @@ import {
 import { UsersController } from './users/users.controller.js';
 import { UsersService } from './users/users.service.js';
 
-/** The logins (passport-local → a JWT), invited users, and the guard on every route (passport-jwt, or the API_TOKEN). */
+/** The logins (passport-local or Google → a JWT), invited users, and the guard on every route (passport-jwt, or the API_TOKEN). */
 @Module({
   imports: [
     PassportModule,
     MongooseModule.forFeature([
       { name: UserDoc.name, schema: UserSchema },
       { name: InviteDoc.name, schema: InviteSchema },
+      { name: GoogleSignupDoc.name, schema: GoogleSignupSchema },
     ]),
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -52,9 +59,10 @@ import { UsersService } from './users/users.service.js';
       }),
     }),
   ],
-  controllers: [AuthController, UsersController],
+  controllers: [AuthController, UsersController, GoogleOAuthController],
   providers: [
     AuthService,
+    GoogleOAuthService,
     UsersService,
     LocalStrategy,
     JwtStrategy,

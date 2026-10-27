@@ -18,8 +18,11 @@ import { AlpacaSignupDoc } from './alpaca-signup.schema.js';
 
 export const AUTHORIZE_URL = 'https://app.alpaca.markets/oauth/authorize';
 export const TOKEN_URL = 'https://api.alpaca.markets/oauth/token';
-/** Orders, account settings and market data; paper accounts only (env=paper). */
-const SCOPE = 'account:write trading data';
+/**
+ * Orders and market data (reading the account is always allowed); nothing
+ * more than the app uses. Paper accounts only (env=paper).
+ */
+const SCOPE = 'trading data';
 const SIGNUP_MS = 15 * 60_000;
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');

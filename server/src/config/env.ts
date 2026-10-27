@@ -50,6 +50,10 @@ const envSchema = z
     // (its redirect URI, registered there too, is PUBLIC_URL/api/v1/auth/alpaca/callback). Empty = off.
     ALPACA_OAUTH_CLIENT_ID: z.string().default(''),
     ALPACA_OAUTH_CLIENT_SECRET: z.string().default(''),
+    // "Continue with Google": an OAuth client from Google Cloud (its redirect URI, registered there:
+    // PUBLIC_URL/api/v1/auth/google/callback). Empty = the Google button is hidden.
+    GOOGLE_CLIENT_ID: z.string().default(''),
+    GOOGLE_CLIENT_SECRET: z.string().default(''),
     PUBLIC_URL: z
       .string()
       .default('')
@@ -70,13 +74,18 @@ const envSchema = z
         'ALPACA_OAUTH_CLIENT_ID',
         'ALPACA_OAUTH_CLIENT_ID and ALPACA_OAUTH_CLIENT_SECRET go together',
       );
+    if (!env.GOOGLE_CLIENT_ID !== !env.GOOGLE_CLIENT_SECRET)
+      issue(
+        'GOOGLE_CLIENT_ID',
+        'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET go together',
+      );
     if (
-      env.ALPACA_OAUTH_CLIENT_ID &&
+      (env.ALPACA_OAUTH_CLIENT_ID || env.GOOGLE_CLIENT_ID) &&
       !/^https?:\/\/[^/]+$/.test(env.PUBLIC_URL)
     )
       issue(
         'PUBLIC_URL',
-        "is needed for Log in with Alpaca: this site's address, e.g. https://bullwether.app",
+        "is needed for Log in with Alpaca or Google: this site's address, e.g. https://bullwether.com",
       );
     if (env.ACCOUNTS_SECRET_KEY && env.ACCOUNTS_SECRET_KEY.length < 32)
       issue(

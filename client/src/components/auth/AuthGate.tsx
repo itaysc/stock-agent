@@ -3,7 +3,10 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useS
 import type { AuthUser } from '../../api/account-types';
 import { alpacaAuthApi } from '../../api/alpaca-auth-api';
 import { api, AUTH_REQUIRED } from '../../api/client';
+import { type GooglePending, googleAuthApi } from '../../api/google-auth-api';
+import { CookieBanner } from '../../consent/CookieBanner';
 import { AlpacaEmailStep } from './AlpacaEmailStep';
+import { GoogleTermsStep } from './GoogleTermsStep';
 import { LoginPage } from './LoginPage';
 import { SignupPage } from './SignupPage';
 
@@ -28,14 +31,21 @@ export function AuthGate({ children }: { children: ReactNode }) {
     enabled: false,
     pending: null,
   });
+  const [google, setGoogle] = useState<{ enabled: boolean; pending: GooglePending | null }>({
+    enabled: false,
+    pending: null,
+  });
   const check = useCallback(async () => {
     try {
-      const [me, status] = await Promise.all([
+      const off = { enabled: false, pending: null };
+      const [me, alpacaStatus, googleStatus] = await Promise.all([
         api.authMe(),
-        alpacaAuthApi.status().catch(() => ({ enabled: false, pending: null })),
+        alpacaAuthApi.status().catch(() => off),
+        googleAuthApi.status().catch(() => off),
       ]);
       setUser(me.user);
-      setAlpaca(status);
+      setAlpaca(alpacaStatus);
+      setGoogle(googleStatus);
       setState(me.loginRequired && !me.user ? 'login' : 'in');
     } catch {
       setState('in'); // an older server without the login, or unreachable: the app shows its own error
@@ -59,8 +69,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <Loader />
       </Center>
     );
+  // The cookie banner: on the login screens the choice stays on this device; in the app, the user's.
+  const banner = <CookieBanner key={state} loggedIn={state === 'in'} />;
   if (state === 'login' && invite)
-    return (
+    return withBanner(
+      banner,
       <SignupPage
         token={invite}
         onDone={() => {
@@ -69,12 +82,36 @@ export function AuthGate({ children }: { children: ReactNode }) {
           setInvite(null);
           void check();
         }}
-      />
+      />,
     );
   // Signed up with Alpaca: their email first.
   if (state === 'login' && alpaca.pending)
-    return <AlpacaEmailStep account={alpaca.pending} onDone={() => void check()} />;
+    return withBanner(
+      banner,
+      <AlpacaEmailStep account={alpaca.pending} onDone={() => void check()} />,
+    );
+  // Signed up with Google: the terms first.
+  if (state === 'login' && google.pending)
+    return withBanner(
+      banner,
+      <GoogleTermsStep pending={google.pending} onDone={() => void check()} />,
+    );
   if (state === 'login')
-    return <LoginPage onLoggedIn={() => void check()} alpaca={alpaca.enabled} />;
-  return <AuthContext.Provider value={{ user, logout }}>{children}</AuthContext.Provider>;
+    return withBanner(
+      banner,
+      <LoginPage onLoggedIn={() => void check()} alpaca={alpaca.enabled} google={google.enabled} />,
+    );
+  return (
+    <AuthContext.Provider value={{ user, logout }}>
+      {children}
+      {banner}
+    </AuthContext.Provider>
+  );
 }
+
+const withBanner = (banner: ReactNode, screen: ReactNode) => (
+  <>
+    {screen}
+    {banner}
+  </>
+);

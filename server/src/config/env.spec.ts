@@ -22,6 +22,8 @@ describe('validateEnv', () => {
       ACCOUNTS_SECRET_KEY: '',
       ALPACA_OAUTH_CLIENT_ID: '',
       ALPACA_OAUTH_CLIENT_SECRET: '',
+      GOOGLE_CLIENT_ID: '',
+      GOOGLE_CLIENT_SECRET: '',
       PUBLIC_URL: '',
       ALPACA_DATA_FEED: 'iex',
       ALPACA_STREAMS_ENABLED: true,
@@ -131,6 +133,22 @@ describe('validateEnv', () => {
     ).toBe('https://bullwether.app');
     expect(() =>
       validateEnv({ ...required, ALPACA_OAUTH_CLIENT_ID: 'id' }),
+    ).toThrow(/go together/);
+  });
+
+  it('wants the site address, and both settings, with Google login', () => {
+    const google = {
+      ...required,
+      GOOGLE_CLIENT_ID: 'id.apps.googleusercontent.com',
+      GOOGLE_CLIENT_SECRET: 'secret',
+    };
+    expect(() => validateEnv(google)).toThrow(/PUBLIC_URL/);
+    expect(
+      validateEnv({ ...google, PUBLIC_URL: 'https://bullwether.com' })
+        .GOOGLE_CLIENT_ID,
+    ).toBe('id.apps.googleusercontent.com');
+    expect(() =>
+      validateEnv({ ...required, GOOGLE_CLIENT_SECRET: 'secret' }),
     ).toThrow(/go together/);
   });
 });

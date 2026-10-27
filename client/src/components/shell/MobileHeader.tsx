@@ -3,6 +3,7 @@ import type { Account } from '../../api/account-types';
 import type { BacktestOptions } from '../../api/types';
 import type { Page } from '../Header';
 import { MarketClock } from '../MarketClock';
+import { AccessibilityButton } from '../../a11y/AccessibilityButton';
 import { MobileMenu } from './MobileMenu';
 
 const TITLES: Record<Page, string> = {
@@ -34,7 +35,10 @@ export function MobileHeader({
         </Text>
         <MarketClock compact />
       </div>
-      <MobileMenu options={options} page={page} onPage={onPage} accounts={accounts} />
+      <Group gap={2} wrap="nowrap">
+        <AccessibilityButton />
+        <MobileMenu options={options} page={page} onPage={onPage} accounts={accounts} />
+      </Group>
     </Group>
   );
 }

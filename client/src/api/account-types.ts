@@ -18,6 +18,8 @@ export interface AccountList {
   accounts: Account[];
   /** False until ACCOUNTS_SECRET_KEY is set on the server. */
   canAdd: boolean;
+  /** Only the admin adds an account by pasting an API key; others connect with Alpaca. */
+  keyAllowed: boolean;
 }
 
 /** A newly added account, with what it already held (brought into the Trade page). */
