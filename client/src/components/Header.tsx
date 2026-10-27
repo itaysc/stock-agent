@@ -4,13 +4,11 @@ import {
   Box,
   Group,
   Text,
-  ThemeIcon,
   Tooltip,
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
 import {
-  IconChartLine,
   IconDownload,
   IconLogout,
   IconMoon,
@@ -20,6 +18,7 @@ import {
 import { useInstall } from '../pwa/useInstall';
 import type { Account } from '../api/account-types';
 import { AccountSwitcher } from './AccountSwitcher';
+import { AppLogo } from './AppLogo';
 import { useAuth } from './auth/AuthGate';
 import { HeaderFunds } from './HeaderFunds';
 import { MarketClock } from './MarketClock';
@@ -43,14 +42,7 @@ export function Header({ options, onPage, accounts }: Props) {
   return (
     <Group h="100%" px="md" justify="space-between" wrap="nowrap">
       <Group gap="sm" wrap="nowrap">
-        <ThemeIcon
-          size={34}
-          radius="md"
-          variant="gradient"
-          gradient={{ from: 'indigo', to: 'cyan' }}
-        >
-          <IconChartLine size={20} />
-        </ThemeIcon>
+        <AppLogo size={34} />
         <Box>
           <Text fw={700} lh={1.1}>
             Bullwether

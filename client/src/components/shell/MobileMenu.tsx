@@ -8,14 +8,12 @@ import {
   Stack,
   Switch,
   Text,
-  ThemeIcon,
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useState } from 'react';
 import {
-  IconChartLine,
   IconCheck,
   IconDeviceMobileDown,
   IconUserCircle,
@@ -28,6 +26,7 @@ import { openCookieSettings } from '../../consent/cookie-consent';
 import { currentAccountId, switchAccount } from '../../lib/account';
 import { InstallSteps } from '../../pwa/InstallSteps';
 import { useInstall } from '../../pwa/useInstall';
+import { AppLogo } from '../AppLogo';
 import { useAuth } from '../auth/AuthGate';
 import type { Page } from '../Header';
 import { NAV_PAGES } from './pages';
@@ -69,14 +68,7 @@ export function MobileMenu({
         overlayProps={{ backgroundOpacity: 0.45, blur: 2 }}
         title={
           <Group gap="sm" wrap="nowrap">
-            <ThemeIcon
-              size={34}
-              radius="md"
-              variant="gradient"
-              gradient={{ from: 'indigo', to: 'cyan' }}
-            >
-              <IconChartLine size={20} />
-            </ThemeIcon>
+            <AppLogo size={34} />
             <div>
               <Text fw={700} lh={1.1}>
                 Bullwether

@@ -7,11 +7,10 @@ import {
   Paper,
   Stack,
   Text,
-  ThemeIcon,
   Title,
 } from '@mantine/core';
-import { IconChartLine } from '@tabler/icons-react';
 import { useEffect } from 'react';
+import { AppLogo } from '../components/AppLogo';
 import { ACCESSIBILITY } from './accessibility';
 import type { LegalDoc } from './legal-types';
 import { PRIVACY } from './privacy';
@@ -55,14 +54,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
         <Group justify="space-between" wrap="nowrap">
           <Anchor href="/" underline="never" c="inherit">
             <Group gap="sm" wrap="nowrap">
-              <ThemeIcon
-                size={34}
-                radius="md"
-                variant="gradient"
-                gradient={{ from: 'indigo', to: 'cyan' }}
-              >
-                <IconChartLine size={20} />
-              </ThemeIcon>
+              <AppLogo size={34} />
               <Text fw={700}>Bullwether</Text>
             </Group>
           </Anchor>

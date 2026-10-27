@@ -8,13 +8,13 @@ import {
   Stack,
   Text,
   TextInput,
-  ThemeIcon,
   Title,
 } from '@mantine/core';
-import { IconChartLine, IconLock } from '@tabler/icons-react';
+import { IconLock } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { api } from '../../api/client';
 import { launch } from '../../lib/launch';
+import { AppLogo } from '../AppLogo';
 import { AlpacaButton } from './AlpacaButton';
 import { GoogleButton } from './GoogleButton';
 import { LegalLinks } from '../../legal/LegalLinks';
@@ -56,14 +56,7 @@ export function LoginPage({
         <form onSubmit={(e) => void submit(e)}>
           <Stack gap="md">
             <Stack gap={4} align="center">
-              <ThemeIcon
-                size={44}
-                radius="md"
-                variant="gradient"
-                gradient={{ from: 'indigo', to: 'cyan' }}
-              >
-                <IconChartLine size={26} />
-              </ThemeIcon>
+              <AppLogo size={48} />
               <Title order={3}>Bullwether</Title>
               <Text size="sm" c="dimmed">
                 Log in to your paper broker
