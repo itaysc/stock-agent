@@ -1,8 +1,8 @@
 import { AppShell } from '@mantine/core';
-import { useLocalStorage } from '@mantine/hooks';
 import type { ReactNode } from 'react';
 import type { Account } from '../../api/account-types';
 import type { BacktestOptions } from '../../api/types';
+import { usePreference } from '../../consent/cookie-consent';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { Header, type Page } from '../Header';
 import { BottomNav } from './BottomNav';
@@ -39,8 +39,8 @@ export function AppLayout({
   children: ReactNode;
 }) {
   const mobile = useIsMobile();
-  // The computer's sidebar: shown or hidden with the ☰ button (remembered on this device).
-  const [sidebar, setSidebar] = useLocalStorage({ key: 'sidebar-open', defaultValue: true });
+  // The computer's sidebar: shown or hidden with the ☰ button (remembered with functional consent).
+  const [sidebar, setSidebar] = usePreference('sidebar-open', true);
   return (
     <AppShell
       header={{ height: mobile ? 56 : 60 }}

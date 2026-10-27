@@ -24,6 +24,7 @@ import {
 } from '@tabler/icons-react';
 import type { Account } from '../../api/account-types';
 import type { BacktestOptions } from '../../api/types';
+import { openCookieSettings } from '../../consent/cookie-consent';
 import { currentAccountId, switchAccount } from '../../lib/account';
 import { InstallSteps } from '../../pwa/InstallSteps';
 import { useInstall } from '../../pwa/useInstall';
@@ -170,6 +171,17 @@ export function MobileMenu({
             </Anchor>
             <Anchor href="/policy" target="_blank" size="sm">
               Privacy Policy
+            </Anchor>
+            <Anchor
+              component="button"
+              type="button"
+              size="sm"
+              onClick={() => {
+                close();
+                openCookieSettings();
+              }}
+            >
+              Cookie preferences
             </Anchor>
           </Group>
           {user && (

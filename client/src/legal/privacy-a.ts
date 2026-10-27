@@ -64,15 +64,14 @@ export const PRIVACY_A: LegalSection[] = [
     id: 'cookies',
     title: '5. Cookies and storage on your device',
     body: [
-      'We use only cookies and storage that the Service needs to work. We do not use advertising or third-party tracking cookies or analytics.',
+      'We do not use advertising or third-party tracking cookies or analytics. We use two kinds of cookies and browser storage, and ask for your choice in a banner on your first visit:',
       {
         list: [
-          'Login cookie: keeps you logged in (httpOnly; by default for 12 hours).',
-          'Log in with Alpaca cookies: a short-lived security value for the trip to Alpaca and back (10 minutes), and a sign-up waiting for its email step (15 minutes).',
-          'Browser storage: the account you chose to view, your light/dark preference, and a short message after switching accounts.',
-          'App files saved by the app (service worker) so it opens quickly and offline; no account data is saved this way.',
+          'Strictly necessary (always on): the login cookie that keeps you logged in (httpOnly; by default for 12 hours); short-lived Log in with Alpaca cookies (a security value for the trip to Alpaca and back, 10 minutes, and a sign-up waiting for its email step, 15 minutes); the account you chose to view; a short message after switching accounts; your cookie choice itself; and the app files saved by the app (service worker) so it opens quickly and offline (no account data is saved this way).',
+          'Functional (only if you allow it): remembering your light or dark mode and whether the sidebar is open. If you do not allow it, these reset on each visit.',
         ],
       },
+      'Your choice is saved in your browser and, when you are logged in, in your user record on our server, with the date and the version of this cookie policy. You can change it at any time from the Cookie preferences link at the bottom of the app; if we change the kinds of cookies we use, we will ask again.',
     ],
   },
 ];

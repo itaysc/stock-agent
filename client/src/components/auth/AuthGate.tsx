@@ -3,6 +3,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useS
 import type { AuthUser } from '../../api/account-types';
 import { alpacaAuthApi } from '../../api/alpaca-auth-api';
 import { api, AUTH_REQUIRED } from '../../api/client';
+import { CookieBanner } from '../../consent/CookieBanner';
 import { AlpacaEmailStep } from './AlpacaEmailStep';
 import { LoginPage } from './LoginPage';
 import { SignupPage } from './SignupPage';
@@ -59,8 +60,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <Loader />
       </Center>
     );
+  // The cookie banner: on the login screens the choice stays on this device; in the app, the user's.
+  const banner = <CookieBanner key={state} loggedIn={state === 'in'} />;
   if (state === 'login' && invite)
-    return (
+    return withBanner(
+      banner,
       <SignupPage
         token={invite}
         onDone={() => {
@@ -69,12 +73,30 @@ export function AuthGate({ children }: { children: ReactNode }) {
           setInvite(null);
           void check();
         }}
-      />
+      />,
     );
   // Signed up with Alpaca: their email first.
   if (state === 'login' && alpaca.pending)
-    return <AlpacaEmailStep account={alpaca.pending} onDone={() => void check()} />;
+    return withBanner(
+      banner,
+      <AlpacaEmailStep account={alpaca.pending} onDone={() => void check()} />,
+    );
   if (state === 'login')
-    return <LoginPage onLoggedIn={() => void check()} alpaca={alpaca.enabled} />;
-  return <AuthContext.Provider value={{ user, logout }}>{children}</AuthContext.Provider>;
+    return withBanner(
+      banner,
+      <LoginPage onLoggedIn={() => void check()} alpaca={alpaca.enabled} />,
+    );
+  return (
+    <AuthContext.Provider value={{ user, logout }}>
+      {children}
+      {banner}
+    </AuthContext.Provider>
+  );
 }
+
+const withBanner = (banner: ReactNode, screen: ReactNode) => (
+  <>
+    {screen}
+    {banner}
+  </>
+);

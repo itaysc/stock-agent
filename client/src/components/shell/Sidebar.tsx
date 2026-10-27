@@ -1,4 +1,5 @@
 import { Anchor, AppShell, Divider, Group, NavLink, ScrollArea, Text } from '@mantine/core';
+import { openCookieSettings } from '../../consent/cookie-consent';
 import { useAuth } from '../auth/AuthGate';
 import type { Page } from '../Header';
 import { accountsPage, NAV_PAGES, type NavPage } from './pages';
@@ -37,6 +38,15 @@ export function Sidebar({ page, onPage }: { page: Page; onPage: (p: Page) => voi
           </Anchor>
           <Anchor href="/policy" target="_blank" size="xs" c="dimmed">
             Privacy Policy
+          </Anchor>
+          <Anchor
+            component="button"
+            type="button"
+            size="xs"
+            c="dimmed"
+            onClick={openCookieSettings}
+          >
+            Cookie preferences
           </Anchor>
         </Group>
       </AppShell.Section>

@@ -6,6 +6,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { AuthGate } from './components/auth/AuthGate';
+import { CookieBanner } from './consent/CookieBanner';
+import { consentColorSchemeManager } from './consent/cookie-consent';
 import { LegalPage, legalDocFor } from './legal/LegalPage';
 import { registerPwa } from './pwa/pwa';
 import { UpdateNotice } from './pwa/UpdateNotice';
@@ -18,9 +20,16 @@ const legal = legalDocFor(window.location.pathname);
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="auto">
+    <MantineProvider
+      theme={theme}
+      defaultColorScheme="auto"
+      colorSchemeManager={consentColorSchemeManager()}
+    >
       {legal ? (
-        <LegalPage doc={legal} />
+        <>
+          <LegalPage doc={legal} />
+          <CookieBanner loggedIn={false} />
+        </>
       ) : (
         <AuthGate>
           <App />
