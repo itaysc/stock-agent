@@ -31,7 +31,7 @@ export class UsersController {
   @ApiOperation({ summary: 'The users, and the invites not used yet' })
   list(@Req() req: Request) {
     this.adminOnly(req);
-    return this.users.list();
+    return this.users.list(this.auth.adminEmail);
   }
 
   @Post('invites')

@@ -68,7 +68,11 @@ export function AccountsPage() {
           </Alert>
         )}
         {!list.accounts.length && (
-          <Alert color="blue">No account yet: add your Alpaca paper key to start.</Alert>
+          <Alert color="blue">
+            {list.keyAllowed
+              ? 'No account yet: add your Alpaca paper key to start.'
+              : 'No account yet: connect your Alpaca paper account to start.'}
+          </Alert>
         )}
         {list.accounts.map((a) => (
           <Paper key={a.id} p="md" withBorder>

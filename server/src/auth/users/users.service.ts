@@ -10,7 +10,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import bcrypt from 'bcryptjs';
 import type { Model } from 'mongoose';
 import { TERMS_VERSION } from '../auth.constants.js';
-import { InviteDoc, UserDoc } from './user.schema.js';
+import { InviteDoc, UserDoc, type UserGoogle } from './user.schema.js';
 
 /** Recorded with each new user: they accepted these terms, now. */
 const accepted = () => ({
@@ -43,6 +43,45 @@ export class UsersService {
     await this.users.create({ _id: email, ...accepted() });
   }
 
+  /** The user whose Google login this is (by Google's id: the email may change). */
+  async emailForGoogle(googleId: string): Promise<string | null> {
+    return (
+      (
+        await this.users
+          .findOne({ 'google.googleId': googleId }, { _id: 1 })
+          .lean()
+      )?._id ?? null
+    );
+  }
+
+  /**
+   * Links a Google login to a user (or refreshes its details), creating the
+   * record when needed (the admin, or a new user who accepted the terms).
+   */
+  async saveGoogle(
+    email: string,
+    google: Omit<UserGoogle, 'connectedAt' | 'lastLoginAt'>,
+    newUser = false,
+  ): Promise<void> {
+    const now = new Date();
+    await this.users.updateOne(
+      { _id: email },
+      {
+        $set: {
+          'google.googleId': google.googleId,
+          'google.email': google.email,
+          'google.name': google.name,
+          'google.picture': google.picture,
+          'google.lastLoginAt': now,
+        },
+        // Set the first time only: when Google was linked.
+        $min: { 'google.connectedAt': now },
+        $setOnInsert: newUser ? accepted() : {},
+      },
+      { upsert: true },
+    );
+  }
+
   async exists(email: string): Promise<boolean> {
     return (await this.users.countDocuments({ _id: email })) > 0;
   }
@@ -59,13 +98,22 @@ export class UsersService {
     return { id: doc._id, token, note: doc.note, expiresAt: doc.expiresAt };
   }
 
-  async list() {
+  /** The users (not the admin, who may have a record for a Google login) and open invites. */
+  async list(adminEmail: string) {
     const [users, invites] = await Promise.all([
-      this.users.find().sort({ createdAt: 1 }).lean(),
+      this.users
+        .find({ _id: { $ne: adminEmail } })
+        .sort({ createdAt: 1 })
+        .lean(),
       this.invites.find({ usedBy: null }).sort({ createdAt: -1 }).lean(),
     ]);
     return {
-      users: users.map((u) => ({ email: u._id, joinedAt: u.createdAt })),
+      users: users.map((u) => ({
+        email: u._id,
+        joinedAt: u.createdAt,
+        google: !!u.google,
+        password: !!u.passwordHash,
+      })),
       invites: invites.map((i) => ({
         id: i._id,
         note: i.note,
