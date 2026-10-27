@@ -143,19 +143,25 @@ describe('Users and invites (e2e)', () => {
       .expect(409);
     await danaAgent.get('/api/v1/users').expect(403);
 
-    await danaAgent
+    // A user can't paste a key: they connect with Alpaca (OAuth).
+    const refused = await danaAgent
       .post('/api/v1/accounts')
       .send({ name: 'Mine', keyId: 'PKDANA00001', secret: 'dana-secret' })
-      .expect(200);
+      .expect(403);
+    expect(refused.body.message).toMatch(/Connect with Alpaca/);
+    expect(
+      (await danaAgent.get('/api/v1/accounts').expect(200)).body,
+    ).toMatchObject({
+      keyAllowed: false,
+    });
+    const { AlpacaOAuthService } =
+      await import('../src/accounts/oauth/alpaca-oauth.service.js');
+    await app
+      .get(AlpacaOAuthService)
+      .connect({ email: 'dana@example.com', admin: false }, 'PKDANA00001');
     const mine = await danaAgent.get('/api/v1/accounts').expect(200);
-    expect(mine.body.accounts).toEqual([
-      {
-        id: 'PA3',
-        name: 'Mine',
-        paper: true,
-        keyHint: '0001',
-        auth: 'key',
-      },
+    expect(mine.body.accounts).toMatchObject([
+      { id: 'PA3', paper: true, auth: 'oauth' },
     ]);
     await danaAgent.delete('/api/v1/accounts/PA1').expect(404);
 

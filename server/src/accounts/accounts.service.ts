@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -51,16 +52,22 @@ export class AccountsService {
     private readonly model: Model<AlpacaAccountDoc>,
   ) {}
 
-  list(user: AuthUser): { accounts: AccountView[]; canAdd: boolean } {
+  list(user: AuthUser): {
+    accounts: AccountView[];
+    canAdd: boolean;
+    keyAllowed: boolean;
+  } {
     return {
       accounts: this.accounts.visibleTo(user).map((a) => view(a, user)),
       canAdd: !!this.accounts.box,
+      keyAllowed: user.admin,
     };
   }
 
   /**
-   * Checks the key with Alpaca (paper only), saves it encrypted, then brings
-   * in what the account already holds (the Trade page's My stocks).
+   * The admin's own account by API key: checked with Alpaca (paper only),
+   * saved encrypted, then what it already holds is brought in (the Trade
+   * page's My stocks). Other users connect with Log in with Alpaca.
    */
   async add(
     user: AuthUser,
@@ -70,6 +77,11 @@ export class AccountsService {
       secret: string;
     },
   ): Promise<AccountView & { synced: SyncResult | null }> {
+    // Only the admin pastes a key; everyone else connects with Log in with Alpaca (no key leaves Alpaca).
+    if (!user.admin)
+      throw new ForbiddenException(
+        'Connect your account with Alpaca (Connect with Alpaca): API keys are not accepted',
+      );
     const box = this.accounts.box;
     if (!box)
       throw new BadRequestException(

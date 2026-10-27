@@ -143,7 +143,7 @@ describe('Log in with Alpaca (e2e)', () => {
       client_id: 'client-123',
       redirect_uri: 'https://bullwether.test/api/v1/auth/alpaca/callback',
       env: 'paper',
-      scope: 'account:write trading data',
+      scope: 'trading data',
     });
     expect(res.headers['set-cookie']?.[0]).toMatch(
       /^alpaca_oauth=login\.[\w-]+;.*HttpOnly/,
