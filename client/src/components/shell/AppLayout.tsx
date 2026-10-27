@@ -1,4 +1,5 @@
 import { AppShell } from '@mantine/core';
+import { useLocalStorage } from '@mantine/hooks';
 import type { ReactNode } from 'react';
 import type { Account } from '../../api/account-types';
 import type { BacktestOptions } from '../../api/types';
@@ -38,18 +39,30 @@ export function AppLayout({
   children: ReactNode;
 }) {
   const mobile = useIsMobile();
+  // The computer's sidebar: shown or hidden with the ☰ button (remembered on this device).
+  const [sidebar, setSidebar] = useLocalStorage({ key: 'sidebar-open', defaultValue: true });
   return (
     <AppShell
       header={{ height: mobile ? 56 : 60 }}
       footer={mobile ? { height: 64 } : undefined}
-      navbar={mobile ? undefined : { width: 250, breakpoint: 'sm' }}
+      navbar={
+        mobile
+          ? undefined
+          : { width: 250, breakpoint: 'sm', collapsed: { desktop: !sidebar, mobile: true } }
+      }
       padding="md"
     >
       <AppShell.Header style={mobile ? SAFE_TOP : undefined}>
         {mobile ? (
           <MobileHeader options={options} page={page} onPage={onPage} accounts={accounts} />
         ) : (
-          <Header options={options} onPage={onPage} accounts={accounts} />
+          <Header
+            options={options}
+            onPage={onPage}
+            accounts={accounts}
+            sidebar={sidebar}
+            onSidebar={() => setSidebar((open) => !open)}
+          />
         )}
       </AppShell.Header>
       {!mobile && (
