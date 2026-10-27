@@ -53,6 +53,7 @@ export const PRIVACY_A: LegalSection[] = [
           'Your broker (Alpaca Securities LLC and its affiliates): your instructions and orders, and requests for your account data, sent with your credentials.',
           'Service providers that host and run the Service for us (such as application hosting, web hosting and database hosting providers), bound to process the information only for providing their services.',
           'AI model providers (such as OpenAI): only market information, such as stock symbols, news headlines, earnings figures and backtest results. We do not send your email, credentials or account balances.',
+          'The content delivery network jsDelivr, which serves the accessibility toolbar and its font: it receives standard request information such as your IP address.',
           'Market-data and public-information sources (such as Alpaca market data, Alpha Vantage, the US SEC, Nasdaq and the Bank of Israel): requests for prices, news, filings and rates, which contain no personal information.',
           'The administrator of the Service, who can access users and connected accounts to operate, secure and support the Service.',
           'Authorities or others when required by law or legal process, or when needed to protect rights, safety or the Service; and a successor in a merger, acquisition or reorganization, bound by this policy.',
@@ -67,7 +68,7 @@ export const PRIVACY_A: LegalSection[] = [
       'We do not use advertising or third-party tracking cookies or analytics. We use two kinds of cookies and browser storage, and ask for your choice in a banner on your first visit:',
       {
         list: [
-          'Strictly necessary (always on): the login cookie that keeps you logged in (httpOnly; by default for 12 hours); short-lived Log in with Alpaca cookies (a security value for the trip to Alpaca and back, 10 minutes, and a sign-up waiting for its email step, 15 minutes); the account you chose to view; a short message after switching accounts; your cookie choice itself; and the app files saved by the app (service worker) so it opens quickly and offline (no account data is saved this way).',
+          'Strictly necessary (always on): the login cookie that keeps you logged in (httpOnly; by default for 12 hours); short-lived Log in with Alpaca cookies (a security value for the trip to Alpaca and back, 10 minutes, and a sign-up waiting for its email step, 15 minutes); the account you chose to view; a short message after switching accounts; your cookie choice itself; the settings you choose in the accessibility toolbar; and the app files saved by the app (service worker) so it opens quickly and offline (no account data is saved this way).',
           'Functional (only if you allow it): remembering your light or dark mode and whether the sidebar is open. If you do not allow it, these reset on each visit.',
         ],
       },

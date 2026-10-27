@@ -22,6 +22,12 @@ export function LegalLinks({ note }: { note?: string }) {
       <Text size="xs" c="dimmed">
         ·
       </Text>
+      <Anchor href="/accessibility" size="xs" c="dimmed" target="_blank">
+        Accessibility
+      </Anchor>
+      <Text size="xs" c="dimmed">
+        ·
+      </Text>
       <Anchor component="button" type="button" size="xs" c="dimmed" onClick={openCookieSettings}>
         Cookie preferences
       </Anchor>

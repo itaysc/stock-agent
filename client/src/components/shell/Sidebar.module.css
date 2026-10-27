@@ -1,0 +1,21 @@
+/* The collapse button at the bottom of the sidebar (as in foozool). */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--mantine-radius-md);
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-sm);
+
+  &:hover {
+    background: var(--mantine-color-default-hover);
+    color: var(--mantine-color-text);
+  }
+
+  &[data-collapsed] {
+    justify-content: center;
+    padding: 10px 0;
+  }
+}

@@ -36,10 +36,10 @@ describe('cookie consent on this device', () => {
     writeLocalConsent(choice(true));
     expect(functionalAllowed()).toBe(true);
     store.set('mantine-color-scheme-value', 'dark');
-    store.set('sidebar-open', 'false');
+    store.set('sidebar-collapsed', 'true');
     writeLocalConsent(choice(false));
     expect(functionalAllowed()).toBe(false);
     expect(store.has('mantine-color-scheme-value')).toBe(false);
-    expect(store.has('sidebar-open')).toBe(false);
+    expect(store.has('sidebar-collapsed')).toBe(false);
   });
 });

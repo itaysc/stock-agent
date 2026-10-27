@@ -22,5 +22,25 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Accessibility toolbar (Open-Nagish, MIT): contrast, text size, reading aids, text to speech.
+         Pinned with an integrity hash; its button sits bottom-right (the sidebar's corner is the left). -->
+    <script>
+      window.OpenNagishConfig = {
+        position: 'bottom-right',
+        lang: 'en',
+        statementUrl: '/accessibility',
+        statementData: {
+          orgName: 'Bullwether',
+          orgEmail: 'legal@bullwether.com',
+          lastAuditDate: '2026-10-27',
+        },
+      };
+    </script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/open-nagish@1.1.4/dist/open-nagish.min.js"
+      integrity="sha384-mdqEytyjeXTB1qM/8ZnlLkhm7CRFmqwgoeKFUEo+fB7YlEd6loXz+R3c498IYg9U"
+      crossorigin="anonymous"
+      defer
+    ></script>
   </body>
 </html>

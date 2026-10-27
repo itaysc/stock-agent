@@ -12,6 +12,7 @@ import {
 } from '@mantine/core';
 import { IconChartLine } from '@tabler/icons-react';
 import { useEffect } from 'react';
+import { ACCESSIBILITY } from './accessibility';
 import type { LegalDoc } from './legal-types';
 import { PRIVACY } from './privacy';
 import { TERMS } from './terms';
@@ -21,6 +22,7 @@ export function legalDocFor(path: string): LegalDoc | null {
   const p = path.replace(/\/+$/, '');
   if (p === '/terms') return TERMS;
   if (p === '/policy' || p === '/privacy') return PRIVACY;
+  if (p === '/accessibility') return ACCESSIBILITY;
   return null;
 }
 
@@ -31,10 +33,22 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
     const id = window.location.hash.slice(1);
     if (id) document.getElementById(id)?.scrollIntoView();
   }, []);
-  const other =
-    doc === TERMS
-      ? { href: '/policy', label: 'Privacy Policy' }
-      : { href: '/terms', label: 'Terms of Use' };
+  // The other legal pages, linked at the top and bottom.
+  const links = (
+    <Group gap="md">
+      {[
+        { doc: TERMS, href: '/terms', label: 'Terms of Use' },
+        { doc: PRIVACY, href: '/policy', label: 'Privacy Policy' },
+        { doc: ACCESSIBILITY, href: '/accessibility', label: 'Accessibility' },
+      ]
+        .filter((o) => o.doc !== doc)
+        .map((o) => (
+          <Anchor key={o.href} href={o.href} size="sm">
+            {o.label}
+          </Anchor>
+        ))}
+    </Group>
+  );
   return (
     <Container size="md" py="xl" px="md">
       <Stack gap="lg">
@@ -52,9 +66,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
               <Text fw={700}>Bullwether</Text>
             </Group>
           </Anchor>
-          <Anchor href={other.href} size="sm">
-            {other.label}
-          </Anchor>
+          {links}
         </Group>
         <div>
           <Title order={1}>{doc.title}</Title>
@@ -113,9 +125,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           <Anchor href="/" size="sm">
             Back to Bullwether
           </Anchor>
-          <Anchor href={other.href} size="sm">
-            {other.label}
-          </Anchor>
+          {links}
         </Group>
       </Stack>
     </Container>

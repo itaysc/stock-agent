@@ -39,8 +39,8 @@ export function AppLayout({
   children: ReactNode;
 }) {
   const mobile = useIsMobile();
-  // The computer's sidebar: shown or hidden with the ☰ button (remembered with functional consent).
-  const [sidebar, setSidebar] = usePreference('sidebar-open', true);
+  // The computer's sidebar: full, or collapsed to icons (remembered with functional consent).
+  const [collapsed, setCollapsed] = usePreference('sidebar-collapsed', false);
   return (
     <AppShell
       header={{ height: mobile ? 56 : 60 }}
@@ -48,7 +48,7 @@ export function AppLayout({
       navbar={
         mobile
           ? undefined
-          : { width: 250, breakpoint: 'sm', collapsed: { desktop: !sidebar, mobile: true } }
+          : { width: collapsed ? 72 : 250, breakpoint: 'sm', collapsed: { mobile: true } }
       }
       padding="md"
     >
@@ -56,18 +56,17 @@ export function AppLayout({
         {mobile ? (
           <MobileHeader options={options} page={page} onPage={onPage} accounts={accounts} />
         ) : (
-          <Header
-            options={options}
-            onPage={onPage}
-            accounts={accounts}
-            sidebar={sidebar}
-            onSidebar={() => setSidebar((open) => !open)}
-          />
+          <Header options={options} onPage={onPage} accounts={accounts} />
         )}
       </AppShell.Header>
       {!mobile && (
-        <AppShell.Navbar>
-          <Sidebar page={page} onPage={onPage} />
+        <AppShell.Navbar style={{ transition: 'width 200ms ease' }}>
+          <Sidebar
+            page={page}
+            onPage={onPage}
+            collapsed={collapsed}
+            onToggle={() => setCollapsed((c) => !c)}
+          />
         </AppShell.Navbar>
       )}
       {mobile && (

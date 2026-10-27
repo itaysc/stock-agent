@@ -19,7 +19,7 @@ export interface CookieConsent {
 const KEY = 'bullwether.cookieConsent';
 const THEME_KEY = 'mantine-color-scheme-value';
 /** Functional storage: removed when it isn't allowed. */
-const FUNCTIONAL_KEYS = [THEME_KEY, 'sidebar-open'];
+const FUNCTIONAL_KEYS = [THEME_KEY, 'sidebar-collapsed', 'sidebar-open'];
 /** The banner reopens (Cookie preferences links). */
 export const CONSENT_OPEN = 'consent:open';
 

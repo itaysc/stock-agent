@@ -165,12 +165,15 @@ export function MobileMenu({
             {options.dataFeed.toUpperCase()} market data · AI summaries{' '}
             {options.aiEnabled ? 'on' : 'off'}
           </Text>
-          <Group gap="md" px="sm" pt={4}>
+          <Group gap="md" justify="center" px="sm" pt={4} style={{ rowGap: 6 }}>
             <Anchor href="/terms" target="_blank" size="sm">
               Terms of Use
             </Anchor>
             <Anchor href="/policy" target="_blank" size="sm">
               Privacy Policy
+            </Anchor>
+            <Anchor href="/accessibility" target="_blank" size="sm">
+              Accessibility
             </Anchor>
             <Anchor
               component="button"

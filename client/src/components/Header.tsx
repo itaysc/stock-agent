@@ -1,6 +1,5 @@
 import {
   ActionIcon,
-  Burger,
   Badge,
   Box,
   Group,
@@ -32,13 +31,10 @@ interface Props {
   options: BacktestOptions;
   onPage: (page: Page) => void;
   accounts: Account[];
-  /** The sidebar is shown; the ☰ button shows or hides it. */
-  sidebar: boolean;
-  onSidebar: () => void;
 }
 
 /** The computer's top bar: the app, the account, the market clock, the money, and settings (the pages are in the sidebar). */
-export function Header({ options, onPage, accounts, sidebar, onSidebar }: Props) {
+export function Header({ options, onPage, accounts }: Props) {
   const install = useInstall();
   const { setColorScheme } = useMantineColorScheme();
   const { user, logout } = useAuth();
@@ -47,14 +43,6 @@ export function Header({ options, onPage, accounts, sidebar, onSidebar }: Props)
   return (
     <Group h="100%" px="md" justify="space-between" wrap="nowrap">
       <Group gap="sm" wrap="nowrap">
-        <Tooltip label={sidebar ? 'Hide the menu' : 'Show the menu'}>
-          <Burger
-            opened={sidebar}
-            onClick={onSidebar}
-            size="sm"
-            aria-label={sidebar ? 'Hide the menu' : 'Show the menu'}
-          />
-        </Tooltip>
         <ThemeIcon
           size={34}
           radius="md"
