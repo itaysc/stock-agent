@@ -16,9 +16,9 @@ export const PRIVACY_A: LegalSection[] = [
     body: [
       {
         list: [
-          'User details: your email address, and a one-way hash of your password (we never store the password itself). If you sign up with Alpaca, we receive an access token and your Alpaca account number; Alpaca does not share your Alpaca password with us.',
+          'User details: your email address, and a one-way hash of your password (we never store the password itself). If you sign up with Alpaca, we receive an access token and your Alpaca account number; Alpaca does not share your Alpaca password with us. If you continue with Google, we receive from Google your Google account id, email address (and whether Google verified it), name and profile picture address; we use Google’s access token once to read them and do not keep it, and Google does not share your Google password with us.',
           'Brokerage credentials: API keys and secrets you enter, or access tokens from Log in with Alpaca. They are stored encrypted (AES-256-GCM) and are never shown again or sent to your browser.',
-          'Brokerage account data, retrieved from your broker: account number and status, cash and equity, positions, orders and fills, and account activity (such as trades, dividends, fees and transfers).',
+          'Brokerage account data, retrieved from your broker: account number and status, cash and equity, positions, orders and fills, and account activity (such as trades, dividends, fees and transfers). For a Bullwether paper account, the same kinds of data are kept by us, with virtual money.',
           'Data you create in the Service: investments and their settings, your stocks, stop and target prices, watchlists, ideas and answers, and records of what the Service did (events, orders and their results).',
           'Tax records: your account activity with the Bank of Israel exchange rate of its day and amounts in shekels.',
           'Technical information: server logs with your IP address, the requests made, times and errors; and failed login attempts (by IP address) to protect against password guessing.',
@@ -50,7 +50,8 @@ export const PRIVACY_A: LegalSection[] = [
     body: [
       {
         list: [
-          'Your broker (Alpaca Securities LLC and its affiliates): your instructions and orders, and requests for your account data, sent with your credentials.',
+          'Your broker (Alpaca Securities LLC and its affiliates): your instructions and orders, and requests for your account data, sent with your credentials. (Orders in a Bullwether paper account stay with us.)',
+          'Google, when you choose Continue with Google: the request to sign you in, which Google answers with the details above.',
           'Service providers that host and run the Service for us (such as application hosting, web hosting and database hosting providers), bound to process the information only for providing their services.',
           'AI model providers (such as OpenAI): only market information, such as stock symbols, news headlines, earnings figures and backtest results. We do not send your email, credentials or account balances.',
           'The content delivery network jsDelivr, which serves the accessibility toolbar and its font: it receives standard request information such as your IP address.',
@@ -68,7 +69,7 @@ export const PRIVACY_A: LegalSection[] = [
       'We do not use advertising or third-party tracking cookies or analytics. We use two kinds of cookies and browser storage, and ask for your choice in a banner on your first visit:',
       {
         list: [
-          'Strictly necessary (always on): the login cookie that keeps you logged in (httpOnly; by default for 12 hours); short-lived Log in with Alpaca cookies (a security value for the trip to Alpaca and back, 10 minutes, and a sign-up waiting for its email step, 15 minutes); the account you chose to view; a short message after switching accounts; your cookie choice itself; the settings you choose in the accessibility toolbar; and the app files saved by the app (service worker) so it opens quickly and offline (no account data is saved this way).',
+          'Strictly necessary (always on): the login cookie that keeps you logged in (httpOnly; by default for 12 hours); short-lived Log in with Alpaca cookies (a security value for the trip to Alpaca and back, 10 minutes, and a sign-up waiting for its email step, 15 minutes); the same two for Continue with Google (10 minutes, and a sign-up waiting for the terms step, 15 minutes); the account you chose to view; a short message after switching accounts; your cookie choice itself; the settings you choose in the accessibility toolbar; and the app files saved by the app (service worker) so it opens quickly and offline (no account data is saved this way).',
           'Functional (only if you allow it): remembering your light or dark mode and whether the sidebar is open. If you do not allow it, these reset on each visit.',
         ],
       },

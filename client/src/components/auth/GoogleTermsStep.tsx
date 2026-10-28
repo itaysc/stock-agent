@@ -35,7 +35,8 @@ export function GoogleTermsStep({
             <Stack gap={4} align="center">
               <Title order={3}>{pending.name ? `Welcome, ${pending.name}` : 'One more step'}</Title>
               <Text size="sm" c="dimmed" ta="center">
-                You&apos;re signing up with your Google account <b>{pending.email}</b>.
+                You&apos;re signing up with your Google account <b>{pending.email}</b>. You start
+                with a paper account of $100,000 in virtual cash.
               </Text>
             </Stack>
             <AcceptTerms checked={agreed} onChange={setAgreed} />

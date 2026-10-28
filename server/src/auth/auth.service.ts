@@ -28,6 +28,12 @@ export class AuthService {
   private readonly loggedIn = new Subject<AuthUser>();
   /** Every login (password, Alpaca, sign-up): e.g. to sync the user's accounts. */
   readonly loggedIn$ = this.loggedIn.asObservable();
+  private readonly signedUp = new Subject<string>();
+  /** A new user (invite or Google; not Alpaca, which comes with its account): e.g. to open their paper account. */
+  readonly signedUp$ = this.signedUp.asObservable();
+  private readonly removed = new Subject<string>();
+  /** A user the admin removed (their email): e.g. to delete their paper account. */
+  readonly removed$ = this.removed.asObservable();
 
   /** Failed logins per IP: blocked for a while after MAX_FAILURES. */
   private readonly failures = new Map<
@@ -122,6 +128,16 @@ export class AuthService {
   }
 
   /** Logs a browser in (the JWT as an httpOnly cookie) and announces the login. */
+  /** Tells the app a user was just created (their email). */
+  newUser(email: string): void {
+    this.signedUp.next(email);
+  }
+
+  /** Tells the app a user was removed (their email). */
+  userRemoved(email: string): void {
+    this.removed.next(email);
+  }
+
   issueLogin(user: AuthUser, res: Response) {
     const accessToken = this.sign(user);
     const expiresIn = this.config.get('JWT_EXPIRES_IN', { infer: true });

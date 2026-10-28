@@ -126,7 +126,7 @@ export function MobileMenu({
           <NavLink
             active={page === 'accounts'}
             label={user?.admin ? 'Accounts & users' : 'Accounts'}
-            description="Your Alpaca accounts"
+            description="Your accounts"
             leftSection={<IconUsers size={22} stroke={1.6} />}
             onClick={() => go('accounts')}
             styles={{ root: { borderRadius: 8, minHeight: 52 } }}

@@ -93,6 +93,11 @@ export const api = {
     }),
   deleteAccount: (id: string) =>
     request<null>(`/api/v1/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  /** A Bullwether paper account ($100,000 of virtual cash). */
+  openPaper: () => request<Account>('/api/v1/accounts/paper', { method: 'POST' }),
+  /** A paper account back to its starting cash: a fresh account (a new id) in its place. */
+  resetPaper: (id: string) =>
+    request<Account>(`/api/v1/accounts/${encodeURIComponent(id)}/reset`, { method: 'POST' }),
   options: () => request<BacktestOptions>('/api/v1/backtests/options'),
   reports: () => request<ReportItem[]>('/api/v1/reports'),
   backtest: (body: object) =>

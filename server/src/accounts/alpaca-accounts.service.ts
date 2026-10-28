@@ -1,5 +1,6 @@
 import { Alpaca } from '@alpacahq/alpaca-trade-api';
 import {
+  ConflictException,
   Inject,
   Injectable,
   Logger,
@@ -60,7 +61,12 @@ export class AlpacaAccounts implements OnModuleInit, OnApplicationShutdown {
   }
 
   async onModuleInit(): Promise<void> {
-    for (const doc of await this.model.find().sort({ createdAt: 1 }).lean()) {
+    // Bullwether paper accounts are opened by SimAccounts (sim/).
+    const docs = await this.model
+      .find({ auth: { $ne: 'sim' } })
+      .sort({ createdAt: 1 })
+      .lean();
+    for (const doc of docs) {
       if (!this.box) {
         this.logger.error(
           `Account "${doc.name}" is saved but ACCOUNTS_SECRET_KEY is not set: skipped`,
@@ -118,10 +124,21 @@ export class AlpacaAccounts implements OnModuleInit, OnApplicationShutdown {
     return this.list()[0];
   }
 
-  /** The client for market data: the current account's, else the first account's. */
+  /**
+   * The client for market data: the current account's, else the first
+   * Alpaca account's. A Bullwether paper account has no data of its own (its
+   * client asks here), so it always gets a real account's.
+   */
   dataClient(): Alpaca {
-    return (AccountContext.maybe() ?? this.first() ?? AccountContext.current())
-      .client;
+    const current = AccountContext.maybe();
+    if (current && current.auth !== 'sim') return current.client;
+    const real = this.list().find((a) => a.auth !== 'sim');
+    if (real) return real.client;
+    if (current)
+      throw new ConflictException(
+        "No market data: it needs the admin's Alpaca account",
+      );
+    return AccountContext.current().client; // throws: no account at all
   }
 
   newClient(creds: AlpacaCredentials, paper: boolean): Alpaca {

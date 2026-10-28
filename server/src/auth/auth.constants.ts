@@ -2,7 +2,7 @@ import { SetMetadata } from '@nestjs/common';
 
 export const JWT_ISSUER = 'stock-invest';
 /** The Terms of Use / Privacy Policy version users accept at sign-up (client: legal/legal-types.ts). */
-export const TERMS_VERSION = '2026-10-27';
+export const TERMS_VERSION = '2026-10-28';
 export const JWT_AUDIENCE = 'stock-invest-app';
 /** The httpOnly cookie that carries the JWT for the web app. */
 export const AUTH_COOKIE = 'accessToken';

@@ -176,6 +176,7 @@ export class GoogleOAuthService {
       true,
     );
     await this.signups.deleteOne({ _id: doc._id });
+    this.auth.newUser(user.email);
     return user;
   }
 }

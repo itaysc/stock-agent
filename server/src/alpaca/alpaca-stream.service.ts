@@ -100,8 +100,8 @@ export class AlpacaStreamService
 
   private openTrading(account: ActiveAccount): void {
     this.closeTrading(account);
-    // The SDK's streams sign in with a key: an OAuth account's fills are found by checking its orders.
-    if (account.auth === 'oauth') return;
+    // The SDK's streams sign in with a key: OAuth and paper accounts' fills are found by checking their orders.
+    if (account.auth !== 'key') return;
     const stream = account.client.trading.stream(this.streamOptions());
     logStreamLifecycle(stream, `Trading ${account.id}`, this.logger);
     stream.onTradeUpdate((update) =>

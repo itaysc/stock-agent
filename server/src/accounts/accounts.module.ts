@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AlpacaModule } from '../alpaca/alpaca.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { PaperModule } from '../paper/paper.module.js';
+import { SimModule } from '../sim/sim.module.js';
 import { TradeModule } from '../trade/trade.module.js';
 import { AccountInterceptor } from './account.interceptor.js';
 import { AccountsService } from './accounts.service.js';
@@ -26,6 +27,7 @@ import {
     AlpacaModule,
     AuthModule,
     PaperModule,
+    SimModule,
     TradeModule,
     MongooseModule.forFeature([
       { name: AlpacaAccountDoc.name, schema: AlpacaAccountSchema },

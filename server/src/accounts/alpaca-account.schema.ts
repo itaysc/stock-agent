@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 /**
- * An Alpaca account added in the app: by its API key and secret, or by
- * "Log in with Alpaca" (an OAuth token). Both are encrypted (SecretBox).
+ * An account in the app: an Alpaca account by its API key and secret, or by
+ * "Log in with Alpaca" (an OAuth token), both encrypted (SecretBox); or a
+ * Bullwether paper account.
  */
 @Schema({ collection: 'alpaca_accounts', timestamps: true })
 export class AlpacaAccountDoc {
@@ -20,9 +21,12 @@ export class AlpacaAccountDoc {
   @Prop({ type: String, default: '', index: true })
   owner!: string;
 
-  /** key: an API key and secret; oauth: an access token from Log in with Alpaca. */
-  @Prop({ type: String, enum: ['key', 'oauth'], default: 'key' })
-  auth!: 'key' | 'oauth';
+  /**
+   * key: an API key and secret; oauth: an access token from Log in with
+   * Alpaca; sim: a Bullwether paper account (no credentials, see sim/).
+   */
+  @Prop({ type: String, enum: ['key', 'oauth', 'sim'], default: 'key' })
+  auth!: 'key' | 'oauth' | 'sim';
 
   @Prop({ type: String })
   keyId?: string;

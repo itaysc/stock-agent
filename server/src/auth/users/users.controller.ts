@@ -55,17 +55,21 @@ export class UsersController {
   @Delete(':email')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Remove a user (refused while they still have accounts)',
+    summary:
+      'Remove a user (refused while they still have Alpaca accounts; their paper account goes with them)',
   })
   async remove(@Req() req: Request, @Param('email') email: string) {
     this.adminOnly(req);
     const e = email.toLowerCase();
-    const owned = this.accounts.list().filter((a) => a.owner === e).length;
+    const owned = this.accounts
+      .list()
+      .filter((a) => a.owner === e && a.auth !== 'sim').length;
     if (owned)
       throw new ConflictException(
         `${e} still has ${owned} Alpaca account${owned > 1 ? 's' : ''}: delete ${owned > 1 ? 'them' : 'it'} on the Accounts page first`,
       );
     await this.users.remove(e);
+    this.auth.userRemoved(e);
   }
 
   private adminOnly(req: Request): void {

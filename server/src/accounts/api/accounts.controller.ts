@@ -40,6 +40,26 @@ export class AccountsController {
     return this.accounts.add(this.auth.requester(req), dto);
   }
 
+  @Post('paper')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Open a Bullwether paper account ($100,000 of virtual cash, one per user)',
+  })
+  openPaper(@Req() req: Request) {
+    return this.accounts.openPaper(this.auth.requester(req));
+  }
+
+  @Post(':id/reset')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Reset a Bullwether paper account: a fresh one with the starting cash, in its place',
+  })
+  resetPaper(@Req() req: Request, @Param('id') id: string) {
+    return this.accounts.resetPaper(this.auth.requester(req), id);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Rename an account' })
   rename(

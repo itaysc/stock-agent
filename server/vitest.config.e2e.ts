@@ -28,6 +28,12 @@ export default defineConfig({
       ADMIN_EMAIL: '',
       ADMIN_PASSWORD_HASH: '',
       JWT_SECRET: '',
+      // Log in with Alpaca / Google off (the files that test them turn them on).
+      ALPACA_OAUTH_CLIENT_ID: '',
+      ALPACA_OAUTH_CLIENT_SECRET: '',
+      GOOGLE_CLIENT_ID: '',
+      GOOGLE_CLIENT_SECRET: '',
+      PUBLIC_URL: '',
     },
   },
 });

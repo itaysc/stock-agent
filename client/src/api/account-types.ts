@@ -1,6 +1,6 @@
 import type { SyncResult } from './trade-types';
 
-/** An Alpaca account the app works with (its key is never sent to the browser). */
+/** An account the app works with: an Alpaca account (its key is never sent to the browser), or a Bullwether paper account. */
 export interface Account {
   /** Alpaca's account number, e.g. PA3G0TALD8D7. */
   id: string;
@@ -8,8 +8,8 @@ export interface Account {
   paper: boolean;
   /** The key's last 4 characters. */
   keyHint: string;
-  /** key: added with an API key; oauth: connected with Log in with Alpaca. */
-  auth: 'key' | 'oauth';
+  /** key: added with an API key; oauth: connected with Log in with Alpaca; sim: a Bullwether paper account (virtual money). */
+  auth: 'key' | 'oauth' | 'sim';
   /** Who added it (only the admin sees this). */
   owner?: string;
 }
@@ -20,6 +20,8 @@ export interface AccountList {
   canAdd: boolean;
   /** Only the admin adds an account by pasting an API key; others connect with Alpaca. */
   keyAllowed: boolean;
+  /** The user has no Bullwether paper account yet, and one can open. */
+  canOpenPaper: boolean;
 }
 
 /** A newly added account, with what it already held (brought into the Trade page). */

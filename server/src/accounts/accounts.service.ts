@@ -10,6 +10,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import type { AuthUser } from '../auth/auth.constants.js';
 import { DeploymentStore } from '../paper/deployment-store.js';
+import { SimAccounts } from '../sim/sim-accounts.service.js';
 import {
   AlpacaSyncService,
   type SyncResult,
@@ -23,8 +24,8 @@ export interface AccountView {
   name: string;
   paper: boolean;
   keyHint: string;
-  /** key: added with an API key; oauth: connected with Log in with Alpaca. */
-  auth: 'key' | 'oauth';
+  /** key: added with an API key; oauth: connected with Log in with Alpaca; sim: a Bullwether paper account. */
+  auth: 'key' | 'oauth' | 'sim';
   /** Who added it (shown to the admin only). */
   owner?: string;
 }
@@ -48,6 +49,7 @@ export class AccountsService {
     private readonly accounts: AlpacaAccounts,
     private readonly deployments: DeploymentStore,
     private readonly alpacaSync: AlpacaSyncService,
+    private readonly sim: SimAccounts,
     @InjectModel(AlpacaAccountDoc.name)
     private readonly model: Model<AlpacaAccountDoc>,
   ) {}
@@ -56,12 +58,25 @@ export class AccountsService {
     accounts: AccountView[];
     canAdd: boolean;
     keyAllowed: boolean;
+    /** The user has no Bullwether paper account yet, and one can open. */
+    canOpenPaper: boolean;
   } {
     return {
       accounts: this.accounts.visibleTo(user).map((a) => view(a, user)),
       canAdd: !!this.accounts.box,
       keyAllowed: user.admin,
+      canOpenPaper: this.sim.canOpen(user),
     };
+  }
+
+  /** A Bullwether paper account for the user ($100,000 of virtual cash). */
+  async openPaper(user: AuthUser): Promise<AccountView> {
+    return view(await this.sim.open(user), user);
+  }
+
+  /** A paper account back to its starting cash (a fresh account in its place). */
+  async resetPaper(user: AuthUser, id: string): Promise<AccountView> {
+    return view(await this.sim.reset(user, id), user);
   }
 
   /**
@@ -154,6 +169,7 @@ export class AccountsService {
       );
     await this.model.deleteOne({ _id: id });
     this.accounts.remove(id);
+    if (account.auth === 'sim') await this.sim.removed(id);
   }
 
   /** One of the user's accounts (the admin: anyone's). */

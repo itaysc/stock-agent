@@ -43,7 +43,7 @@ describe('Users and invites (e2e)', () => {
     setupApp(app);
     db = app.get(getConnectionToken());
     await Promise.all(
-      ['users', 'invites', 'alpaca_accounts'].map((c) =>
+      ['users', 'invites', 'alpaca_accounts', 'sim_accounts'].map((c) =>
         db.collection(c).deleteMany({}),
       ),
     );
@@ -115,7 +115,7 @@ describe('Users and invites (e2e)', () => {
     const saved = await db
       .collection('users')
       .findOne({ _id: 'dana@example.com' as never });
-    expect(saved).toMatchObject({ termsVersion: '2026-10-27' });
+    expect(saved).toMatchObject({ termsVersion: '2026-10-28' });
     expect(saved?.termsAcceptedAt).toBeInstanceOf(Date);
     await http()
       .post('/api/v1/auth/signup')
@@ -133,14 +133,17 @@ describe('Users and invites (e2e)', () => {
   });
 
   it("a user sees and uses only their own accounts; the admin sees everyone's", async () => {
-    expect(
-      (await danaAgent.get('/api/v1/accounts').expect(200)).body.accounts,
-    ).toEqual([]);
-    // Asking for the admin's account gets nothing.
-    await danaAgent
+    // Only the paper account she got at sign-up.
+    await vi.waitFor(async () =>
+      expect(
+        (await danaAgent.get('/api/v1/accounts').expect(200)).body.accounts,
+      ).toMatchObject([{ auth: 'sim' }]),
+    );
+    // Asking for the admin's account gets her own (her paper account), never the admin's.
+    const asked = await danaAgent
       .get('/api/v1/trade/my-stocks')
-      .set('X-Account-Id', 'PA1')
-      .expect(409);
+      .set('X-Account-Id', 'PA1');
+    expect(asked.headers['x-account-id']).toMatch(/^BW/);
     await danaAgent.get('/api/v1/users').expect(403);
 
     // A user can't paste a key: they connect with Alpaca (OAuth).
@@ -161,6 +164,7 @@ describe('Users and invites (e2e)', () => {
       .connect({ email: 'dana@example.com', admin: false }, 'PKDANA00001');
     const mine = await danaAgent.get('/api/v1/accounts').expect(200);
     expect(mine.body.accounts).toMatchObject([
+      { auth: 'sim' },
       { id: 'PA3', paper: true, auth: 'oauth' },
     ]);
     await danaAgent.delete('/api/v1/accounts/PA1').expect(404);
@@ -168,14 +172,22 @@ describe('Users and invites (e2e)', () => {
     const all = await adminAgent.get('/api/v1/accounts').expect(200);
     expect(all.body.accounts).toMatchObject([
       { id: 'PA1', owner: 'admin@example.com' },
+      { auth: 'sim', owner: 'dana@example.com' },
       { id: 'PA3', owner: 'dana@example.com' },
     ]);
   });
 
-  it('removes a user only after their accounts, and their login stops', async () => {
+  it('removes a user only after their Alpaca accounts, and their login stops', async () => {
     await adminAgent.delete('/api/v1/users/dana@example.com').expect(409);
     await danaAgent.delete('/api/v1/accounts/PA3').expect(204);
+    // Her paper account goes with her.
     await adminAgent.delete('/api/v1/users/dana@example.com').expect(204);
     await danaAgent.get('/api/v1/accounts').expect(401);
+    await vi.waitFor(async () =>
+      expect(
+        (await adminAgent.get('/api/v1/accounts').expect(200)).body.accounts,
+      ).toMatchObject([{ id: 'PA1' }]),
+    );
+    expect(await db.collection('sim_accounts').countDocuments()).toBe(0);
   });
 });

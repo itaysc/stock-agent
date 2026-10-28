@@ -147,7 +147,7 @@ describe('Continue with Google (e2e)', () => {
     });
     const saved = await user('dana@example.com');
     expect(saved).toMatchObject({
-      termsVersion: '2026-10-27',
+      termsVersion: '2026-10-28',
       google: {
         googleId: 'g-dana',
         email: 'dana@example.com',

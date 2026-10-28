@@ -84,6 +84,7 @@ export class AuthController {
       dto.password,
       this.auth.adminEmail,
     );
+    this.auth.newUser(email);
     return this.logIn(this.auth.userFor(email), res);
   }
 

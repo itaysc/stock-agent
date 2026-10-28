@@ -12,7 +12,7 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { IconPencil, IconTrash } from '@tabler/icons-react';
+import { IconPencil, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import type { Account, AccountList } from '../../api/account-types';
@@ -24,13 +24,15 @@ import { AddAccountForm } from './AddAccountForm';
 import { UsersPanel } from './UsersPanel';
 import { alpacaAuthApi } from '../../api/alpaca-auth-api';
 import { AlpacaButton } from '../auth/AlpacaButton';
+import { OpenPaperCard, ResetModal } from './PaperAccount';
 
-/** Your Alpaca accounts: which one the app shows, and adding, renaming or deleting them. */
+/** Your accounts (Alpaca and Bullwether paper): which one the app shows, and adding, renaming or deleting them. */
 export function AccountsPage() {
   const [list, setList] = useState<AccountList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<Account | null>(null);
   const [deleting, setDeleting] = useState<Account | null>(null);
+  const [resetting, setResetting] = useState<Account | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [alpacaLogin, setAlpacaLogin] = useState(false);
   useEffect(() => {
@@ -69,9 +71,11 @@ export function AccountsPage() {
         )}
         {!list.accounts.length && (
           <Alert color="blue">
-            {list.keyAllowed
-              ? 'No account yet: add your Alpaca paper key to start.'
-              : 'No account yet: connect your Alpaca paper account to start.'}
+            {list.canOpenPaper
+              ? 'No account yet: open a paper account to start (virtual money, real prices).'
+              : list.keyAllowed
+                ? 'No account yet: add your Alpaca paper key to start.'
+                : 'No account yet: connect your Alpaca paper account to start.'}
           </Alert>
         )}
         {list.accounts.map((a) => (
@@ -82,11 +86,11 @@ export function AccountsPage() {
                   <Text fw={700}>{a.name}</Text>
                   {a.id === viewing && <Badge color="teal">Viewing</Badge>}
                   <Badge variant="light" color={a.paper ? 'blue' : 'red'}>
-                    {a.paper ? 'Paper' : 'Live'}
+                    {a.auth === 'sim' ? 'Virtual money' : a.paper ? 'Paper' : 'Live'}
                   </Badge>
                 </Group>
                 <Text size="xs" c="dimmed">
-                  {a.id} · {a.auth === 'oauth' ? 'connected with Alpaca' : `key …${a.keyHint}`}
+                  {a.id} · {accountSource(a)}
                   {user?.admin && a.owner && a.owner !== user.email && ` · ${a.owner}'s`}
                 </Text>
               </div>
@@ -105,6 +109,17 @@ export function AccountsPage() {
                     <IconPencil size={16} />
                   </ActionIcon>
                 </Tooltip>
+                {a.auth === 'sim' && (
+                  <Tooltip label="Reset to $100,000">
+                    <ActionIcon
+                      variant="subtle"
+                      onClick={() => setResetting(a)}
+                      aria-label={`Reset ${a.name}`}
+                    >
+                      <IconRefresh size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
                 <Tooltip label="Delete">
                   <ActionIcon
                     variant="subtle"
@@ -121,6 +136,7 @@ export function AccountsPage() {
         ))}
       </Stack>
       <Stack gap="lg">
+        {list.canOpenPaper && <OpenPaperCard />}
         <Paper p="md" withBorder>
           <Title order={5} mb="sm">
             {list.keyAllowed ? 'Add a paper account' : 'Connect your Alpaca account'}
@@ -162,6 +178,7 @@ export function AccountsPage() {
         </Paper>
         {user?.admin && <UsersPanel />}
       </Stack>
+      <ResetModal account={resetting} onClose={() => setResetting(null)} />
       <RenameModal account={renaming} onClose={() => setRenaming(null)} onDone={load} />
       <DeleteModal
         account={deleting}
@@ -174,3 +191,11 @@ export function AccountsPage() {
     </SimpleGrid>
   );
 }
+
+/** Where an account comes from, in a few words. */
+const accountSource = (a: Account) =>
+  a.auth === 'sim'
+    ? 'Bullwether paper account'
+    : a.auth === 'oauth'
+      ? 'connected with Alpaca'
+      : `key …${a.keyHint}`;

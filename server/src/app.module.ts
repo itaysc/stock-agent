@@ -13,6 +13,7 @@ import { LiveModule } from './live/live.module.js';
 import { LoggerModule } from './logger/logger.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { PaperModule } from './paper/paper.module.js';
+import { SimModule } from './sim/sim.module.js';
 import { ResearchApiModule } from './research/api/research-api.module.js';
 import { TaxModule } from './tax/tax.module.js';
 import { TradeModule } from './trade/trade.module.js';
@@ -31,6 +32,7 @@ import { TradeModule } from './trade/trade.module.js';
     BacktestApiModule,
     ResearchApiModule,
     PaperModule,
+    SimModule,
     AutopilotModule,
     BrokerModule,
     TaxModule,

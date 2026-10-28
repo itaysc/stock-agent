@@ -17,5 +17,5 @@ export interface LegalDoc {
 }
 
 /** The terms version a user accepts at sign-up (recorded on the server: TERMS_VERSION). */
-export const TERMS_VERSION = '2026-10-27';
+export const TERMS_VERSION = '2026-10-28';
 export const LEGAL_EMAIL = 'legal@bullwether.com';

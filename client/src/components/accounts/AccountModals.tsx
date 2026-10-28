@@ -73,8 +73,9 @@ export function DeleteModal({
     <Modal opened={!!account} onClose={onClose} title={`Delete "${account?.name}"?`}>
       <Stack>
         <Text size="sm">
-          The app forgets this account and its key. Its shares and cash stay in Alpaca, and its
-          records stay in the database (they come back if you add the account again).
+          {account?.auth === 'sim'
+            ? 'Its virtual cash, stocks and history are deleted. You can open a new paper account afterwards.'
+            : 'The app forgets this account and its key. Its shares and cash stay in Alpaca, and its records stay in the database (they come back if you add the account again).'}
         </Text>
         {error && <Alert color="red">{error}</Alert>}
         <ModalActions>

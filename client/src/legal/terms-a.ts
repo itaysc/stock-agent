@@ -15,7 +15,7 @@ export const TERMS_A: LegalSection[] = [
     id: 'service',
     title: '2. What Bullwether is',
     body: [
-      'Bullwether is a software tool. It connects to a brokerage account that you hold with Alpaca Securities LLC or its affiliates ("Alpaca"), using an API key you provide or an authorization you grant through Alpaca ("Log in with Alpaca"). Through that connection the Service can, as you set it up:',
+      'Bullwether is a software tool. It connects to a brokerage account that you hold with Alpaca Securities LLC or its affiliates ("Alpaca"), using an API key you provide or an authorization you grant through Alpaca ("Log in with Alpaca"); or it gives you a Bullwether paper account, a simulated account kept by us with virtual money. Through that connection or account the Service can, as you set it up:',
       {
         list: [
           'run rules-based investment strategies in your account (for example, buying the stocks with the strongest recent price momentum and selling them by rules such as stop prices), placing and cancelling orders automatically;',
@@ -25,7 +25,8 @@ export const TERMS_A: LegalSection[] = [
           'send notifications.',
         ],
       },
-      'The Service currently supports Alpaca paper (simulated) trading accounts only. If we enable accounts with real money, these Terms will apply to them as well, together with any additional terms we publish then.',
+      'The Service currently supports paper (simulated) trading only: Alpaca paper accounts and Bullwether paper accounts. If we enable accounts with real money, these Terms will apply to them as well, together with any additional terms we publish then.',
+      'A Bullwether paper account holds virtual money only. It is not a brokerage account: no real securities are bought or held, and nothing in it has any value or can be withdrawn. Its orders are filled by our simulation at recent market prices (market orders only), so its fills, costs, dividends and splits are approximate and will differ from a real account. We may reset, change or close Bullwether paper accounts.',
     ],
   },
   {

@@ -28,6 +28,6 @@ export const NAV_PAGES: NavPage[] = [
 export const accountsPage = (admin: boolean): NavPage => ({
   page: 'accounts',
   label: admin ? 'Accounts & users' : 'Accounts',
-  hint: 'Your Alpaca accounts',
+  hint: 'Your accounts',
   icon: IconUsers,
 });
